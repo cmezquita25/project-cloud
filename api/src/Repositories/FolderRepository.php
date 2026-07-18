@@ -129,6 +129,86 @@ class FolderRepository
         return $stmt->fetchAll();
     }
 
+    // ======================================================================
+    //  Fase 7 — Papelera, destacados y búsqueda
+    // ======================================================================
+
+    /** Carpeta en papelera (deleted_at NO nulo) del usuario. */
+    public function findTrashed(int $id, int $userId): ?array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT * FROM folders WHERE id = ? AND user_id = ? AND deleted_at IS NOT NULL LIMIT 1'
+        );
+        $stmt->execute([$id, $userId]);
+        return $stmt->fetch() ?: null;
+    }
+
+    /**
+     * Carpetas en papelera que son "raíz" de un borrado: su carpeta padre sigue
+     * viva (o están en la raíz). Los descendientes se restauran/purgan con ella.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    public function trashedRoots(int $userId): array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT c.* FROM folders c
+               LEFT JOIN folders p ON p.id = c.parent_id
+              WHERE c.user_id = ? AND c.deleted_at IS NOT NULL
+                AND (c.parent_id IS NULL OR p.deleted_at IS NULL)
+              ORDER BY c.deleted_at DESC, c.name'
+        );
+        $stmt->execute([$userId]);
+        return $stmt->fetchAll();
+    }
+
+    /** Restaura una carpeta y todo su subárbol (deleted_at = NULL). */
+    public function restoreSubtree(int $userId, int $id, string $path): void
+    {
+        $stmt = $this->pdo->prepare(
+            'UPDATE folders SET deleted_at = NULL
+              WHERE user_id = ? AND deleted_at IS NOT NULL AND (id = ? OR path LIKE ?)'
+        );
+        $stmt->execute([$userId, $id, $path . '/%']);
+    }
+
+    /** Recoloca (padre + nombre + ruta) una carpeta ya restaurada, si hubo renombrado/reubicación. */
+    public function updateRestoredRoot(int $id, ?int $parentId, string $name, string $path): void
+    {
+        $this->updateParentAndPath($id, $parentId, $name, $path);
+    }
+
+    /** Borra definitivamente una carpeta y su subárbol (los archivos caen por FK ON DELETE CASCADE). */
+    public function purgeSubtree(int $userId, int $id, string $path): void
+    {
+        $stmt = $this->pdo->prepare(
+            'DELETE FROM folders WHERE user_id = ? AND deleted_at IS NOT NULL AND (id = ? OR path LIKE ?)'
+        );
+        $stmt->execute([$userId, $id, $path . '/%']);
+    }
+
+    /** @return array<int,array<string,mixed>> Carpetas destacadas (vivas). */
+    public function starred(int $userId): array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT * FROM folders WHERE user_id = ? AND deleted_at IS NULL AND is_starred = 1 ORDER BY name'
+        );
+        $stmt->execute([$userId]);
+        return $stmt->fetchAll();
+    }
+
+    /** @return array<int,array<string,mixed>> Búsqueda de carpetas por nombre (vivas). */
+    public function search(int $userId, string $term, int $limit = 100): array
+    {
+        $limit = max(1, min(200, $limit));
+        $stmt = $this->pdo->prepare(
+            "SELECT * FROM folders WHERE user_id = ? AND deleted_at IS NULL AND name LIKE ? ESCAPE '\\\\'
+              ORDER BY name LIMIT $limit"
+        );
+        $stmt->execute([$userId, '%' . FileRepository::escapeLike($term) . '%']);
+        return $stmt->fetchAll();
+    }
+
     /** Migas de pan desde la raíz hasta la carpeta (incluida). */
     public function breadcrumbs(int $userId, int $folderId): array
     {

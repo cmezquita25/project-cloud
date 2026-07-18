@@ -19,6 +19,8 @@ use ProjectCloud\Controllers\FileController;
 use ProjectCloud\Controllers\UploadController;
 use ProjectCloud\Controllers\QuotaController;
 use ProjectCloud\Controllers\AdminController;
+use ProjectCloud\Controllers\TrashController;
+use ProjectCloud\Controllers\LibraryController;
 use ProjectCloud\Middleware\AuthMiddleware;
 use ProjectCloud\Middleware\AdminOnly;
 use ProjectCloud\Middleware\RateLimit;
@@ -65,6 +67,19 @@ return static function (Router $router): void {
 
     // --- Fase 6: Cuota (usuario) ---
     $router->get('/v1/quota', [QuotaController::class, 'index'], $auth);
+
+    // --- Fase 7: Recientes, destacados y búsqueda ---
+    $router->get('/v1/recent',  [LibraryController::class, 'recent'], $auth);
+    $router->get('/v1/starred', [LibraryController::class, 'starred'], $auth);
+    $router->get('/v1/search',  [LibraryController::class, 'search'], $auth);
+
+    // --- Fase 7: Papelera ---
+    $router->get('/v1/trash',                      [TrashController::class, 'index'], $auth);
+    $router->delete('/v1/trash',                   [TrashController::class, 'empty'], $auth);
+    $router->post('/v1/trash/files/{id}/restore',  [TrashController::class, 'restoreFile'], $auth);
+    $router->post('/v1/trash/folders/{id}/restore', [TrashController::class, 'restoreFolder'], $auth);
+    $router->delete('/v1/trash/files/{id}',        [TrashController::class, 'purgeFile'], $auth);
+    $router->delete('/v1/trash/folders/{id}',      [TrashController::class, 'purgeFolder'], $auth);
 
     // --- Fase 6: Administración (requiere admin) ---
     $admin = [new AuthMiddleware(), new AdminOnly()];

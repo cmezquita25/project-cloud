@@ -1,49 +1,49 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import {
-  FolderPlus,
-  UploadCloud,
-  X,
-  FolderInput,
-  Copy,
-  Trash2,
-  Plus,
-  FileUp,
-  FolderUp,
-} from 'lucide-react'
-import { Button, EmptyState, Spinner, IconButton, Menu, useToast, type MenuItem } from '@shared/ui'
-import { useDisclosure } from '@shared/hooks/useDisclosure'
-import { useUploads } from '@features/uploads/UploadProvider'
-import { useUploadPicker } from '@features/uploads/hooks/useUploadPicker'
+import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { X, FolderInput, Copy, Trash2, type LucideIcon } from 'lucide-react'
+import { EmptyState, Spinner, IconButton, useToast } from '@shared/ui'
 import { usePreview } from '@features/preview'
-import { useFolderContents } from './hooks/useFolderContents'
-import { driveApi } from './services/driveApi'
-import { Breadcrumbs } from './components/Breadcrumbs'
-import { ViewToggle } from './components/ViewToggle'
-import { FileListView } from './components/FileListView'
-import { FileGridView } from './components/FileGridView'
-import { DetailsPanel } from './components/DetailsPanel'
-import { NamePromptDialog } from './components/dialogs/NamePromptDialog'
-import { DeleteDialog } from './components/dialogs/DeleteDialog'
-import { MoveDialog } from './components/dialogs/MoveDialog'
-import type { DriveItem, FolderRef, ItemAction, ViewMode } from './types'
+import { driveApi } from '@features/drive-explorer/services/driveApi'
+import { ViewToggle } from '@features/drive-explorer/components/ViewToggle'
+import { FileListView } from '@features/drive-explorer/components/FileListView'
+import { FileGridView } from '@features/drive-explorer/components/FileGridView'
+import { DetailsPanel } from '@features/drive-explorer/components/DetailsPanel'
+import { NamePromptDialog } from '@features/drive-explorer/components/dialogs/NamePromptDialog'
+import { MoveDialog } from '@features/drive-explorer/components/dialogs/MoveDialog'
+import { DeleteDialog } from '@features/drive-explorer/components/dialogs/DeleteDialog'
+import type { DriveItem, FolderRef, ItemAction, ViewMode } from '@features/drive-explorer/types'
 
-const key = (i: DriveItem) => `${i.type}-${i.id}`
+interface EmptyConfig {
+  icon: LucideIcon
+  title: string
+  description: string
+}
+
+interface ItemCollectionProps {
+  items: DriveItem[]
+  loading: boolean
+  error: string | null
+  reload: () => void
+  empty: EmptyConfig
+}
 
 type DialogState =
-  | { kind: 'newFolder' }
   | { kind: 'rename'; item: DriveItem }
   | { kind: 'move'; mode: 'move' | 'copy'; items: DriveItem[] }
   | { kind: 'delete'; items: DriveItem[] }
   | null
 
-export function DriveExplorerPage() {
-  const params = useParams()
+const key = (i: DriveItem) => `${i.type}-${i.id}`
+
+/**
+ * Colección reutilizable de elementos (Fase 7): recientes, destacados y
+ * búsqueda comparten la misma cuadrícula/lista, selección múltiple, panel de
+ * detalles, vista previa y acciones que el explorador.
+ */
+export function ItemCollection({ items, loading, error, reload, empty }: ItemCollectionProps) {
   const navigate = useNavigate()
   const toast = useToast()
-
-  const folderId: FolderRef = params.folderId ? Number(params.folderId) : 'root'
-  const { data, loading, error, reload } = useFolderContents(folderId)
+  const preview = usePreview()
 
   const [view, setView] = useState<ViewMode>(
     () => (localStorage.getItem('pc-view') as ViewMode) || 'list'
@@ -51,36 +51,9 @@ export function DriveExplorerPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [details, setDetails] = useState<DriveItem | null>(null)
   const [dialog, setDialog] = useState<DialogState>(null)
-  const [dragging, setDragging] = useState(false)
-  const dragCounter = useRef(0)
 
-  const { enqueue, completion } = useUploads()
-  const { pickFiles, pickFolder } = useUploadPicker(folderId)
-  const preview = usePreview()
-  const newMenu = useDisclosure()
-  const newAnchor = useRef<HTMLDivElement>(null)
-
-  // Recarga cuando una subida se completa (aparecen archivos/carpetas nuevos).
-  const lastTick = useRef(0)
-  useEffect(() => {
-    if (completion.tick !== lastTick.current) {
-      lastTick.current = completion.tick
-      reload()
-    }
-  }, [completion.tick, reload])
-
-  // Permite abrir "Nueva carpeta" desde el botón Nuevo del sidebar.
-  useEffect(() => {
-    const handler = () => setDialog({ kind: 'newFolder' })
-    window.addEventListener('pc:new-folder', handler)
-    return () => window.removeEventListener('pc:new-folder', handler)
-  }, [])
-
-  const items = useMemo<DriveItem[]>(
-    () => [...(data?.folders ?? []), ...(data?.files ?? [])],
-    [data]
-  )
   const selectedItems = useMemo(() => items.filter((i) => selected.has(key(i))), [items, selected])
+  const clearSelection = () => setSelected(new Set())
 
   const setViewMode = (m: ViewMode) => {
     setView(m)
@@ -88,12 +61,8 @@ export function DriveExplorerPage() {
   }
 
   const openItem = (item: DriveItem) => {
-    if (item.type === 'folder') {
-      setSelected(new Set())
-      navigate(`/folder/${item.id}`)
-    } else {
-      preview.open(item, items)
-    }
+    if (item.type === 'folder') navigate(`/folder/${item.id}`)
+    else preview.open(item, items)
   }
 
   const toggleSelect = (item: DriveItem) => {
@@ -105,9 +74,6 @@ export function DriveExplorerPage() {
     })
   }
 
-  const clearSelection = () => setSelected(new Set())
-
-  // --- Acciones ---
   async function runStar(item: DriveItem) {
     const fn = item.type === 'folder' ? driveApi.starFolder : driveApi.starFile
     await fn(item.id, !item.is_starred)
@@ -171,49 +137,11 @@ export function DriveExplorerPage() {
     }
   }
 
-  // --- Handlers de diálogos ---
-  const createFolder = async (name: string) => {
-    await driveApi.createFolder(folderId, name)
-    reload()
-    toast.success('Carpeta creada')
-  }
-
   const renameItem = async (name: string) => {
     if (dialog?.kind !== 'rename') return
     const it = dialog.item
     await (it.type === 'folder' ? driveApi.renameFolder(it.id, name) : driveApi.renameFile(it.id, name))
     reload()
-  }
-
-  const newMenuItems: MenuItem[] = [
-    { id: 'folder', label: 'Nueva carpeta', icon: FolderPlus, onSelect: () => setDialog({ kind: 'newFolder' }) },
-    { id: 'files', label: 'Subir archivos', icon: FileUp, onSelect: pickFiles, divider: true },
-    { id: 'dir', label: 'Subir carpeta', icon: FolderUp, onSelect: pickFolder },
-  ]
-
-  // --- Drag & drop desde el SO ---
-  const hasFiles = (e: React.DragEvent) => e.dataTransfer.types.includes('Files')
-  const onDragEnter = (e: React.DragEvent) => {
-    if (!hasFiles(e)) return
-    e.preventDefault()
-    dragCounter.current++
-    setDragging(true)
-  }
-  const onDragOver = (e: React.DragEvent) => {
-    if (hasFiles(e)) e.preventDefault()
-  }
-  const onDragLeave = (e: React.DragEvent) => {
-    if (!hasFiles(e)) return
-    dragCounter.current--
-    if (dragCounter.current <= 0) setDragging(false)
-  }
-  const onDrop = (e: React.DragEvent) => {
-    if (!hasFiles(e)) return
-    e.preventDefault()
-    dragCounter.current = 0
-    setDragging(false)
-    const files = Array.from(e.dataTransfer.files)
-    if (files.length > 0) enqueue(files, folderId)
   }
 
   const moveOrCopy = async (target: FolderRef) => {
@@ -232,45 +160,14 @@ export function DriveExplorerPage() {
   }
 
   return (
-    <div
-      className="relative flex h-full"
-      onDragEnter={onDragEnter}
-      onDragOver={onDragOver}
-      onDragLeave={onDragLeave}
-      onDrop={onDrop}
-    >
-      {/* Overlay de arrastre */}
-      {dragging && (
-        <div className="pointer-events-none absolute inset-0 z-overlay flex items-center justify-center rounded-drive border-2 border-dashed border-primary bg-primary-subtle/80">
-          <div className="flex flex-col items-center gap-2 text-primary">
-            <UploadCloud size={48} />
-            <p className="text-lg font-medium">Suelta para subir aquí</p>
-          </div>
-        </div>
-      )}
-
+    <div className="relative flex h-full">
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* Cabecera */}
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <Breadcrumbs
-            crumbs={data?.breadcrumbs ?? []}
-            onNavigate={(id) => navigate(id === 'root' ? '/' : `/folder/${id}`)}
-          />
-          <div className="flex shrink-0 items-center gap-2">
-            <div ref={newAnchor} className="relative">
-              <Button size="sm" leftIcon={Plus} onClick={newMenu.toggle}>
-                <span className="hidden sm:inline">Nuevo</span>
-              </Button>
-              <Menu
-                open={newMenu.isOpen}
-                onClose={newMenu.close}
-                items={newMenuItems}
-                title="Nuevo"
-                align="right"
-              />
-            </div>
-            <ViewToggle value={view} onChange={setViewMode} />
-          </div>
+        {/* Barra de herramientas */}
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <span className="text-sm text-content-tertiary">
+            {items.length > 0 ? `${items.length} elemento(s)` : ''}
+          </span>
+          <ViewToggle value={view} onChange={setViewMode} />
         </div>
 
         {/* Barra de selección */}
@@ -297,21 +194,7 @@ export function DriveExplorerPage() {
               {error}
             </div>
           ) : items.length === 0 ? (
-            <EmptyState
-              icon={UploadCloud}
-              title="Esta carpeta está vacía"
-              description="Arrastra archivos aquí, o usa el botón «Nuevo» para subir archivos y crear carpetas."
-              action={
-                <div className="flex flex-wrap justify-center gap-2">
-                  <Button leftIcon={FileUp} onClick={pickFiles}>
-                    Subir archivos
-                  </Button>
-                  <Button variant="secondary" leftIcon={FolderPlus} onClick={() => setDialog({ kind: 'newFolder' })}>
-                    Nueva carpeta
-                  </Button>
-                </div>
-              }
-            />
+            <EmptyState icon={empty.icon} title={empty.title} description={empty.description} />
           ) : view === 'list' ? (
             <FileListView items={items} selected={selected} onOpen={openItem} onSelectToggle={toggleSelect} onAction={onAction} />
           ) : (
@@ -328,14 +211,6 @@ export function DriveExplorerPage() {
       )}
 
       {/* Diálogos */}
-      <NamePromptDialog
-        open={dialog?.kind === 'newFolder'}
-        title="Nueva carpeta"
-        label="Nombre de la carpeta"
-        confirmLabel="Crear"
-        onClose={() => setDialog(null)}
-        onConfirm={createFolder}
-      />
       <NamePromptDialog
         open={dialog?.kind === 'rename'}
         title="Cambiar nombre"

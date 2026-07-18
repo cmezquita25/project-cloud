@@ -170,4 +170,128 @@ class FileRepository
         );
         $stmt->execute([$newPrefix, $oldPrefix, $userId, $oldPrefix . '/%']);
     }
+
+    // ======================================================================
+    //  Fase 7 — Papelera, recientes, destacados y búsqueda
+    // ======================================================================
+
+    /**
+     * Archivos en papelera que son "raíz" de un borrado: su carpeta contenedora
+     * sigue viva (o están en la raíz de la unidad). Los descendientes de una
+     * carpeta borrada NO aparecen aquí (se restauran/purgan con su carpeta).
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    public function trashedRoots(int $userId): array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT f.* FROM files f
+               LEFT JOIN folders p ON p.id = f.folder_id
+              WHERE f.user_id = ? AND f.deleted_at IS NOT NULL
+                AND (f.folder_id IS NULL OR p.deleted_at IS NULL)
+              ORDER BY f.deleted_at DESC, f.name'
+        );
+        $stmt->execute([$userId]);
+        return $stmt->fetchAll();
+    }
+
+    /** Archivo en papelera (deleted_at NO nulo) del usuario. */
+    public function findTrashed(int $id, int $userId): ?array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT * FROM files WHERE id = ? AND user_id = ? AND deleted_at IS NOT NULL LIMIT 1'
+        );
+        $stmt->execute([$id, $userId]);
+        return $stmt->fetch() ?: null;
+    }
+
+    /** Restaura un archivo (lo saca de la papelera) recolocándolo. */
+    public function restore(int $id, ?int $folderId, string $name, string $path, ?string $extension): void
+    {
+        $stmt = $this->pdo->prepare(
+            'UPDATE files SET deleted_at = NULL, folder_id = ?, name = ?, path = ?, extension = ? WHERE id = ?'
+        );
+        $stmt->execute([$folderId, $name, $path, $extension, $id]);
+    }
+
+    /** Restaura (deleted_at = NULL) todos los archivos en papelera bajo un prefijo de ruta. */
+    public function restoreUnderPath(int $userId, string $pathPrefix): void
+    {
+        $stmt = $this->pdo->prepare(
+            'UPDATE files SET deleted_at = NULL
+              WHERE user_id = ? AND deleted_at IS NOT NULL AND path LIKE ?'
+        );
+        $stmt->execute([$userId, $pathPrefix . '/%']);
+    }
+
+    /** Borra definitivamente un archivo (fila). */
+    public function purge(int $id): void
+    {
+        $stmt = $this->pdo->prepare('DELETE FROM files WHERE id = ?');
+        $stmt->execute([$id]);
+    }
+
+    /** Borra definitivamente los archivos en papelera bajo un prefijo de ruta. */
+    public function purgeUnderPath(int $userId, string $pathPrefix): void
+    {
+        $stmt = $this->pdo->prepare(
+            'DELETE FROM files WHERE user_id = ? AND deleted_at IS NOT NULL AND path LIKE ?'
+        );
+        $stmt->execute([$userId, $pathPrefix . '/%']);
+    }
+
+    /** Suma de tamaños de archivos EN PAPELERA bajo un prefijo (para recontar cuota al restaurar). */
+    public function sumTrashedSizesUnderPath(int $userId, string $pathPrefix): int
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT COALESCE(SUM(size_bytes), 0) FROM files
+              WHERE user_id = ? AND deleted_at IS NOT NULL AND path LIKE ?'
+        );
+        $stmt->execute([$userId, $pathPrefix . '/%']);
+        return (int) $stmt->fetchColumn();
+    }
+
+    /**
+     * Archivos abiertos/modificados más recientemente (vivos).
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    public function recent(int $userId, int $limit = 30): array
+    {
+        $limit = max(1, min(200, $limit)); // entero saneado: seguro para interpolar en LIMIT
+        $stmt = $this->pdo->prepare(
+            "SELECT * FROM files WHERE user_id = ? AND deleted_at IS NULL
+              ORDER BY updated_at DESC, id DESC LIMIT $limit"
+        );
+        $stmt->execute([$userId]);
+        return $stmt->fetchAll();
+    }
+
+    /** @return array<int,array<string,mixed>> Archivos destacados (vivos). */
+    public function starred(int $userId): array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT * FROM files WHERE user_id = ? AND deleted_at IS NULL AND is_starred = 1 ORDER BY name'
+        );
+        $stmt->execute([$userId]);
+        return $stmt->fetchAll();
+    }
+
+    /** @return array<int,array<string,mixed>> Búsqueda de archivos por nombre (vivos). */
+    public function search(int $userId, string $term, int $limit = 100): array
+    {
+        $limit = max(1, min(200, $limit));
+        $stmt = $this->pdo->prepare(
+            "SELECT * FROM files WHERE user_id = ? AND deleted_at IS NULL AND name LIKE ? ESCAPE '\\\\'
+              ORDER BY name LIMIT $limit"
+        );
+        $stmt->execute([$userId, '%' . self::escapeLike($term) . '%']);
+        return $stmt->fetchAll();
+    }
+
+    /** Escapa comodines de LIKE (%, _ y la barra de escape) en un término de búsqueda. */
+    public static function escapeLike(string $term): string
+    {
+        return str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $term);
+    }
 }

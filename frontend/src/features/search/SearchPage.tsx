@@ -1,16 +1,79 @@
-import { Search } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { Search, SearchX } from 'lucide-react'
+import { ApiError } from '@shared/api'
 import { EmptyState } from '@shared/ui'
+import { libraryApi } from '@features/library/services/libraryApi'
+import { ItemCollection } from '@features/library/components/ItemCollection'
+import type { DriveItem } from '@features/drive-explorer/types'
 
 export function SearchPage() {
+  const [params] = useSearchParams()
+  const query = params.get('q')?.trim() ?? ''
+
+  const [items, setItems] = useState<DriveItem[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const load = useCallback(
+    (signal?: AbortSignal) => {
+      if (query === '') {
+        setItems([])
+        setLoading(false)
+        return
+      }
+      setLoading(true)
+      setError(null)
+      libraryApi
+        .search(query, signal)
+        .then((r) => {
+          setItems([...r.folders, ...r.files])
+          setLoading(false)
+        })
+        .catch((e: unknown) => {
+          if (e instanceof DOMException && e.name === 'AbortError') return
+          setError(e instanceof ApiError ? e.message : 'No se pudo completar la búsqueda')
+          setLoading(false)
+        })
+    },
+    [query]
+  )
+
+  useEffect(() => {
+    const c = new AbortController()
+    load(c.signal)
+    return () => c.abort()
+  }, [load])
+
   return (
     <div className="flex h-full flex-col">
-      <h1 className="mb-4 text-2xl font-normal text-content-primary">Resultados de búsqueda</h1>
-      <div className="flex-1">
-        <EmptyState
-          icon={Search}
-          title="Busca en tu unidad"
-          description="Escribe en la barra superior para encontrar archivos y carpetas. Disponible en la Fase 7."
-        />
+      <h1 className="mb-1 text-2xl font-normal text-content-primary">Resultados de búsqueda</h1>
+      {query !== '' && (
+        <p className="mb-4 text-sm text-content-tertiary">
+          Para «<span className="text-content-secondary">{query}</span>»
+        </p>
+      )}
+
+      <div className="min-h-0 flex-1">
+        {query === '' ? (
+          <EmptyState
+            icon={Search}
+            title="Busca en tu unidad"
+            description="Escribe en la barra superior para encontrar archivos y carpetas por su nombre."
+          />
+        ) : (
+          <ItemCollection
+            items={items}
+            loading={loading}
+            error={error}
+            reload={() => load()}
+            empty={{
+              icon: SearchX,
+              title: 'Sin resultados',
+              description: `No se encontraron archivos ni carpetas que coincidan con «${query}».`,
+            }}
+          />
+        )}
       </div>
     </div>
   )

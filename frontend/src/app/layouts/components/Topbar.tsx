@@ -1,5 +1,6 @@
-import { useRef } from 'react'
-import { Menu as MenuIcon, Search, HelpCircle, LogOut, User } from 'lucide-react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Menu as MenuIcon, Search, X, HelpCircle, LogOut, User } from 'lucide-react'
 import { IconButton, Avatar, Menu, type MenuItem } from '@shared/ui'
 import { useDisclosure } from '@shared/hooks/useDisclosure'
 import { ThemeToggle } from '@features/settings/components/ThemeToggle'
@@ -14,6 +15,30 @@ export function Topbar({ onMenuClick }: TopbarProps) {
   const account = useDisclosure()
   const anchor = useRef<HTMLDivElement>(null)
   const { user, logout } = useAuth()
+
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const [term, setTerm] = useState('')
+
+  // Mantiene el campo sincronizado con la URL (?q=) al entrar/volver a /search.
+  useEffect(() => {
+    setTerm(searchParams.get('q') ?? '')
+  }, [searchParams])
+
+  const submitSearch = (e: FormEvent) => {
+    e.preventDefault()
+    const q = term.trim()
+    if (q === '') {
+      navigate('/search')
+      return
+    }
+    navigate(`/search?q=${encodeURIComponent(q)}`)
+  }
+
+  const clearSearch = () => {
+    setTerm('')
+    navigate('/search')
+  }
 
   const displayName = user?.display_name ?? 'Usuario'
   const email = user?.email ?? ''
@@ -47,16 +72,28 @@ export function Topbar({ onMenuClick }: TopbarProps) {
         </span>
       </div>
 
-      {/* Buscador (funcional en Fase 7) */}
+      {/* Buscador */}
       <div className="flex min-w-0 flex-1 justify-center">
-        <label className="flex h-12 w-full max-w-2xl items-center gap-3 rounded-pill bg-surface-container px-4 text-content-secondary transition-colors focus-within:bg-surface focus-within:shadow-elevation-1">
-          <Search size={20} />
+        <form
+          onSubmit={submitSearch}
+          role="search"
+          className="flex h-12 w-full max-w-2xl items-center gap-3 rounded-pill bg-surface-container px-4 text-content-secondary transition-colors focus-within:bg-surface focus-within:shadow-elevation-1"
+        >
+          <button type="submit" aria-label="Buscar" className="shrink-0 focus-visible:outline-focus">
+            <Search size={20} />
+          </button>
           <input
             type="search"
+            value={term}
+            onChange={(e) => setTerm(e.target.value)}
             placeholder="Buscar en Project Cloud"
-            className="min-w-0 flex-1 bg-transparent text-content-primary outline-none placeholder:text-content-tertiary"
+            aria-label="Buscar en Project Cloud"
+            className="min-w-0 flex-1 bg-transparent text-content-primary outline-none placeholder:text-content-tertiary [&::-webkit-search-cancel-button]:appearance-none"
           />
-        </label>
+          {term !== '' && (
+            <IconButton icon={X} label="Limpiar búsqueda" size="sm" onClick={clearSearch} />
+          )}
+        </form>
       </div>
 
       <div className="flex items-center gap-1">

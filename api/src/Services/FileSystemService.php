@@ -224,10 +224,48 @@ final class FileSystemService
         if (!file_exists($src)) {
             return;
         }
-        $trashDir = $this->storageRoot . DIRECTORY_SEPARATOR . '.trash'
-            . DIRECTORY_SEPARATOR . $this->sanitizeName($username);
-        $this->ensureDir($trashDir);
-        $dst = $trashDir . DIRECTORY_SEPARATOR . $trashKey . '__' . basename($virtualPath);
+        $this->ensureDir($this->trashDir($username));
+        $dst = $this->trashEntry($username, $trashKey, $virtualPath);
         @rename($src, $dst);
+    }
+
+    /**
+     * Restaura físicamente un elemento desde la papelera interna a su ruta de
+     * destino (Fase 7). $originalPath localiza la entrada en la papelera (por su
+     * basename original); $destPath es dónde recolocarlo (puede diferir si hubo
+     * renombrado por colisión de nombre).
+     */
+    public function restoreFromTrash(string $username, string $trashKey, string $originalPath, string $destPath): void
+    {
+        $src = $this->trashEntry($username, $trashKey, $originalPath);
+        if (!file_exists($src)) {
+            return; // nada físico; la BD manda
+        }
+        $dst = $this->abs($username, $destPath);
+        if (file_exists($dst)) {
+            throw new HttpException(409, 'FS_CONFLICT', 'Ya existe un elemento con ese nombre en el destino.');
+        }
+        $this->ensureDir(dirname($dst));
+        @rename($src, $dst);
+    }
+
+    /** Borra definitivamente un elemento de la papelera interna (Fase 7). */
+    public function deleteFromTrash(string $username, string $trashKey, string $originalPath): void
+    {
+        $this->delete($this->trashEntry($username, $trashKey, $originalPath));
+    }
+
+    /** Carpeta de papelera interna del usuario: /storage/.trash/{username}. */
+    private function trashDir(string $username): string
+    {
+        return $this->storageRoot . DIRECTORY_SEPARATOR . '.trash'
+            . DIRECTORY_SEPARATOR . $this->sanitizeName($username);
+    }
+
+    /** Ruta física de una entrada en papelera: {trashDir}/{trashKey}__{basename}. */
+    private function trashEntry(string $username, string $trashKey, string $virtualPath): string
+    {
+        $base = basename(str_replace('\\', '/', $virtualPath));
+        return $this->trashDir($username) . DIRECTORY_SEPARATOR . $trashKey . '__' . $base;
     }
 }

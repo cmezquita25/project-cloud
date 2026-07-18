@@ -5,6 +5,7 @@ export interface FolderItem {
   name: string
   path: string
   is_starred: boolean
+  deleted_at?: string | null
   created_at: string | null
   updated_at: string | null
 }
@@ -20,6 +21,7 @@ export interface FileItem {
   extension: string | null
   is_starred: boolean
   url: string
+  deleted_at?: string | null
   created_at: string | null
   updated_at: string | null
 }
