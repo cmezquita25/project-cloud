@@ -49,15 +49,45 @@ final class Request
     private static function collectHeaders(): array
     {
         $headers = [];
+
+        // Cabeceras reales del SAPI (Apache/FPM). Suele incluir Authorization
+        // aunque $_SERVER no lo exponga.
+        if (function_exists('getallheaders')) {
+            $all = getallheaders();
+            if (is_array($all)) {
+                foreach ($all as $name => $value) {
+                    $headers[(string) $name] = (string) $value;
+                }
+            }
+        }
+
+        // Complementa desde $_SERVER (sin sobreescribir lo anterior).
         foreach ($_SERVER as $key => $value) {
             if (str_starts_with((string) $key, 'HTTP_')) {
                 $name = str_replace(' ', '-', ucwords(strtolower(str_replace('_', ' ', substr((string) $key, 5)))));
-                $headers[$name] = (string) $value;
+                $headers[$name] ??= (string) $value;
             }
         }
         if (isset($_SERVER['CONTENT_TYPE'])) {
-            $headers['Content-Type'] = (string) $_SERVER['CONTENT_TYPE'];
+            $headers['Content-Type'] ??= (string) $_SERVER['CONTENT_TYPE'];
         }
+
+        // Muchos Apache no pasan Authorization a PHP-FPM; puede llegar vía
+        // REDIRECT_HTTP_AUTHORIZATION (tras el rewrite del .htaccess).
+        $hasAuth = false;
+        foreach ($headers as $k => $_) {
+            if (strcasecmp($k, 'Authorization') === 0) {
+                $hasAuth = true;
+                break;
+            }
+        }
+        if (!$hasAuth) {
+            $auth = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
+            if ($auth !== '') {
+                $headers['Authorization'] = (string) $auth;
+            }
+        }
+
         return $headers;
     }
 

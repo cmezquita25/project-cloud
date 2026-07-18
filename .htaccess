@@ -78,6 +78,11 @@ DirectoryIndex index.html
     RewriteEngine On
     RewriteBase /
 
+    # 6·0. Pasa la cabecera Authorization a PHP. Apache (sobre todo con PHP-FPM)
+    #      la omite por defecto, lo que rompe la autenticación por Bearer token.
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
     # 6a. Preflight CORS (OPTIONS) -> responde 204 sin procesar de más.
     RewriteCond %{REQUEST_METHOD} OPTIONS
     RewriteRule ^ - [R=204,L]

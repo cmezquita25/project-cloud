@@ -12,7 +12,17 @@ Options -Indexes
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteBase /api/
+
+    # Pasa la cabecera Authorization a PHP (Apache/FPM la omite por defecto).
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^ index.php [L]
+</IfModule>
+
+# Alternativa moderna (Apache 2.4.13+): pasa Authorization a FastCGI/FPM.
+<IfModule mod_setenvif.c>
+    SetEnvIfNoCase Authorization "(.+)" HTTP_AUTHORIZATION=$1
 </IfModule>
