@@ -1,6 +1,8 @@
 import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom'
+import { RootGate } from './RootGate'
 import { AppLayout } from '@app/layouts/AppLayout'
 import { AuthLayout } from '@app/layouts/AuthLayout'
+import { InstallWizard } from '@features/install/InstallWizard'
 import { DriveExplorerPage } from '@features/drive-explorer/DriveExplorerPage'
 import { RecentPage } from '@features/recent/RecentPage'
 import { StarredPage } from '@features/starred/StarredPage'
@@ -10,28 +12,41 @@ import { AdminPage } from '@features/admin/AdminPage'
 import { LoginPage } from '@features/auth/LoginPage'
 
 /**
- * Rutas de la aplicación.
- * Los guards de autenticación (RequireAuth / RequireAdmin) se añaden en la Fase 3.
+ * Rutas de la aplicación. Todas cuelgan de RootGate, que gestiona la
+ * redirección al instalador cuando la app aún no está instalada.
+ * Los guards de sesión (RequireAuth / RequireAdmin) se añaden en la Fase 3.
  */
 const router = createBrowserRouter([
   {
-    element: <AuthLayout />,
-    children: [{ path: '/login', element: <LoginPage /> }],
-  },
-  {
-    path: '/',
-    element: <AppLayout />,
+    element: <RootGate />,
     children: [
-      { index: true, element: <DriveExplorerPage /> },
-      { path: 'folder/:folderId', element: <DriveExplorerPage /> },
-      { path: 'recent', element: <RecentPage /> },
-      { path: 'starred', element: <StarredPage /> },
-      { path: 'trash', element: <TrashPage /> },
-      { path: 'search', element: <SearchPage /> },
-      { path: 'admin', element: <AdminPage /> },
+      // Instalador (pantalla propia, sin layout de app).
+      { path: '/install', element: <InstallWizard /> },
+
+      // Autenticación.
+      {
+        element: <AuthLayout />,
+        children: [{ path: '/login', element: <LoginPage /> }],
+      },
+
+      // App autenticada.
+      {
+        path: '/',
+        element: <AppLayout />,
+        children: [
+          { index: true, element: <DriveExplorerPage /> },
+          { path: 'folder/:folderId', element: <DriveExplorerPage /> },
+          { path: 'recent', element: <RecentPage /> },
+          { path: 'starred', element: <StarredPage /> },
+          { path: 'trash', element: <TrashPage /> },
+          { path: 'search', element: <SearchPage /> },
+          { path: 'admin', element: <AdminPage /> },
+        ],
+      },
+
+      { path: '*', element: <Navigate to="/" replace /> },
     ],
   },
-  { path: '*', element: <Navigate to="/" replace /> },
 ])
 
 export function AppRouter() {
