@@ -1,11 +1,18 @@
-# Bloquea acceso directo a la raíz de la API.
-# SOLO api/public/ debe ser accesible por el navegador; src/ y config/
-# quedan protegidos. En producción se recomienda apuntar el document root
-# del subdominio directamente a api/public/ (ver docs/DEPLOY.md).
-Require all denied
+# ==========================================================================
+#  Project Cloud — API
+#  Toda petición /api/* se enruta al front controller (api/index.php) desde el
+#  .htaccess RAÍZ. Aquí NO denegamos el acceso (eso causaba 403 en Plesk):
+#  la protección de src/ y config/ se hace con sus propios .htaccess (hojas) y
+#  porque todo /api/* pasa por index.php.
+# ==========================================================================
 
-# Fallback para Apache < 2.4
-<IfModule !mod_authz_core.c>
-    Order deny,allow
-    Deny from all
+Options -Indexes
+
+# Si se accediera directamente a una carpeta, redirigir al front controller.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /api/
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ index.php [L]
 </IfModule>

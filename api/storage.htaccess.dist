@@ -1,0 +1,38 @@
+# ==========================================================================
+#  Plantilla de .htaccess para la carpeta /storage (archivos de usuarios).
+#  El instalador (Fase 2) la copia a  <httpdocs>/storage/.htaccess.
+#
+#  Objetivo de seguridad: /storage es público por URL directa, pero NUNCA
+#  debe ejecutar código. Aunque un usuario logre subir un .php, aquí se
+#  sirve como texto plano y jamás se interpreta.
+# ==========================================================================
+
+# 1. Desactiva cualquier motor de scripting sobre esta carpeta.
+<IfModule mod_php.c>
+    php_admin_flag engine off
+</IfModule>
+<IfModule mod_php7.c>
+    php_admin_flag engine off
+</IfModule>
+<IfModule mod_php8.c>
+    php_admin_flag engine off
+</IfModule>
+
+# 2. Quita los handlers que podrían ejecutar scripts y fuerza descarga/texto.
+<FilesMatch "\.(php|php3|php4|php5|php7|php8|phtml|phar|pht|cgi|pl|py|sh|asp|aspx|jsp)$">
+    SetHandler none
+    ForceType text/plain
+    Require all denied
+    <IfModule !mod_authz_core.c>
+        Order deny,allow
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# 3. Sin listado de directorios.
+Options -Indexes -ExecCGI
+
+# 4. La subcarpeta interna de sesiones de subida no es accesible por web.
+RedirectMatch 404 ^/storage/\.uploads
+RedirectMatch 404 ^/storage/\.ratelimit
+RedirectMatch 404 ^/storage/\.trash

@@ -1,0 +1,9 @@
+# El código fuente nunca debe servirse por web (defensa en profundidad; además
+# todo /api/* se enruta por index.php). No usa Require en el padre, así que
+# esta denegación de hoja no entra en conflicto y funciona de forma fiable.
+Require all denied
+
+<IfModule !mod_authz_core.c>
+    Order deny,allow
+    Deny from all
+</IfModule>

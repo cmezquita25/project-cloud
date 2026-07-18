@@ -28,6 +28,10 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: false,
+    // IMPORTANTE: la salida de assets NO se llama "assets" para no colisionar
+    // con la carpeta /assets ya existente en el hosting (imágenes de otros
+    // proyectos referenciadas por URL). Los assets de la app viven en /app-assets.
+    assetsDir: 'app-assets',
     // Code-splitting por vendor para cache eficiente en Plesk.
     rollupOptions: {
       output: {

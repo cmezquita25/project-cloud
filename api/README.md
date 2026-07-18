@@ -6,10 +6,12 @@ API REST en PHP 8.x vanilla (sin Composer), arquitectura en capas.
 
 ```
 api/
-├── public/          # ÚNICA carpeta expuesta por el servidor web
-│   ├── index.php    # Front controller: recibe todas las peticiones /api/*
-│   └── .htaccess    # Reescribe todo hacia index.php
+├── index.php        # Front controller: recibe todas las peticiones /api/*
+├── .htaccess        # Enruta a index.php; no deniega (evita 403 en Plesk)
+├── bootstrap.php    # Autoloader (sin Composer) + carga de config
+├── routes.php       # Definición de rutas
 ├── src/
+│   ├── .htaccess    # Require all denied (protege el código fuente)
 │   ├── Core/        # Router, Request, Response, Database (PDO), Jwt, Validator, Config
 │   ├── Middleware/  # Auth, AdminOnly, RateLimit, Cors
 │   ├── Controllers/ # Reciben la petición, delegan a Services, devuelven Response
@@ -17,12 +19,18 @@ api/
 │   ├── Repositories/# Acceso a datos (PDO prepared statements)
 │   └── Installer/   # Wizard de instalación
 ├── config/          # config.php (generado por el instalador) + install.lock
-└── .htaccess        # Bloquea acceso directo a todo salvo public/
+│   └── .htaccess    # Require all denied (protege credenciales)
+└── storage.htaccess.dist  # Plantilla de hardening para /storage
 ```
+
+Todo acceso a `/api/*` pasa por `index.php` (enrutado desde el `.htaccess` raíz).
+`src/` y `config/` además se deniegan con sus propios `.htaccess` (defensa en
+profundidad). No se usa denegación en `api/` para evitar 403 por conflicto de
+override en Plesk.
 
 ## Flujo de una petición
 
-`/api/v1/...` → `public/index.php` → Router → Middleware → Controller → Service → Repository → Response JSON
+`/api/v1/...` → `index.php` → Router → Middleware → Controller → Service → Repository → Response JSON
 
 ## Estado
 
@@ -33,6 +41,7 @@ api/
 ## Desarrollo local
 
 ```bash
-php -S localhost:8000 -t public
+# index.php como router (simula el .htaccess que enruta /api → index.php)
+php -S localhost:8000 index.php
 # El proxy de Vite (vite.config.ts) redirige /api → localhost:8000
 ```
