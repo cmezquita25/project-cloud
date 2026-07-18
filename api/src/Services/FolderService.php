@@ -9,6 +9,7 @@ use ProjectCloud\Core\Database;
 use ProjectCloud\Core\HttpException;
 use ProjectCloud\Repositories\FileRepository;
 use ProjectCloud\Repositories\FolderRepository;
+use ProjectCloud\Repositories\UserRepository;
 
 /**
  * Operaciones de carpetas: espejan el cambio en disco y en BD de forma
@@ -112,10 +113,14 @@ final class FolderService
         $folder = $this->require($id, $userId);
         $path = (string) $folder['path'];
 
-        $this->transaction(function () use ($id, $userId, $username, $path) {
+        $freed = $this->files->sumSizesUnderPath($userId, $path);
+        $this->transaction(function () use ($id, $userId, $username, $path, $freed) {
             $this->folders->softDeleteSubtree($userId, $id, $path);
             $this->files->softDeleteUnderPath($userId, $path);
             $this->fs->moveToTrash($username, $path, 'd' . $id);
+            if ($freed > 0) {
+                (new UserRepository())->addUsedBytes($userId, -$freed);
+            }
         });
     }
 
@@ -179,6 +184,7 @@ final class FolderService
             }
 
             // Recrea archivos del subárbol.
+            $copiedBytes = 0;
             foreach ($this->files->subtreeUnderPath($userId, $oldRootPath) as $file) {
                 $newFilePath = $newRootPath . substr((string) $file['path'], strlen($oldRootPath));
                 $oldFolder = $file['folder_id'] !== null ? (int) $file['folder_id'] : null;
@@ -192,6 +198,10 @@ final class FolderService
                     $file['mime_type'] !== null ? (string) $file['mime_type'] : null,
                     $file['extension'] !== null ? (string) $file['extension'] : null,
                 );
+                $copiedBytes += (int) $file['size_bytes'];
+            }
+            if ($copiedBytes > 0) {
+                (new UserRepository())->addUsedBytes($userId, $copiedBytes);
             }
         });
 

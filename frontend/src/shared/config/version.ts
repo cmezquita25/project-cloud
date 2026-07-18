@@ -12,7 +12,7 @@ import { formatDate } from '@shared/lib/formatDate'
 
 export const APP_NAME = 'Project Cloud'
 
-export const APP_VERSION = '0.4.0'
+export const APP_VERSION = '0.5.0'
 
 /** Fecha de la última actualización (formato ISO: YYYY-MM-DD). */
 export const APP_LAST_UPDATED = '2026-07-18'

@@ -1,9 +1,13 @@
-import { Plus } from 'lucide-react'
-import { NavLink } from 'react-router-dom'
+import { useRef } from 'react'
+import { Plus, FolderPlus, FileUp, FolderUp } from 'lucide-react'
+import { NavLink, useParams } from 'react-router-dom'
 import { cn } from '@shared/lib/cn'
-import { Button } from '@shared/ui'
+import { Button, Menu, type MenuItem } from '@shared/ui'
+import { useDisclosure } from '@shared/hooks/useDisclosure'
 import { StorageIndicator } from '@features/storage-quota/components/StorageIndicator'
 import { useAuth } from '@features/auth/AuthProvider'
+import { useUploadPicker } from '@features/uploads/hooks/useUploadPicker'
+import type { FolderRef } from '@features/drive-explorer/types'
 import { NAV_ITEMS } from '../navigation'
 
 interface SidebarProps {
@@ -14,19 +18,45 @@ interface SidebarProps {
 /** Barra lateral de navegación (clon de Google Drive). */
 export function Sidebar({ onNavigate }: SidebarProps) {
   const { user, isAdmin } = useAuth()
+  const params = useParams()
+  const folderId: FolderRef = params.folderId ? Number(params.folderId) : 'root'
+  const { pickFiles, pickFolder } = useUploadPicker(folderId)
+  const newMenu = useDisclosure()
+  const newAnchor = useRef<HTMLDivElement>(null)
   const items = NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin)
+
+  const newMenuItems: MenuItem[] = [
+    {
+      id: 'folder',
+      label: 'Nueva carpeta',
+      icon: FolderPlus,
+      onSelect: () => window.dispatchEvent(new CustomEvent('pc:new-folder')),
+    },
+    { id: 'files', label: 'Subir archivos', icon: FileUp, onSelect: pickFiles, divider: true },
+    { id: 'dir', label: 'Subir carpeta', icon: FolderUp, onSelect: pickFolder },
+  ]
 
   return (
     <div className="flex h-full flex-col bg-surface-container">
       <div className="px-3 py-4">
-        <Button
-          leftIcon={Plus}
-          size="lg"
-          variant="secondary"
-          className="shadow-elevation-1"
-        >
-          Nuevo
-        </Button>
+        <div ref={newAnchor} className="relative inline-block">
+          <Button
+            leftIcon={Plus}
+            size="lg"
+            variant="secondary"
+            className="shadow-elevation-1"
+            onClick={newMenu.toggle}
+          >
+            Nuevo
+          </Button>
+          <Menu
+            open={newMenu.isOpen}
+            onClose={newMenu.close}
+            items={newMenuItems}
+            title="Nuevo"
+            align="left"
+          />
+        </div>
       </div>
 
       <nav className="flex-1 space-y-1 px-3">

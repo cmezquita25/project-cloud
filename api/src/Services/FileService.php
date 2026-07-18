@@ -10,6 +10,7 @@ use ProjectCloud\Core\Database;
 use ProjectCloud\Core\HttpException;
 use ProjectCloud\Repositories\FileRepository;
 use ProjectCloud\Repositories\FolderRepository;
+use ProjectCloud\Repositories\UserRepository;
 
 /**
  * Operaciones de archivos (metadatos en BD + binario en /storage), espejadas
@@ -102,6 +103,7 @@ final class FileService
                 $file['mime_type'] !== null ? (string) $file['mime_type'] : null,
                 PathHelper::extension($newName),
             );
+            (new UserRepository())->addUsedBytes($userId, (int) $file['size_bytes']);
         });
 
         return $this->files->find($newId, $userId) ?? [];
@@ -129,6 +131,7 @@ final class FileService
                 $file['mime_type'] !== null ? (string) $file['mime_type'] : null,
                 PathHelper::extension($newName),
             );
+            (new UserRepository())->addUsedBytes($userId, (int) $file['size_bytes']);
         });
 
         return $this->files->find($newId, $userId) ?? [];
@@ -137,9 +140,10 @@ final class FileService
     public function delete(int $userId, string $username, int $id): void
     {
         $file = $this->require($id, $userId);
-        $this->transaction(function () use ($id, $username, $file) {
+        $this->transaction(function () use ($id, $userId, $username, $file) {
             $this->files->softDelete($id);
             $this->fs->moveToTrash($username, (string) $file['path'], 'f' . $id);
+            (new UserRepository())->addUsedBytes($userId, -(int) $file['size_bytes']);
         });
     }
 

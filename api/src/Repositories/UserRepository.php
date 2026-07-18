@@ -37,4 +37,13 @@ class UserRepository
         $row = $stmt->fetch();
         return $row ?: null;
     }
+
+    /** Ajusta el uso de almacenamiento cacheado (delta puede ser negativo). */
+    public function addUsedBytes(int $id, int $delta): void
+    {
+        $stmt = $this->pdo->prepare(
+            'UPDATE users SET used_bytes = GREATEST(0, CAST(used_bytes AS SIGNED) + ?) WHERE id = ?'
+        );
+        $stmt->execute([$delta, $id]);
+    }
 }

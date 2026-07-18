@@ -67,6 +67,11 @@ function refreshOnce(): Promise<void> {
   return refreshInFlight
 }
 
+/** Fuerza un refresh del access token (para subidas largas por fetch/XHR crudo). */
+export function forceRefresh(): Promise<void> {
+  return refreshOnce()
+}
+
 async function raw(method: Method, path: string, body: unknown, options: RequestOptions): Promise<Response> {
   const headers: Record<string, string> = {}
   if (body !== undefined) headers['Content-Type'] = 'application/json'

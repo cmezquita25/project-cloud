@@ -110,6 +110,16 @@ class FileRepository
         $stmt->execute([$userId, $pathPrefix . '/%']);
     }
 
+    /** Suma de tamaños de archivos vivos bajo un prefijo de ruta (incluye subcarpetas). */
+    public function sumSizesUnderPath(int $userId, string $pathPrefix): int
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT COALESCE(SUM(size_bytes), 0) FROM files WHERE user_id = ? AND deleted_at IS NULL AND path LIKE ?'
+        );
+        $stmt->execute([$userId, $pathPrefix . '/%']);
+        return (int) $stmt->fetchColumn();
+    }
+
     /** @return array<int,array<string,mixed>> Archivos (vivos) bajo un prefijo de ruta. */
     public function subtreeUnderPath(int $userId, string $pathPrefix): array
     {

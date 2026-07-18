@@ -1,7 +1,20 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { FolderPlus, UploadCloud, X, FolderInput, Copy, Trash2 } from 'lucide-react'
-import { Button, EmptyState, Spinner, IconButton, useToast } from '@shared/ui'
+import {
+  FolderPlus,
+  UploadCloud,
+  X,
+  FolderInput,
+  Copy,
+  Trash2,
+  Plus,
+  FileUp,
+  FolderUp,
+} from 'lucide-react'
+import { Button, EmptyState, Spinner, IconButton, Menu, useToast, type MenuItem } from '@shared/ui'
+import { useDisclosure } from '@shared/hooks/useDisclosure'
+import { useUploads } from '@features/uploads/UploadProvider'
+import { useUploadPicker } from '@features/uploads/hooks/useUploadPicker'
 import { useFolderContents } from './hooks/useFolderContents'
 import { driveApi } from './services/driveApi'
 import { Breadcrumbs } from './components/Breadcrumbs'
@@ -37,6 +50,29 @@ export function DriveExplorerPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [details, setDetails] = useState<DriveItem | null>(null)
   const [dialog, setDialog] = useState<DialogState>(null)
+  const [dragging, setDragging] = useState(false)
+  const dragCounter = useRef(0)
+
+  const { enqueue, completion } = useUploads()
+  const { pickFiles, pickFolder } = useUploadPicker(folderId)
+  const newMenu = useDisclosure()
+  const newAnchor = useRef<HTMLDivElement>(null)
+
+  // Recarga cuando una subida se completa (aparecen archivos/carpetas nuevos).
+  const lastTick = useRef(0)
+  useEffect(() => {
+    if (completion.tick !== lastTick.current) {
+      lastTick.current = completion.tick
+      reload()
+    }
+  }, [completion.tick, reload])
+
+  // Permite abrir "Nueva carpeta" desde el botón Nuevo del sidebar.
+  useEffect(() => {
+    const handler = () => setDialog({ kind: 'newFolder' })
+    window.addEventListener('pc:new-folder', handler)
+    return () => window.removeEventListener('pc:new-folder', handler)
+  }, [])
 
   const items = useMemo<DriveItem[]>(
     () => [...(data?.folders ?? []), ...(data?.files ?? [])],
@@ -147,6 +183,37 @@ export function DriveExplorerPage() {
     reload()
   }
 
+  const newMenuItems: MenuItem[] = [
+    { id: 'folder', label: 'Nueva carpeta', icon: FolderPlus, onSelect: () => setDialog({ kind: 'newFolder' }) },
+    { id: 'files', label: 'Subir archivos', icon: FileUp, onSelect: pickFiles, divider: true },
+    { id: 'dir', label: 'Subir carpeta', icon: FolderUp, onSelect: pickFolder },
+  ]
+
+  // --- Drag & drop desde el SO ---
+  const hasFiles = (e: React.DragEvent) => e.dataTransfer.types.includes('Files')
+  const onDragEnter = (e: React.DragEvent) => {
+    if (!hasFiles(e)) return
+    e.preventDefault()
+    dragCounter.current++
+    setDragging(true)
+  }
+  const onDragOver = (e: React.DragEvent) => {
+    if (hasFiles(e)) e.preventDefault()
+  }
+  const onDragLeave = (e: React.DragEvent) => {
+    if (!hasFiles(e)) return
+    dragCounter.current--
+    if (dragCounter.current <= 0) setDragging(false)
+  }
+  const onDrop = (e: React.DragEvent) => {
+    if (!hasFiles(e)) return
+    e.preventDefault()
+    dragCounter.current = 0
+    setDragging(false)
+    const files = Array.from(e.dataTransfer.files)
+    if (files.length > 0) enqueue(files, folderId)
+  }
+
   const moveOrCopy = async (target: FolderRef) => {
     if (dialog?.kind !== 'move') return
     const { mode, items: targets } = dialog
@@ -163,7 +230,23 @@ export function DriveExplorerPage() {
   }
 
   return (
-    <div className="flex h-full">
+    <div
+      className="relative flex h-full"
+      onDragEnter={onDragEnter}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+    >
+      {/* Overlay de arrastre */}
+      {dragging && (
+        <div className="pointer-events-none absolute inset-0 z-overlay flex items-center justify-center rounded-drive border-2 border-dashed border-primary bg-primary-subtle/80">
+          <div className="flex flex-col items-center gap-2 text-primary">
+            <UploadCloud size={48} />
+            <p className="text-lg font-medium">Suelta para subir aquí</p>
+          </div>
+        </div>
+      )}
+
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Cabecera */}
         <div className="mb-4 flex items-center justify-between gap-3">
@@ -172,9 +255,18 @@ export function DriveExplorerPage() {
             onNavigate={(id) => navigate(id === 'root' ? '/' : `/folder/${id}`)}
           />
           <div className="flex shrink-0 items-center gap-2">
-            <Button size="sm" variant="secondary" leftIcon={FolderPlus} onClick={() => setDialog({ kind: 'newFolder' })}>
-              <span className="hidden sm:inline">Nueva carpeta</span>
-            </Button>
+            <div ref={newAnchor} className="relative">
+              <Button size="sm" leftIcon={Plus} onClick={newMenu.toggle}>
+                <span className="hidden sm:inline">Nuevo</span>
+              </Button>
+              <Menu
+                open={newMenu.isOpen}
+                onClose={newMenu.close}
+                items={newMenuItems}
+                title="Nuevo"
+                align="right"
+              />
+            </div>
             <ViewToggle value={view} onChange={setViewMode} />
           </div>
         </div>
@@ -206,11 +298,16 @@ export function DriveExplorerPage() {
             <EmptyState
               icon={UploadCloud}
               title="Esta carpeta está vacía"
-              description="Crea una carpeta o sube archivos (la subida llega en la Fase 5)."
+              description="Arrastra archivos aquí, o usa el botón «Nuevo» para subir archivos y crear carpetas."
               action={
-                <Button leftIcon={FolderPlus} onClick={() => setDialog({ kind: 'newFolder' })}>
-                  Nueva carpeta
-                </Button>
+                <div className="flex flex-wrap justify-center gap-2">
+                  <Button leftIcon={FileUp} onClick={pickFiles}>
+                    Subir archivos
+                  </Button>
+                  <Button variant="secondary" leftIcon={FolderPlus} onClick={() => setDialog({ kind: 'newFolder' })}>
+                    Nueva carpeta
+                  </Button>
+                </div>
               }
             />
           ) : view === 'list' ? (

@@ -16,6 +16,7 @@ use ProjectCloud\Controllers\InstallController;
 use ProjectCloud\Controllers\AuthController;
 use ProjectCloud\Controllers\FolderController;
 use ProjectCloud\Controllers\FileController;
+use ProjectCloud\Controllers\UploadController;
 use ProjectCloud\Middleware\AuthMiddleware;
 use ProjectCloud\Middleware\RateLimit;
 
@@ -52,4 +53,10 @@ return static function (Router $router): void {
     $router->post('/v1/files/{id}/copy',       [FileController::class, 'copy'], $auth);
     $router->get('/v1/files/{id}/url',         [FileController::class, 'url'], $auth);
     $router->delete('/v1/files/{id}',          [FileController::class, 'delete'], $auth);
+
+    // --- Fase 5: Subidas por chunks ---
+    $router->post('/v1/uploads/init',            [UploadController::class, 'init'], $auth);
+    $router->post('/v1/uploads/{id}/chunk',      [UploadController::class, 'chunk'], $auth);
+    $router->post('/v1/uploads/{id}/complete',   [UploadController::class, 'complete'], $auth);
+    $router->delete('/v1/uploads/{id}',          [UploadController::class, 'cancel'], $auth);
 };

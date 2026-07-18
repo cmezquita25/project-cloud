@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom'
 import { Portal } from '@shared/ui'
 import { useDisclosure } from '@shared/hooks/useDisclosure'
 import { useIsMobile } from '@shared/hooks/useMediaQuery'
+import { UploadDock } from '@features/uploads/components/UploadDock'
 import { Topbar } from './components/Topbar'
 import { Sidebar } from './components/Sidebar'
 
@@ -47,6 +48,9 @@ export function AppLayout() {
           </div>
         </main>
       </div>
+
+      {/* Tarjeta de progreso de subidas (global) */}
+      <UploadDock />
     </div>
   )
 }
