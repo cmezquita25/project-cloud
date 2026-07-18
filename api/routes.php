@@ -14,6 +14,8 @@ use ProjectCloud\Core\Router;
 use ProjectCloud\Controllers\HealthController;
 use ProjectCloud\Controllers\InstallController;
 use ProjectCloud\Controllers\AuthController;
+use ProjectCloud\Controllers\FolderController;
+use ProjectCloud\Controllers\FileController;
 use ProjectCloud\Middleware\AuthMiddleware;
 use ProjectCloud\Middleware\RateLimit;
 
@@ -33,4 +35,21 @@ return static function (Router $router): void {
     $router->post('/v1/auth/refresh', [AuthController::class, 'refresh'], [new RateLimit('refresh', 60, 300)]);
     $router->post('/v1/auth/logout',  [AuthController::class, 'logout']);
     $router->get('/v1/auth/me',       [AuthController::class, 'me'], [new AuthMiddleware()]);
+
+    // --- Fase 4: Explorador de archivos (requiere sesión) ---
+    $auth = [new AuthMiddleware()];
+
+    // Carpetas
+    $router->get('/v1/folders/{id}/children', [FolderController::class, 'children'], $auth);
+    $router->post('/v1/folders',              [FolderController::class, 'create'], $auth);
+    $router->patch('/v1/folders/{id}',        [FolderController::class, 'update'], $auth);
+    $router->post('/v1/folders/{id}/copy',    [FolderController::class, 'copy'], $auth);
+    $router->delete('/v1/folders/{id}',       [FolderController::class, 'delete'], $auth);
+
+    // Archivos
+    $router->patch('/v1/files/{id}',           [FileController::class, 'update'], $auth);
+    $router->post('/v1/files/{id}/duplicate',  [FileController::class, 'duplicate'], $auth);
+    $router->post('/v1/files/{id}/copy',       [FileController::class, 'copy'], $auth);
+    $router->get('/v1/files/{id}/url',         [FileController::class, 'url'], $auth);
+    $router->delete('/v1/files/{id}',          [FileController::class, 'delete'], $auth);
 };

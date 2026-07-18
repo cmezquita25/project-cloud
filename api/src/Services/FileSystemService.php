@@ -103,31 +103,18 @@ final class FileSystemService
             $segments[] = $segment;
         }
 
-        $candidate = $userRootReal . DIRECTORY_SEPARATOR . implode(DIRECTORY_SEPARATOR, $segments);
+        // La normalización léxica anterior (array_pop en '..') ya garantiza que
+        // la ruta no puede salir de la raíz del usuario. Permite rutas que aún no
+        // existen (carpetas/archivos a crear), sin exigir que el padre exista.
+        $candidate = $segments === []
+            ? $userRootReal
+            : $userRootReal . DIRECTORY_SEPARATOR . implode(DIRECTORY_SEPARATOR, $segments);
 
-        // Verificación final: la ruta resuelta debe empezar por la raíz del usuario.
-        $resolved = $this->resolveWithinParent($candidate);
-        if (!str_starts_with($resolved, $userRootReal)) {
+        // Verificación defensiva de contención.
+        if ($candidate !== $userRootReal && !str_starts_with($candidate, $userRootReal . DIRECTORY_SEPARATOR)) {
             throw HttpException::forbidden('Ruta fuera del área permitida', 'PATH_TRAVERSAL');
         }
-        return $resolved;
-    }
-
-    /**
-     * Resuelve realpath del elemento; si no existe aún (archivo/carpeta a crear),
-     * resuelve el padre y le anexa el nombre. Bloquea si el padre no existe.
-     */
-    private function resolveWithinParent(string $path): string
-    {
-        $real = realpath($path);
-        if ($real !== false) {
-            return $real;
-        }
-        $parent = realpath(dirname($path));
-        if ($parent === false) {
-            throw HttpException::badRequest('La ruta padre no existe', 'INVALID_PATH');
-        }
-        return $parent . DIRECTORY_SEPARATOR . basename($path);
+        return $candidate;
     }
 
     /** realpath de la raíz del usuario, creándola si hiciera falta. */
@@ -162,5 +149,85 @@ final class FileSystemService
             is_dir($path) ? $this->deleteRecursive($path) : @unlink($path);
         }
         @rmdir($dir);
+    }
+
+    // --- Operaciones por ruta virtual (Fase 4) ---
+
+    /** Ruta absoluta segura de una ruta virtual del usuario (guarda contra traversal). */
+    public function abs(string $username, string $virtualPath): string
+    {
+        return $this->safeJoin($this->provisionUser($username), $virtualPath);
+    }
+
+    /** Crea la carpeta física de una ruta virtual. */
+    public function makeDir(string $username, string $virtualPath): void
+    {
+        $this->ensureDir($this->abs($username, $virtualPath));
+    }
+
+    /** Renombra/mueve físicamente de una ruta virtual a otra. */
+    public function move(string $username, string $oldVirtual, string $newVirtual): void
+    {
+        $src = $this->abs($username, $oldVirtual);
+        $dst = $this->abs($username, $newVirtual);
+        if (!file_exists($src)) {
+            return; // nada físico (p.ej. destino aún no materializado); la BD manda
+        }
+        if (file_exists($dst)) {
+            throw new HttpException(409, 'FS_CONFLICT', 'Ya existe un elemento con ese nombre en el destino.');
+        }
+        $this->ensureDir(dirname($dst));
+        if (!@rename($src, $dst)) {
+            throw new HttpException(500, 'FS_ERROR', 'No se pudo mover el elemento.');
+        }
+    }
+
+    /** Copia recursiva de una ruta virtual a otra. */
+    public function copy(string $username, string $srcVirtual, string $dstVirtual): void
+    {
+        $src = $this->abs($username, $srcVirtual);
+        $dst = $this->abs($username, $dstVirtual);
+        if (!file_exists($src)) {
+            return;
+        }
+        $this->copyRecursive($src, $dst);
+    }
+
+    private function copyRecursive(string $src, string $dst): void
+    {
+        if (is_dir($src)) {
+            $this->ensureDir($dst);
+            foreach (scandir($src) ?: [] as $entry) {
+                if ($entry === '.' || $entry === '..') {
+                    continue;
+                }
+                $this->copyRecursive(
+                    $src . DIRECTORY_SEPARATOR . $entry,
+                    $dst . DIRECTORY_SEPARATOR . $entry
+                );
+            }
+        } elseif (is_file($src)) {
+            if (!@copy($src, $dst)) {
+                throw new HttpException(500, 'FS_ERROR', 'No se pudo copiar un archivo.');
+            }
+        }
+    }
+
+    /**
+     * Mueve físicamente un elemento a la papelera interna (/storage/.trash/{user}),
+     * dejándolo fuera del alcance de la URL pública. $trashKey identifica el
+     * elemento (p.ej. "f123"/"d45") para poder restaurarlo en la Fase 7.
+     */
+    public function moveToTrash(string $username, string $virtualPath, string $trashKey): void
+    {
+        $src = $this->abs($username, $virtualPath);
+        if (!file_exists($src)) {
+            return;
+        }
+        $trashDir = $this->storageRoot . DIRECTORY_SEPARATOR . '.trash'
+            . DIRECTORY_SEPARATOR . $this->sanitizeName($username);
+        $this->ensureDir($trashDir);
+        $dst = $trashDir . DIRECTORY_SEPARATOR . $trashKey . '__' . basename($virtualPath);
+        @rename($src, $dst);
     }
 }
