@@ -8,6 +8,7 @@ use ProjectCloud\Core\HttpException;
 use ProjectCloud\Core\Request;
 use ProjectCloud\Core\Response;
 use ProjectCloud\Core\Validator;
+use ProjectCloud\Repositories\ActivityRepository;
 use ProjectCloud\Repositories\RefreshTokenRepository;
 use ProjectCloud\Repositories\UserRepository;
 use ProjectCloud\Services\AuthService;
@@ -36,6 +37,19 @@ final class AuthController
             $request->userAgent(),
             $request->ip(),
         );
+
+        try {
+            (new ActivityRepository())->log(
+                (int) $result['user']['id'],
+                'login',
+                null,
+                null,
+                null,
+                $request->ip(),
+            );
+        } catch (\Throwable) {
+            // la auditoría no debe romper el login
+        }
 
         return Response::success($result);
     }

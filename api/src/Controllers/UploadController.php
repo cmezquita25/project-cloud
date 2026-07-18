@@ -10,6 +10,7 @@ use ProjectCloud\Core\Validator;
 use ProjectCloud\Repositories\FileRepository;
 use ProjectCloud\Repositories\FolderRepository;
 use ProjectCloud\Repositories\UserRepository;
+use ProjectCloud\Services\ActivityLogger;
 use ProjectCloud\Services\FileService;
 use ProjectCloud\Services\FileSystemService;
 use ProjectCloud\Services\UploadService;
@@ -63,6 +64,10 @@ final class UploadController
             $username,
             (string) $request->param('id'),
         );
+        ActivityLogger::log($request, 'upload', 'file', (int) ($file['id'] ?? 0), [
+            'name' => $file['name'] ?? null,
+            'size' => $file['size_bytes'] ?? null,
+        ]);
         return Response::created($this->filePublic($file, $username));
     }
 

@@ -10,6 +10,7 @@ import { StarredPage } from '@features/starred/StarredPage'
 import { TrashPage } from '@features/trash/TrashPage'
 import { SearchPage } from '@features/search/SearchPage'
 import { AdminPage } from '@features/admin/AdminPage'
+import { StoragePage } from '@features/storage-quota/StoragePage'
 import { LoginPage } from '@features/auth/LoginPage'
 
 /**
@@ -48,6 +49,7 @@ const router = createBrowserRouter([
               { path: 'starred', element: <StarredPage /> },
               { path: 'trash', element: <TrashPage /> },
               { path: 'search', element: <SearchPage /> },
+              { path: 'storage', element: <StoragePage /> },
               // Solo administradores.
               {
                 element: <RequireAdmin />,

@@ -17,7 +17,10 @@ use ProjectCloud\Controllers\AuthController;
 use ProjectCloud\Controllers\FolderController;
 use ProjectCloud\Controllers\FileController;
 use ProjectCloud\Controllers\UploadController;
+use ProjectCloud\Controllers\QuotaController;
+use ProjectCloud\Controllers\AdminController;
 use ProjectCloud\Middleware\AuthMiddleware;
+use ProjectCloud\Middleware\AdminOnly;
 use ProjectCloud\Middleware\RateLimit;
 
 return static function (Router $router): void {
@@ -59,4 +62,17 @@ return static function (Router $router): void {
     $router->post('/v1/uploads/{id}/chunk',      [UploadController::class, 'chunk'], $auth);
     $router->post('/v1/uploads/{id}/complete',   [UploadController::class, 'complete'], $auth);
     $router->delete('/v1/uploads/{id}',          [UploadController::class, 'cancel'], $auth);
+
+    // --- Fase 6: Cuota (usuario) ---
+    $router->get('/v1/quota', [QuotaController::class, 'index'], $auth);
+
+    // --- Fase 6: Administración (requiere admin) ---
+    $admin = [new AuthMiddleware(), new AdminOnly()];
+    $router->get('/v1/admin/stats',               [AdminController::class, 'stats'], $admin);
+    $router->get('/v1/admin/activity',            [AdminController::class, 'activity'], $admin);
+    $router->get('/v1/admin/users',               [AdminController::class, 'users'], $admin);
+    $router->post('/v1/admin/users',              [AdminController::class, 'createUser'], $admin);
+    $router->patch('/v1/admin/users/{id}',        [AdminController::class, 'updateUser'], $admin);
+    $router->patch('/v1/admin/users/{id}/password', [AdminController::class, 'resetPassword'], $admin);
+    $router->delete('/v1/admin/users/{id}',       [AdminController::class, 'deleteUser'], $admin);
 };

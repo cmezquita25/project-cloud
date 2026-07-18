@@ -110,6 +110,36 @@ class FileRepository
         $stmt->execute([$userId, $pathPrefix . '/%']);
     }
 
+    /** Uso total (bytes) de archivos vivos del usuario. */
+    public function totalUsed(int $userId): int
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT COALESCE(SUM(size_bytes), 0) FROM files WHERE user_id = ? AND deleted_at IS NULL'
+        );
+        $stmt->execute([$userId]);
+        return (int) $stmt->fetchColumn();
+    }
+
+    /** @return array<int,array{mime:?string,ext:?string,bytes:int,count:int}> Agregado para desglose. */
+    public function usageGroups(int $userId): array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT mime_type AS mime, extension AS ext, SUM(size_bytes) AS bytes, COUNT(*) AS count
+               FROM files WHERE user_id = ? AND deleted_at IS NULL
+              GROUP BY mime_type, extension'
+        );
+        $stmt->execute([$userId]);
+        return array_map(
+            static fn (array $r): array => [
+                'mime'  => $r['mime'] !== null ? (string) $r['mime'] : null,
+                'ext'   => $r['ext'] !== null ? (string) $r['ext'] : null,
+                'bytes' => (int) $r['bytes'],
+                'count' => (int) $r['count'],
+            ],
+            $stmt->fetchAll()
+        );
+    }
+
     /** Suma de tamaños de archivos vivos bajo un prefijo de ruta (incluye subcarpetas). */
     public function sumSizesUnderPath(int $userId, string $pathPrefix): int
     {

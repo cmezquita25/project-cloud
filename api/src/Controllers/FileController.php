@@ -9,6 +9,7 @@ use ProjectCloud\Core\Request;
 use ProjectCloud\Core\Response;
 use ProjectCloud\Repositories\FileRepository;
 use ProjectCloud\Repositories\FolderRepository;
+use ProjectCloud\Services\ActivityLogger;
 use ProjectCloud\Services\FileService;
 use ProjectCloud\Services\FileSystemService;
 
@@ -67,11 +68,13 @@ final class FileController
     /** DELETE /files/{id} — mueve a la papelera. */
     public function delete(Request $request): Response
     {
+        $id = (int) $request->param('id');
         $this->service()->delete(
             (int) $request->userId(),
             (string) $request->user()['username'],
-            (int) $request->param('id'),
+            $id,
         );
+        ActivityLogger::log($request, 'delete', 'file', $id);
         return Response::success(['ok' => true]);
     }
 

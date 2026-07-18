@@ -85,6 +85,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
         <StorageIndicator
           usedBytes={user?.used_bytes ?? 0}
           totalBytes={user?.quota_bytes ?? 0}
+          onNavigate={onNavigate}
         />
       </div>
     </div>
