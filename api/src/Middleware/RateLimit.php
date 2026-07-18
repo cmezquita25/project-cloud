@@ -31,10 +31,12 @@ final class RateLimit implements Middleware
         $now = time();
 
         $timestamps = $this->read($file);
-        // Conserva solo los intentos dentro de la ventana.
+        // Conserva solo los intentos dentro de la ventana. Capturamos el corte
+        // en una variable local: un `static fn` no puede usar $this.
+        $cutoff = $now - $this->windowSeconds;
         $timestamps = array_values(array_filter(
             $timestamps,
-            static fn (int $ts): bool => $ts > $now - $this->windowSeconds
+            static fn (int $ts): bool => $ts > $cutoff
         ));
 
         if (count($timestamps) >= $this->maxAttempts) {

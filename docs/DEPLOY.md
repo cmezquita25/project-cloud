@@ -65,6 +65,13 @@ Sube los archivos hasta dejar el docroot así:
 **Qué NO subir:** `frontend/` (código fuente), `node_modules/`, `api/config/config.php`,
 `api/config/install.lock`, `storage/`.
 
+> ⚠️ **Regla de re-despliegue (importante):** al subir una versión nueva, **NO
+> borres ni sobrescribas la carpeta `api/config/`** del servidor. Ahí viven tu
+> `config.php` (credenciales) y `install.lock` (marca de instalado), que son
+> tuyos y no están en el repositorio. Si tu método de subida borra `api/` antes
+> de subir, excluye `api/config/`. *(Aun si se perdiera el `install.lock`, la app
+> se auto-repara: si detecta config + un admin en la BD, se reconoce instalada.)*
+
 > 💡 Recomendado en Plesk: apunta el **Document Root** del subdominio a la
 > carpeta raíz donde subiste esto (ya lo está). No hace falta subdominio para la API.
 
@@ -124,6 +131,7 @@ Al terminar, `config/config.php` y `install.lock` existen, y la BD tiene las 6 t
 
 | Síntoma | Causa / solución |
 |---|---|
+| El instalador **reaparece** tras subir una versión | Se perdió `api/config/install.lock` al re-subir `api/`. No sobrescribas `api/config/` (ver regla de re-despliegue). La app ahora se auto-repara si config + admin existen; recarga y vuelve a intentar. |
 | `SCHEMA_MISSING` / "No se encontró el esquema" | El esquema viaja en `api/database/schema.sql`. Sube la carpeta `api/` **completa** (incluida su subcarpeta `database/`). |
 | `could not find named location "@fallback"` (nginx) | Hay una directiva nginx personalizada en Plesk que referencia `@fallback` sin definirla. Ver la sección **9. nginx** abajo. |
 | `/api/v1/health` da **403 Forbidden** | Sube la versión actual de `api/` (front controller en `api/index.php`, sin carpeta `public/`) y el `.htaccess` raíz. Verifica que el dominio use **Apache + nginx** en Plesk. |

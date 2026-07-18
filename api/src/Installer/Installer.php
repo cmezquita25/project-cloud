@@ -6,6 +6,7 @@ namespace ProjectCloud\Installer;
 
 use PDO;
 use PDOException;
+use ProjectCloud\Core\Config;
 use ProjectCloud\Core\Database;
 use ProjectCloud\Core\HttpException;
 use ProjectCloud\Core\Password;
@@ -28,7 +29,39 @@ final class Installer
 
     public function isInstalled(): bool
     {
-        return is_file($this->lockPath);
+        if (is_file($this->lockPath)) {
+            return true;
+        }
+        // Auto-reparación: si el install.lock se perdió al re-subir api/ pero la
+        // instalación existe (config + un admin en BD), se reconoce como instalada
+        // y se regenera el lock. Evita que el instalador reaparezca tras un deploy.
+        if (Config::isLoaded() && $this->hasAdminUser()) {
+            $this->relock();
+            return true;
+        }
+        return false;
+    }
+
+    private function hasAdminUser(): bool
+    {
+        try {
+            $count = (int) Database::pdo()
+                ->query("SELECT COUNT(*) FROM users WHERE role = 'admin'")
+                ->fetchColumn();
+            return $count > 0;
+        } catch (\Throwable) {
+            return false; // BD no lista aún (instalación fresca)
+        }
+    }
+
+    private function relock(): void
+    {
+        if (!is_file($this->lockPath)) {
+            @file_put_contents(
+                $this->lockPath,
+                json_encode(['relocked_at' => gmdate('c'), 'version' => 1], JSON_PRETTY_PRINT)
+            );
+        }
     }
 
     /** Impide operar el instalador si ya se completó. */
