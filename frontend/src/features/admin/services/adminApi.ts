@@ -1,4 +1,5 @@
 import { api } from '@shared/api'
+import type { User } from '@features/auth/types'
 import type {
   ActivityPage,
   AdminStats,
@@ -19,4 +20,8 @@ export const adminApi = {
   deleteUser: (id: number) => api.delete<{ ok: true }>(`/admin/users/${id}`),
   activity: (page = 1, limit = 30) =>
     api.get<ActivityPage>(`/admin/activity?page=${page}&limit=${limit}`),
+  updateCapacity: (bytes: number) =>
+    api.patch<{ server_capacity_bytes: number; user: User | null }>('/admin/settings', {
+      server_capacity_bytes: bytes,
+    }),
 }

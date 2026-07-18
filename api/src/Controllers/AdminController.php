@@ -11,6 +11,7 @@ use ProjectCloud\Core\Response;
 use ProjectCloud\Core\Validator;
 use ProjectCloud\Repositories\ActivityRepository;
 use ProjectCloud\Repositories\FileRepository;
+use ProjectCloud\Repositories\SettingsRepository;
 use ProjectCloud\Repositories\UserRepository;
 use ProjectCloud\Services\ActivityLogger;
 use ProjectCloud\Services\FileSystemService;
@@ -172,7 +173,34 @@ final class AdminController
     public function stats(Request $request): Response
     {
         $stats = (new UserRepository())->stats();
+        // Capacidad real del servidor (definida en la instalación, editable aquí).
+        $stats['server_capacity_bytes'] = (new SettingsRepository())->getInt('server_capacity_bytes', 0);
         return Response::success($stats);
+    }
+
+    /** PATCH /admin/settings — ajusta la capacidad real del servidor. */
+    public function updateSettings(Request $request): Response
+    {
+        $body = $request->json();
+        $settings = new SettingsRepository();
+        $users = new UserRepository();
+        $adminId = (int) $request->userId();
+        $updatedUser = null;
+
+        if (array_key_exists('server_capacity_bytes', $body)) {
+            $capacity = max(0, (int) $body['server_capacity_bytes']);
+            $settings->set('server_capacity_bytes', (string) $capacity);
+            // El admin gestiona todo el conjunto: su cuota sigue a la capacidad,
+            // para que la barra de almacenamiento (sidebar/perfil) la refleje.
+            $users->update($adminId, ['quota_bytes' => $capacity]);
+            $updatedUser = $users->findById($adminId);
+            ActivityLogger::log($request, 'settings.update', 'setting', null, ['server_capacity_bytes' => $capacity]);
+        }
+
+        return Response::success([
+            'server_capacity_bytes' => $settings->getInt('server_capacity_bytes', 0),
+            'user' => $updatedUser !== null ? \ProjectCloud\Services\AuthService::publicUser($updatedUser) : null,
+        ]);
     }
 
     /** GET /admin/activity */

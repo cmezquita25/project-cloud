@@ -103,7 +103,27 @@ final class Installer
             }
         }
 
-        return ['requirements' => $reqs, 'can_proceed' => $canProceed];
+        return ['requirements' => $reqs, 'can_proceed' => $canProceed, 'disk' => $this->detectDisk()];
+    }
+
+    /**
+     * Detecta el espacio del volumen donde vive /storage. En hosting compartido
+     * suele reportar el disco físico completo (no la cuota real de la cuenta),
+     * por eso el instalador solo lo usa como SUGERENCIA: el admin confirma o
+     * corrige la capacidad real. Nada queda fijado en código.
+     *
+     * @return array{total_bytes:int|null,free_bytes:int|null,path:string}
+     */
+    public function detectDisk(): array
+    {
+        $target = is_dir($this->storageDir) ? $this->storageDir : dirname($this->storageDir);
+        $total = @disk_total_space($target);
+        $free = @disk_free_space($target);
+        return [
+            'total_bytes' => is_float($total) || is_int($total) ? (int) $total : null,
+            'free_bytes'  => is_float($free) || is_int($free) ? (int) $free : null,
+            'path'        => $target,
+        ];
     }
 
     private function isStorageWritable(): bool
@@ -289,7 +309,7 @@ final class Installer
     /**
      * Crea la cuenta admin, provisiona su carpeta y bloquea el instalador.
      *
-     * @param array{username:string,email:string,display_name:string,password:string} $data
+     * @param array{username:string,email:string,display_name:string,password:string,server_capacity_bytes?:int} $data
      * @return array{id:int,username:string}
      */
     public function createAdmin(array $data): array
@@ -309,6 +329,22 @@ final class Installer
             throw new HttpException(409, 'USER_EXISTS', 'Ya existe un usuario con ese nombre o correo.');
         }
 
+        // Capacidad real del servidor: la indicada en el instalador o, si no,
+        // la detectada del disco (respaldo). Se guarda en settings y sirve de
+        // base para las cuotas. Sin valores fijos en código.
+        $capacity = (int) ($data['server_capacity_bytes'] ?? 0);
+        if ($capacity <= 0) {
+            $disk = $this->detectDisk();
+            $capacity = $disk['total_bytes'] ?? 0;
+        }
+        if ($capacity <= 0) {
+            $capacity = 5 * 1024 ** 3; // último respaldo si el disco no es detectable
+        }
+        $this->writeSetting($pdo, 'server_capacity_bytes', (string) $capacity);
+
+        // El admin puede usar toda la capacidad; el límite por archivo no la excede.
+        $maxUpload = (int) min(10 * 1024 ** 3, $capacity);
+
         $stmt = $pdo->prepare(
             'INSERT INTO users (username, email, password_hash, display_name, role, quota_bytes, max_upload_bytes)
              VALUES (?, ?, ?, ?, "admin", ?, ?)'
@@ -318,8 +354,8 @@ final class Installer
             $data['email'],
             Password::hash($data['password']),
             $data['display_name'],
-            100 * 1024 ** 3, // 100 GB para el admin
-            10 * 1024 ** 3,  // 10 GB por archivo
+            $capacity,
+            $maxUpload,
         ]);
         $id = (int) $pdo->lastInsertId();
 
@@ -330,6 +366,16 @@ final class Installer
         $this->lock($username);
 
         return ['id' => $id, 'username' => $username];
+    }
+
+    /** Upsert de una clave en settings (usa el PDO ya conectado del instalador). */
+    private function writeSetting(PDO $pdo, string $key, string $value): void
+    {
+        $stmt = $pdo->prepare(
+            'INSERT INTO settings (`key`, `value`) VALUES (?, ?)
+             ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)'
+        );
+        $stmt->execute([$key, $value]);
     }
 
     private function lock(string $adminUsername): void

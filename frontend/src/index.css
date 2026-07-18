@@ -51,37 +51,37 @@
   }
 
   .dark {
-    /* Superficies (modo oscuro) */
-    --color-canvas: 27 27 27; /* #1b1b1b */
-    --color-surface: 40 42 44; /* #282a2c */
-    --color-surface-hover: 51 53 55; /* #333537 */
-    --color-surface-active: 30 58 95; /* #1e3a5f */
-    --color-surface-container: 30 31 32; /* #1e1f20 */
-    --color-overlay: 0 0 0;
+    /* Superficies (modo oscuro — paleta Tailwind Slate) */
+    --color-canvas: 2 6 23; /* slate-950 */
+    --color-surface: 30 41 59; /* slate-800 (paneles/tarjetas elevadas) */
+    --color-surface-hover: 51 65 85; /* slate-700 */
+    --color-surface-active: 71 85 105; /* slate-600 */
+    --color-surface-container: 15 23 42; /* slate-900 (barras, sidebar) */
+    --color-overlay: 2 6 23; /* slate-950 (scrims) */
 
     /* Contenido */
-    --color-content-primary: 227 227 227; /* #e3e3e3 */
-    --color-content-secondary: 196 199 197; /* #c4c7c5 */
-    --color-content-tertiary: 154 160 166; /* #9aa0a6 */
-    --color-content-inverse: 32 33 36;
+    --color-content-primary: 241 245 249; /* slate-100 */
+    --color-content-secondary: 148 163 184; /* slate-400 */
+    --color-content-tertiary: 100 116 139; /* slate-500 */
+    --color-content-inverse: 15 23 42; /* slate-900 */
 
     /* Bordes */
-    --color-border: 60 64 67; /* #3c4043 */
-    --color-border-strong: 95 99 104; /* #5f6368 */
+    --color-border: 51 65 85; /* slate-700 */
+    --color-border-strong: 71 85 105; /* slate-600 */
 
-    /* Marca — azul Google Drive (variante oscura) */
+    /* Marca — azul Google Drive (variante oscura, sobre slate) */
     --color-primary: 138 180 248; /* #8ab4f8 */
     --color-primary-hover: 158 193 250; /* #9ec1fa */
     --color-primary-active: 174 203 250; /* #aecbfa */
-    --color-primary-subtle: 30 58 95; /* #1e3a5f */
-    --color-primary-on: 32 33 36; /* texto oscuro sobre azul claro */
+    --color-primary-subtle: 30 58 95; /* azul profundo para selección */
+    --color-primary-on: 15 23 42; /* texto oscuro sobre azul claro */
 
     /* Funcionales */
     --color-success: 129 201 149; /* #81c995 */
     --color-warning: 253 214 99; /* #fdd663 */
     --color-danger: 242 139 130; /* #f28b82 */
     --color-danger-subtle: 60 31 29; /* #3c1f1d */
-    --color-danger-on: 32 33 36;
+    --color-danger-on: 15 23 42;
 
     /* Foco */
     --color-focus: 138 180 248;

@@ -30,11 +30,11 @@ export function AppLayout() {
           <Portal>
             <div className="fixed inset-0 z-sidebar">
               <div
-                className="absolute inset-0 animate-fade-in bg-overlay/50"
+                className="absolute inset-0 animate-fade-in bg-overlay/60 backdrop-blur-sm"
                 onClick={drawer.close}
                 aria-hidden="true"
               />
-              <div className="absolute left-0 top-0 h-full w-72 animate-slide-in-right shadow-elevation-3">
+              <div className="absolute left-0 top-0 h-full w-72 animate-slide-in-left shadow-elevation-3">
                 <Sidebar onNavigate={drawer.close} />
               </div>
             </div>

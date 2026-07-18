@@ -11,9 +11,16 @@ export interface Requirement {
   critical: boolean
 }
 
+export interface DiskInfo {
+  total_bytes: number | null
+  free_bytes: number | null
+  path: string
+}
+
 export interface RequirementsResult {
   requirements: Requirement[]
   can_proceed: boolean
+  disk?: DiskInfo
 }
 
 export interface DatabaseForm {
@@ -29,4 +36,6 @@ export interface AdminForm {
   email: string
   display_name: string
   password: string
+  /** Capacidad real del servidor en bytes (opcional; el backend detecta si falta). */
+  server_capacity_bytes?: number
 }

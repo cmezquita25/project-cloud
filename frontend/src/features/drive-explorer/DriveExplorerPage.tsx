@@ -10,12 +10,14 @@ import {
   Plus,
   FileUp,
   FolderUp,
+  FolderSymlink,
 } from 'lucide-react'
 import { Button, EmptyState, Spinner, IconButton, Menu, useToast, type MenuItem } from '@shared/ui'
 import { useDisclosure } from '@shared/hooks/useDisclosure'
 import { useUploads } from '@features/uploads/UploadProvider'
 import { useUploadPicker } from '@features/uploads/hooks/useUploadPicker'
 import { usePreview } from '@features/preview'
+import { useAssetsAccess } from '@features/assets/hooks/useAssetsAccess'
 import { useFolderContents } from './hooks/useFolderContents'
 import { driveApi } from './services/driveApi'
 import { Breadcrumbs } from './components/Breadcrumbs'
@@ -26,7 +28,9 @@ import { DetailsPanel } from './components/DetailsPanel'
 import { NamePromptDialog } from './components/dialogs/NamePromptDialog'
 import { DeleteDialog } from './components/dialogs/DeleteDialog'
 import { MoveDialog } from './components/dialogs/MoveDialog'
-import type { DriveItem, FolderRef, ItemAction, ViewMode } from './types'
+import { buildItemMenu } from './components/itemMenu'
+import { dragState, isInternalDrag, PC_DND_MIME } from './services/dragState'
+import type { DriveItem, FolderItem, FolderRef, ItemAction, ItemInteractions, ViewMode } from './types'
 
 const key = (i: DriveItem) => `${i.type}-${i.id}`
 
@@ -53,10 +57,17 @@ export function DriveExplorerPage() {
   const [dialog, setDialog] = useState<DialogState>(null)
   const [dragging, setDragging] = useState(false)
   const dragCounter = useRef(0)
+  // Selección con teclado/ratón (ancla para rangos con Shift).
+  const anchorIndex = useRef<number | null>(null)
+  // Arrastre interno (mover) y menú contextual.
+  const [dropTargetKey, setDropTargetKey] = useState<string | null>(null)
+  const [ctxMenu, setCtxMenu] = useState<{ item: DriveItem | null; x: number; y: number } | null>(null)
 
   const { enqueue, completion } = useUploads()
   const { pickFiles, pickFolder } = useUploadPicker(folderId)
   const preview = usePreview()
+  const { access: assetsAccess } = useAssetsAccess()
+  const atRoot = folderId === 'root'
   const newMenu = useDisclosure()
   const newAnchor = useRef<HTMLDivElement>(null)
 
@@ -82,6 +93,25 @@ export function DriveExplorerPage() {
   )
   const selectedItems = useMemo(() => items.filter((i) => selected.has(key(i))), [items, selected])
 
+  // Atajos de teclado: Ctrl/Cmd+A selecciona todo, Esc limpia, Supr envía a papelera.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
+        e.preventDefault()
+        setSelected(new Set(items.map(key)))
+      } else if (e.key === 'Escape') {
+        setSelected(new Set())
+        setCtxMenu(null)
+      } else if (e.key === 'Delete' && selectedItems.length > 0) {
+        setDialog({ kind: 'delete', items: selectedItems })
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [items, selectedItems])
+
   const setViewMode = (m: ViewMode) => {
     setView(m)
     localStorage.setItem('pc-view', m)
@@ -106,6 +136,101 @@ export function DriveExplorerPage() {
   }
 
   const clearSelection = () => setSelected(new Set())
+
+  // --- Selección estilo Drive: clic simple, Ctrl/Cmd alterna, Shift rango ---
+  const onItemClick = (item: DriveItem, e: React.MouseEvent) => {
+    const index = items.findIndex((i) => key(i) === key(item))
+    if (e.shiftKey && anchorIndex.current !== null) {
+      const a = Math.min(anchorIndex.current, index)
+      const b = Math.max(anchorIndex.current, index)
+      setSelected(new Set(items.slice(a, b + 1).map(key)))
+    } else if (e.ctrlKey || e.metaKey) {
+      setSelected((prev) => {
+        const next = new Set(prev)
+        const k = key(item)
+        next.has(k) ? next.delete(k) : next.add(k)
+        return next
+      })
+      anchorIndex.current = index
+    } else {
+      setSelected(new Set([key(item)]))
+      anchorIndex.current = index
+    }
+  }
+
+  // --- Menú contextual (clic derecho) ---
+  const onItemContextMenu = (item: DriveItem, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!selected.has(key(item))) {
+      setSelected(new Set([key(item)]))
+      anchorIndex.current = items.findIndex((i) => key(i) === key(item))
+    }
+    setCtxMenu({ item, x: e.clientX, y: e.clientY })
+  }
+
+  const onBackgroundContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault()
+    setCtxMenu({ item: null, x: e.clientX, y: e.clientY })
+  }
+
+  // --- Arrastre interno (mover a carpetas/subcarpetas) ---
+  const onItemDragStart = (item: DriveItem, e: React.DragEvent) => {
+    const dragItems = selected.has(key(item)) ? selectedItems : [item]
+    if (!selected.has(key(item))) setSelected(new Set([key(item)]))
+    dragState.set(dragItems)
+    e.dataTransfer.setData(PC_DND_MIME, '1')
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const onItemDragEnd = () => {
+    dragState.clear()
+    setDropTargetKey(null)
+  }
+
+  const onFolderDragOver = (folder: FolderItem, e: React.DragEvent) => {
+    if (!isInternalDrag(e)) return
+    if (dragState.get().some((d) => key(d) === `folder-${folder.id}`)) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setDropTargetKey(`folder-${folder.id}`)
+  }
+
+  const onFolderDragLeave = () => setDropTargetKey(null)
+
+  const onDropOnFolder = async (folder: FolderItem, e: React.DragEvent) => {
+    if (!isInternalDrag(e)) return
+    e.preventDefault()
+    e.stopPropagation()
+    setDropTargetKey(null)
+    const moving = dragState.get().filter((d) => key(d) !== `folder-${folder.id}`)
+    dragState.clear()
+    if (moving.length === 0) return
+    try {
+      for (const it of moving) {
+        await (it.type === 'folder'
+          ? driveApi.moveFolder(it.id, folder.id)
+          : driveApi.moveFile(it.id, folder.id))
+      }
+      clearSelection()
+      reload()
+      toast.success(moving.length === 1 ? 'Movido' : `${moving.length} elementos movidos`)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'No se pudo mover')
+    }
+  }
+
+  const interactions: ItemInteractions = {
+    onItemClick,
+    onItemContextMenu,
+    dragEnabled: true,
+    onItemDragStart,
+    onItemDragEnd,
+    onDropOnFolder,
+    onFolderDragOver,
+    onFolderDragLeave,
+    dropTargetKey,
+  }
 
   // --- Acciones ---
   async function runStar(item: DriveItem) {
@@ -250,12 +375,27 @@ export function DriveExplorerPage() {
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* Cabecera */}
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <Breadcrumbs
-            crumbs={data?.breadcrumbs ?? []}
-            onNavigate={(id) => navigate(id === 'root' ? '/' : `/folder/${id}`)}
-          />
+        {/* Cabecera: migas o, si hay selección, controles de selección (misma
+            altura para evitar saltos de layout). */}
+        <div className="mb-4 flex h-10 items-center justify-between gap-3">
+          {selected.size > 0 ? (
+            <div className="flex min-w-0 items-center gap-2">
+              <IconButton icon={X} label="Deseleccionar" size="sm" onClick={clearSelection} />
+              <span className="whitespace-nowrap text-sm font-medium text-primary">
+                {selected.size} seleccionado(s)
+              </span>
+              <div className="flex items-center gap-1">
+                <IconButton icon={FolderInput} label="Mover" size="sm" onClick={() => setDialog({ kind: 'move', mode: 'move', items: selectedItems })} />
+                <IconButton icon={Copy} label="Copiar" size="sm" onClick={() => setDialog({ kind: 'move', mode: 'copy', items: selectedItems })} />
+                <IconButton icon={Trash2} label="Eliminar" size="sm" onClick={() => setDialog({ kind: 'delete', items: selectedItems })} />
+              </div>
+            </div>
+          ) : (
+            <Breadcrumbs
+              crumbs={data?.breadcrumbs ?? []}
+              onNavigate={(id) => navigate(id === 'root' ? '/' : `/folder/${id}`)}
+            />
+          )}
           <div className="flex shrink-0 items-center gap-2">
             <div ref={newAnchor} className="relative">
               <Button size="sm" leftIcon={Plus} onClick={newMenu.toggle}>
@@ -267,27 +407,31 @@ export function DriveExplorerPage() {
                 items={newMenuItems}
                 title="Nuevo"
                 align="right"
+                anchorRef={newAnchor}
               />
             </div>
             <ViewToggle value={view} onChange={setViewMode} />
           </div>
         </div>
 
-        {/* Barra de selección */}
-        {selected.size > 0 && (
-          <div className="mb-3 flex items-center gap-2 rounded-pill bg-primary-subtle px-3 py-1.5">
-            <IconButton icon={X} label="Deseleccionar" size="sm" onClick={clearSelection} />
-            <span className="text-sm font-medium text-primary">{selected.size} seleccionado(s)</span>
-            <div className="ml-auto flex items-center gap-1">
-              <IconButton icon={FolderInput} label="Mover" size="sm" onClick={() => setDialog({ kind: 'move', mode: 'move', items: selectedItems })} />
-              <IconButton icon={Copy} label="Copiar" size="sm" onClick={() => setDialog({ kind: 'move', mode: 'copy', items: selectedItems })} />
-              <IconButton icon={Trash2} label="Eliminar" size="sm" onClick={() => setDialog({ kind: 'delete', items: selectedItems })} />
+        {/* Acceso a la carpeta compartida "assets": aparece dentro de Mi unidad
+            (solo en la raíz y si el usuario tiene acceso). La carpeta raíz no se
+            puede eliminar; su contenido se edita desde el explorador de assets. */}
+        {atRoot && assetsAccess?.allowed && (
+          <button
+            onClick={() => navigate('/assets')}
+            className="group mb-4 flex w-full items-center gap-3 rounded-xl border border-border bg-surface-container px-3 py-3 text-left transition-colors hover:bg-surface-hover sm:max-w-xs"
+          >
+            <FolderSymlink size={22} className="shrink-0 text-primary" />
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium text-content-primary">Assets</p>
+              <p className="truncate text-xs text-content-tertiary">Carpeta compartida</p>
             </div>
-          </div>
+          </button>
         )}
 
         {/* Contenido */}
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto" onContextMenu={onBackgroundContextMenu}>
           {loading ? (
             <div className="flex h-64 items-center justify-center text-content-tertiary">
               <Spinner size={32} />
@@ -313,9 +457,9 @@ export function DriveExplorerPage() {
               }
             />
           ) : view === 'list' ? (
-            <FileListView items={items} selected={selected} onOpen={openItem} onSelectToggle={toggleSelect} onAction={onAction} />
+            <FileListView items={items} selected={selected} onOpen={openItem} onSelectToggle={toggleSelect} onAction={onAction} interactions={interactions} />
           ) : (
-            <FileGridView items={items} selected={selected} onOpen={openItem} onSelectToggle={toggleSelect} onAction={onAction} />
+            <FileGridView items={items} selected={selected} onOpen={openItem} onSelectToggle={toggleSelect} onAction={onAction} interactions={interactions} />
           )}
         </div>
       </div>
@@ -358,6 +502,44 @@ export function DriveExplorerPage() {
         onClose={() => setDialog(null)}
         onConfirm={() => runDelete(dialog?.kind === 'delete' ? dialog.items : [])}
       />
+
+      {/* Menú contextual (clic derecho): elemento, selección múltiple o fondo. */}
+      {ctxMenu && (
+        <Menu
+          open
+          onClose={() => setCtxMenu(null)}
+          position={{ x: ctxMenu.x, y: ctxMenu.y }}
+          title={ctxMenu.item ? ctxMenu.item.name : 'Nuevo'}
+          items={
+            ctxMenu.item === null
+              ? newMenuItems
+              : selectedItems.length > 1 && selected.has(key(ctxMenu.item))
+                ? [
+                    {
+                      id: 'move',
+                      label: `Mover ${selectedItems.length} elementos`,
+                      icon: FolderInput,
+                      onSelect: () => setDialog({ kind: 'move', mode: 'move', items: selectedItems }),
+                    },
+                    {
+                      id: 'copy',
+                      label: 'Copiar a',
+                      icon: Copy,
+                      onSelect: () => setDialog({ kind: 'move', mode: 'copy', items: selectedItems }),
+                    },
+                    {
+                      id: 'delete',
+                      label: 'Enviar a la papelera',
+                      icon: Trash2,
+                      danger: true,
+                      divider: true,
+                      onSelect: () => setDialog({ kind: 'delete', items: selectedItems }),
+                    },
+                  ]
+                : buildItemMenu(ctxMenu.item, (a) => onAction(ctxMenu.item!, a))
+          }
+        />
+      )}
     </div>
   )
 }

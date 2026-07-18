@@ -56,3 +56,25 @@ export type ItemAction =
   | 'delete'
 
 export type ViewMode = 'list' | 'grid'
+
+/**
+ * Interacciones opcionales de los elementos (selección con modificadores, menú
+ * contextual y arrastre interno). Las vistas (lista/mosaicos) las aceptan como
+ * un solo objeto; si no se pasan, mantienen el comportamiento básico.
+ */
+export interface ItemInteractions {
+  /** Clic simple con modificadores (Ctrl/Cmd para alternar, Shift para rango). */
+  onItemClick?: (item: DriveItem, e: React.MouseEvent) => void
+  /** Clic derecho sobre un elemento (menú contextual). */
+  onItemContextMenu?: (item: DriveItem, e: React.MouseEvent) => void
+  /** Habilita arrastrar elementos para moverlos. */
+  dragEnabled?: boolean
+  onItemDragStart?: (item: DriveItem, e: React.DragEvent) => void
+  onItemDragEnd?: (e: React.DragEvent) => void
+  /** Soltar sobre una carpeta (mover dentro). */
+  onDropOnFolder?: (folder: FolderItem, e: React.DragEvent) => void
+  onFolderDragOver?: (folder: FolderItem, e: React.DragEvent) => void
+  onFolderDragLeave?: (folder: FolderItem, e: React.DragEvent) => void
+  /** Clave (`type-id`) de la carpeta resaltada como destino de soltado. */
+  dropTargetKey?: string | null
+}

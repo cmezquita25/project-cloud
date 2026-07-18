@@ -1,33 +1,21 @@
-import { useRef } from 'react'
-import { Monitor, Moon, Sun } from 'lucide-react'
-import { IconButton, Menu, type MenuItem } from '@shared/ui'
-import { useDisclosure } from '@shared/hooks/useDisclosure'
-import { useTheme, type ThemeMode } from '@app/providers/ThemeProvider'
+import { Moon, Sun } from 'lucide-react'
+import { IconButton } from '@shared/ui'
+import { useTheme } from '@app/providers/ThemeProvider'
 
-/** Selector de tema (claro / oscuro / sistema) para la topbar. */
+/**
+ * Alterna el tema con un solo clic entre claro y oscuro (y persiste la elección).
+ * Al entrar sin preferencia guardada se usa la del sistema; si hay una guardada,
+ * se recuerda. El icono muestra a qué modo cambiará el próximo clic.
+ */
 export function ThemeToggle() {
-  const { mode, resolved, setMode } = useTheme()
-  const { isOpen, toggle, close } = useDisclosure()
-  const anchor = useRef<HTMLDivElement>(null)
-
-  const items: MenuItem[] = (
-    [
-      { id: 'light', label: 'Claro', icon: Sun },
-      { id: 'dark', label: 'Oscuro', icon: Moon },
-      { id: 'system', label: 'Sistema', icon: Monitor },
-    ] as const
-  ).map((opt) => ({
-    ...opt,
-    onSelect: () => setMode(opt.id as ThemeMode),
-    disabled: mode === opt.id,
-  }))
-
-  const Icon = resolved === 'dark' ? Moon : Sun
+  const { resolved, toggle } = useTheme()
+  const isDark = resolved === 'dark'
 
   return (
-    <div ref={anchor} className="relative">
-      <IconButton icon={Icon} label="Cambiar tema" onClick={toggle} active={isOpen} />
-      <Menu open={isOpen} onClose={close} items={items} title="Tema" align="right" />
-    </div>
+    <IconButton
+      icon={isDark ? Sun : Moon}
+      label={isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+      onClick={toggle}
+    />
   )
 }

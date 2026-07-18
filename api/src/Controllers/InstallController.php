@@ -113,11 +113,16 @@ final class InstallController
             ->required('password')->minLength('password', 8)
             ->validate();
 
+        // Capacidad real del servidor (opcional): la introduce el admin en el
+        // instalador; si se omite, el instalador usa la detección del disco.
+        $capacityRaw = $request->json()['server_capacity_bytes'] ?? null;
+
         $result = $installer->createAdmin([
-            'username'     => (string) $data['username'],
-            'email'        => (string) $data['email'],
-            'display_name' => (string) $data['display_name'],
-            'password'     => (string) $data['password'],
+            'username'              => (string) $data['username'],
+            'email'                 => (string) $data['email'],
+            'display_name'          => (string) $data['display_name'],
+            'password'              => (string) $data['password'],
+            'server_capacity_bytes' => $capacityRaw !== null ? max(0, (int) $capacityRaw) : 0,
         ]);
 
         return Response::created(['ok' => true, 'username' => $result['username']]);

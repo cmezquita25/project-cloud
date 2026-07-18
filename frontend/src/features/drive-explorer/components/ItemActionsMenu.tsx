@@ -34,6 +34,7 @@ export function ItemActionsMenu({ item, onAction, size = 'sm' }: ItemActionsMenu
         items={buildItemMenu(item, (a) => onAction(item, a))}
         title={item.name}
         align="right"
+        anchorRef={anchor}
       />
     </div>
   )

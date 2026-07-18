@@ -107,12 +107,17 @@ export default {
           from: { transform: 'translateX(100%)' },
           to: { transform: 'translateX(0)' },
         },
+        'slide-in-left': {
+          from: { transform: 'translateX(-100%)' },
+          to: { transform: 'translateX(0)' },
+        },
       },
       animation: {
         'fade-in': 'fade-in 150ms ease-out',
         'scale-in': 'scale-in 120ms ease-out',
         'slide-up': 'slide-up 240ms cubic-bezier(0.32, 0.72, 0, 1)',
         'slide-in-right': 'slide-in-right 240ms cubic-bezier(0.32, 0.72, 0, 1)',
+        'slide-in-left': 'slide-in-left 240ms cubic-bezier(0.32, 0.72, 0, 1)',
       },
     },
   },

@@ -53,7 +53,7 @@ function UserMenu({ user, currentUserId, onEdit, onResetPassword, onToggleStatus
   return (
     <div ref={anchor} className="relative inline-block">
       <IconButton icon={MoreVertical} label="Acciones" size="sm" active={isOpen} onClick={toggle} />
-      <Menu open={isOpen} onClose={close} items={items} title={user.display_name} align="right" />
+      <Menu open={isOpen} onClose={close} items={items} title={user.display_name} align="right" anchorRef={anchor} />
     </div>
   )
 }

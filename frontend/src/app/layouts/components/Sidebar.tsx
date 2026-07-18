@@ -1,11 +1,12 @@
 import { useRef } from 'react'
-import { Plus, FolderPlus, FileUp, FolderUp } from 'lucide-react'
+import { Plus, FolderPlus, FileUp, FolderUp, Images } from 'lucide-react'
 import { NavLink, useParams } from 'react-router-dom'
 import { cn } from '@shared/lib/cn'
 import { Button, Menu, type MenuItem } from '@shared/ui'
 import { useDisclosure } from '@shared/hooks/useDisclosure'
 import { StorageIndicator } from '@features/storage-quota/components/StorageIndicator'
 import { useAuth } from '@features/auth/AuthProvider'
+import { useAssetsAccess } from '@features/assets/hooks/useAssetsAccess'
 import { useUploadPicker } from '@features/uploads/hooks/useUploadPicker'
 import type { FolderRef } from '@features/drive-explorer/types'
 import { NAV_ITEMS } from '../navigation'
@@ -18,6 +19,7 @@ interface SidebarProps {
 /** Barra lateral de navegación (clon de Google Drive). */
 export function Sidebar({ onNavigate }: SidebarProps) {
   const { user, isAdmin } = useAuth()
+  const { access } = useAssetsAccess()
   const params = useParams()
   const folderId: FolderRef = params.folderId ? Number(params.folderId) : 'root'
   const { pickFiles, pickFolder } = useUploadPicker(folderId)
@@ -55,6 +57,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
             items={newMenuItems}
             title="Nuevo"
             align="left"
+            anchorRef={newAnchor}
           />
         </div>
       </div>
@@ -79,6 +82,25 @@ export function Sidebar({ onNavigate }: SidebarProps) {
             <span>{label}</span>
           </NavLink>
         ))}
+
+        {/* Unidad compartida "assets": solo si el usuario tiene acceso. */}
+        {access?.allowed && (
+          <NavLink
+            to="/assets"
+            onClick={onNavigate}
+            className={({ isActive }) =>
+              cn(
+                'flex items-center gap-4 rounded-pill px-4 py-2.5 text-sm font-medium transition-colors',
+                isActive
+                  ? 'bg-primary-subtle text-primary'
+                  : 'text-content-secondary hover:bg-surface-hover'
+              )
+            }
+          >
+            <Images size={20} />
+            <span>Assets</span>
+          </NavLink>
+        )}
       </nav>
 
       <div className="border-t border-border pb-2 pt-2">

@@ -55,6 +55,21 @@ export function ItemCollection({ items, loading, error, reload, empty }: ItemCol
   const selectedItems = useMemo(() => items.filter((i) => selected.has(key(i))), [items, selected])
   const clearSelection = () => setSelected(new Set())
 
+  // Selección por clic (el mosaico ya no muestra casilla): clic selecciona,
+  // Ctrl/Cmd alterna. Se pinta el elemento seleccionado.
+  const onItemClick = (item: DriveItem, e: React.MouseEvent) => {
+    if (e.ctrlKey || e.metaKey) {
+      setSelected((prev) => {
+        const next = new Set(prev)
+        const k = key(item)
+        next.has(k) ? next.delete(k) : next.add(k)
+        return next
+      })
+    } else {
+      setSelected(new Set([key(item)]))
+    }
+  }
+
   const setViewMode = (m: ViewMode) => {
     setView(m)
     localStorage.setItem('pc-view', m)
@@ -162,26 +177,27 @@ export function ItemCollection({ items, loading, error, reload, empty }: ItemCol
   return (
     <div className="relative flex h-full">
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* Barra de herramientas */}
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <span className="text-sm text-content-tertiary">
-            {items.length > 0 ? `${items.length} elemento(s)` : ''}
-          </span>
+        {/* Barra de herramientas (altura fija: sin salto al seleccionar) */}
+        <div className="mb-3 flex h-9 items-center justify-between gap-3">
+          {selected.size > 0 ? (
+            <div className="flex min-w-0 items-center gap-2">
+              <IconButton icon={X} label="Deseleccionar" size="sm" onClick={clearSelection} />
+              <span className="whitespace-nowrap text-sm font-medium text-primary">
+                {selected.size} seleccionado(s)
+              </span>
+              <div className="flex items-center gap-1">
+                <IconButton icon={FolderInput} label="Mover" size="sm" onClick={() => setDialog({ kind: 'move', mode: 'move', items: selectedItems })} />
+                <IconButton icon={Copy} label="Copiar" size="sm" onClick={() => setDialog({ kind: 'move', mode: 'copy', items: selectedItems })} />
+                <IconButton icon={Trash2} label="Eliminar" size="sm" onClick={() => setDialog({ kind: 'delete', items: selectedItems })} />
+              </div>
+            </div>
+          ) : (
+            <span className="text-sm text-content-tertiary">
+              {items.length > 0 ? `${items.length} elemento(s)` : ''}
+            </span>
+          )}
           <ViewToggle value={view} onChange={setViewMode} />
         </div>
-
-        {/* Barra de selección */}
-        {selected.size > 0 && (
-          <div className="mb-3 flex items-center gap-2 rounded-pill bg-primary-subtle px-3 py-1.5">
-            <IconButton icon={X} label="Deseleccionar" size="sm" onClick={clearSelection} />
-            <span className="text-sm font-medium text-primary">{selected.size} seleccionado(s)</span>
-            <div className="ml-auto flex items-center gap-1">
-              <IconButton icon={FolderInput} label="Mover" size="sm" onClick={() => setDialog({ kind: 'move', mode: 'move', items: selectedItems })} />
-              <IconButton icon={Copy} label="Copiar" size="sm" onClick={() => setDialog({ kind: 'move', mode: 'copy', items: selectedItems })} />
-              <IconButton icon={Trash2} label="Eliminar" size="sm" onClick={() => setDialog({ kind: 'delete', items: selectedItems })} />
-            </div>
-          </div>
-        )}
 
         {/* Contenido */}
         <div className="min-h-0 flex-1 overflow-y-auto">
@@ -196,9 +212,9 @@ export function ItemCollection({ items, loading, error, reload, empty }: ItemCol
           ) : items.length === 0 ? (
             <EmptyState icon={empty.icon} title={empty.title} description={empty.description} />
           ) : view === 'list' ? (
-            <FileListView items={items} selected={selected} onOpen={openItem} onSelectToggle={toggleSelect} onAction={onAction} />
+            <FileListView items={items} selected={selected} onOpen={openItem} onSelectToggle={toggleSelect} onAction={onAction} interactions={{ onItemClick }} />
           ) : (
-            <FileGridView items={items} selected={selected} onOpen={openItem} onSelectToggle={toggleSelect} onAction={onAction} />
+            <FileGridView items={items} selected={selected} onOpen={openItem} onSelectToggle={toggleSelect} onAction={onAction} interactions={{ onItemClick }} />
           )}
         </div>
       </div>

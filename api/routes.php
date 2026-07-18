@@ -21,6 +21,7 @@ use ProjectCloud\Controllers\QuotaController;
 use ProjectCloud\Controllers\AdminController;
 use ProjectCloud\Controllers\TrashController;
 use ProjectCloud\Controllers\LibraryController;
+use ProjectCloud\Controllers\AssetsController;
 use ProjectCloud\Middleware\AuthMiddleware;
 use ProjectCloud\Middleware\AdminOnly;
 use ProjectCloud\Middleware\RateLimit;
@@ -41,6 +42,8 @@ return static function (Router $router): void {
     $router->post('/v1/auth/refresh', [AuthController::class, 'refresh'], [new RateLimit('refresh', 60, 300)]);
     $router->post('/v1/auth/logout',  [AuthController::class, 'logout']);
     $router->get('/v1/auth/me',       [AuthController::class, 'me'], [new AuthMiddleware()]);
+    $router->patch('/v1/auth/me',     [AuthController::class, 'updateProfile'], [new AuthMiddleware()]);
+    $router->post('/v1/auth/me/password', [AuthController::class, 'changePassword'], [new AuthMiddleware()]);
 
     // --- Fase 4: Explorador de archivos (requiere sesión) ---
     $auth = [new AuthMiddleware()];
@@ -73,6 +76,14 @@ return static function (Router $router): void {
     $router->get('/v1/starred', [LibraryController::class, 'starred'], $auth);
     $router->get('/v1/search',  [LibraryController::class, 'search'], $auth);
 
+    // --- Fase 8: Unidad compartida "assets" (admin + usuarios autorizados) ---
+    $router->get('/v1/assets/access',   [AssetsController::class, 'access'], $auth);
+    $router->get('/v1/assets',          [AssetsController::class, 'index'], $auth);
+    $router->post('/v1/assets/folder',  [AssetsController::class, 'createFolder'], $auth);
+    $router->post('/v1/assets/upload',  [AssetsController::class, 'upload'], $auth);
+    $router->post('/v1/assets/move',    [AssetsController::class, 'move'], $auth);
+    $router->delete('/v1/assets',       [AssetsController::class, 'delete'], $auth);
+
     // --- Fase 7: Papelera ---
     $router->get('/v1/trash',                      [TrashController::class, 'index'], $auth);
     $router->delete('/v1/trash',                   [TrashController::class, 'empty'], $auth);
@@ -84,6 +95,9 @@ return static function (Router $router): void {
     // --- Fase 6: Administración (requiere admin) ---
     $admin = [new AuthMiddleware(), new AdminOnly()];
     $router->get('/v1/admin/stats',               [AdminController::class, 'stats'], $admin);
+    $router->patch('/v1/admin/settings',          [AdminController::class, 'updateSettings'], $admin);
+    $router->get('/v1/admin/assets/permissions',  [AssetsController::class, 'permissions'], $admin);
+    $router->put('/v1/admin/assets/permissions',  [AssetsController::class, 'setPermissions'], $admin);
     $router->get('/v1/admin/activity',            [AdminController::class, 'activity'], $admin);
     $router->get('/v1/admin/users',               [AdminController::class, 'users'], $admin);
     $router->post('/v1/admin/users',              [AdminController::class, 'createUser'], $admin);

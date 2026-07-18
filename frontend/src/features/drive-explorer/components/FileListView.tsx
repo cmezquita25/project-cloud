@@ -5,7 +5,7 @@ import { getFileIcon } from '@shared/lib/fileIcons'
 import { formatBytes } from '@shared/lib/formatBytes'
 import { formatRelative } from '@shared/lib/formatDate'
 import { ItemActionsMenu } from './ItemActionsMenu'
-import type { DriveItem, ItemAction } from '../types'
+import type { DriveItem, FolderItem, ItemAction, ItemInteractions } from '../types'
 
 interface FileListViewProps {
   items: DriveItem[]
@@ -13,12 +13,20 @@ interface FileListViewProps {
   onOpen: (item: DriveItem) => void
   onSelectToggle: (item: DriveItem) => void
   onAction: (item: DriveItem, action: ItemAction) => void
+  interactions?: ItemInteractions
 }
 
 const itemKey = (i: DriveItem) => `${i.type}-${i.id}`
 
 /** Vista de lista (tabla) estilo Drive. */
-export function FileListView({ items, selected, onOpen, onSelectToggle, onAction }: FileListViewProps) {
+export function FileListView({
+  items,
+  selected,
+  onOpen,
+  onSelectToggle,
+  onAction,
+  interactions,
+}: FileListViewProps) {
   return (
     <div className="overflow-hidden rounded-drive border border-border">
       <table className="w-full text-sm">
@@ -36,13 +44,35 @@ export function FileListView({ items, selected, onOpen, onSelectToggle, onAction
             const { icon: Icon, className } = getFileIcon(item.name, item.type === 'folder')
             const key = itemKey(item)
             const isSelected = selected.has(key)
+            const isFolder = item.type === 'folder'
+            const isDropTarget = isFolder && interactions?.dropTargetKey === key
+
+            const folderDnd =
+              isFolder && interactions
+                ? {
+                    onDragOver: (e: React.DragEvent) => interactions.onFolderDragOver?.(item as FolderItem, e),
+                    onDragLeave: (e: React.DragEvent) => interactions.onFolderDragLeave?.(item as FolderItem, e),
+                    onDrop: (e: React.DragEvent) => interactions.onDropOnFolder?.(item as FolderItem, e),
+                  }
+                : {}
+
             return (
               <tr
                 key={key}
+                draggable={interactions?.dragEnabled}
+                onDragStart={(e) => interactions?.onItemDragStart?.(item, e)}
+                onDragEnd={(e) => interactions?.onItemDragEnd?.(e)}
+                onClick={(e) => interactions?.onItemClick?.(item, e)}
                 onDoubleClick={() => onOpen(item)}
+                onContextMenu={(e) => interactions?.onItemContextMenu?.(item, e)}
+                {...folderDnd}
                 className={cn(
                   'group cursor-pointer border-b border-border/60 last:border-0 transition-colors',
-                  isSelected ? 'bg-primary-subtle' : 'hover:bg-surface-hover'
+                  isDropTarget
+                    ? 'bg-primary-subtle ring-2 ring-inset ring-primary'
+                    : isSelected
+                      ? 'bg-primary-subtle'
+                      : 'hover:bg-surface-hover'
                 )}
               >
                 <td className="py-2 pl-3">
@@ -54,12 +84,10 @@ export function FileListView({ items, selected, onOpen, onSelectToggle, onAction
                     />
                   </span>
                 </td>
-                <td className="py-2">
-                  <div className="flex items-center gap-3">
+                <td className="max-w-0 py-2">
+                  <div className="flex min-w-0 items-center gap-3">
                     <Icon size={20} className={cn('shrink-0', className)} />
-                    <span className="truncate text-content-primary" onClick={() => onOpen(item)}>
-                      {item.name}
-                    </span>
+                    <span className="truncate text-content-primary">{item.name}</span>
                     {item.is_starred && (
                       <Star size={14} className="shrink-0 fill-warning text-warning" />
                     )}

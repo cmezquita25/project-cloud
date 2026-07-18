@@ -123,7 +123,7 @@ class UserRepository
         $stmt->execute([$id]);
     }
 
-    /** @return array{users:int,active:int,admins:int,used:int,quota:int} */
+    /** @return array{users:int,active:int,admins:int,used:int,quota:int,allocated_users:int} */
     public function stats(): array
     {
         $row = $this->pdo->query(
@@ -131,15 +131,19 @@ class UserRepository
                     SUM(status = 'active') AS active,
                     SUM(role = 'admin') AS admins,
                     COALESCE(SUM(used_bytes), 0) AS used,
-                    COALESCE(SUM(quota_bytes), 0) AS quota
+                    COALESCE(SUM(quota_bytes), 0) AS quota,
+                    COALESCE(SUM(CASE WHEN role = 'user' THEN quota_bytes ELSE 0 END), 0) AS allocated_users
                FROM users"
         )->fetch();
         return [
-            'users'  => (int) $row['users'],
-            'active' => (int) $row['active'],
-            'admins' => (int) $row['admins'],
-            'used'   => (int) $row['used'],
-            'quota'  => (int) $row['quota'],
+            'users'           => (int) $row['users'],
+            'active'          => (int) $row['active'],
+            'admins'          => (int) $row['admins'],
+            'used'            => (int) $row['used'],
+            'quota'           => (int) $row['quota'],
+            // Suma de cuotas asignadas SOLO a usuarios (excluye a los admin, que
+            // gestionan el conjunto): es lo que se compara con la capacidad.
+            'allocated_users' => (int) $row['allocated_users'],
         ];
     }
 }

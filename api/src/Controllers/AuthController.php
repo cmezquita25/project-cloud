@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace ProjectCloud\Controllers;
 
 use ProjectCloud\Core\HttpException;
+use ProjectCloud\Core\Password;
 use ProjectCloud\Core\Request;
 use ProjectCloud\Core\Response;
 use ProjectCloud\Core\Validator;
@@ -92,5 +93,86 @@ final class AuthController
             throw HttpException::unauthorized('Usuario no encontrado');
         }
         return Response::success(AuthService::publicUser($user));
+    }
+
+    /** PATCH /auth/me — actualiza el perfil propio (nombre visible y correo). */
+    public function updateProfile(Request $request): Response
+    {
+        $userId = $request->userId();
+        if ($userId === null) {
+            throw HttpException::unauthorized();
+        }
+
+        $body = $request->json();
+        $repo = new UserRepository();
+        $current = $repo->findById($userId);
+        if ($current === null) {
+            throw HttpException::unauthorized('Usuario no encontrado');
+        }
+
+        $fields = [];
+        if (array_key_exists('display_name', $body)) {
+            $name = trim((string) $body['display_name']);
+            if ($name === '') {
+                throw HttpException::badRequest('El nombre no puede estar vacío.');
+            }
+            $fields['display_name'] = mb_substr($name, 0, 120);
+        }
+        if (array_key_exists('email', $body)) {
+            $email = trim((string) $body['email']);
+            if (filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+                throw new HttpException(422, 'INVALID_EMAIL', 'El correo no es válido.');
+            }
+            if ($repo->existsByUsernameOrEmail((string) $current['username'], $email, $userId)) {
+                throw new HttpException(409, 'EMAIL_EXISTS', 'Ese correo ya está en uso.');
+            }
+            $fields['email'] = $email;
+        }
+
+        if ($fields === []) {
+            throw HttpException::badRequest('Nada que actualizar.');
+        }
+
+        $repo->update($userId, $fields);
+        return Response::success(AuthService::publicUser($repo->findById($userId) ?? $current));
+    }
+
+    /** POST /auth/me/password — cambia la contraseña propia (verifica la actual). */
+    public function changePassword(Request $request): Response
+    {
+        $userId = $request->userId();
+        if ($userId === null) {
+            throw HttpException::unauthorized();
+        }
+
+        $data = (new Validator($request->json()))
+            ->required('current_password')
+            ->required('new_password')
+            ->validate();
+
+        $repo = new UserRepository();
+        $user = $repo->findById($userId);
+        if ($user === null) {
+            throw HttpException::unauthorized('Usuario no encontrado');
+        }
+
+        if (!Password::verify((string) $data['current_password'], (string) $user['password_hash'])) {
+            throw new HttpException(422, 'BAD_PASSWORD', 'La contraseña actual no es correcta.');
+        }
+
+        $new = (string) $data['new_password'];
+        if (strlen($new) < 8) {
+            throw new HttpException(422, 'WEAK_PASSWORD', 'La nueva contraseña debe tener al menos 8 caracteres.');
+        }
+
+        $repo->updatePassword($userId, Password::hash($new));
+
+        try {
+            (new ActivityRepository())->log($userId, 'password_change', 'user', $userId, null, $request->ip());
+        } catch (\Throwable) {
+            // la auditoría no debe romper la operación
+        }
+
+        return Response::success(['ok' => true]);
     }
 }

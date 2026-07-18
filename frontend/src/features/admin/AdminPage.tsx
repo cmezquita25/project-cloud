@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Users, HardDrive, Shield, UserPlus, Activity as ActivityIcon } from 'lucide-react'
+import { Users, HardDrive, Shield, UserPlus, Activity as ActivityIcon, Pencil, Server, Images } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { Button, Dialog, Spinner, useToast } from '@shared/ui'
+import { Button, Dialog, Input, Spinner, useToast } from '@shared/ui'
 import { cn } from '@shared/lib/cn'
 import { formatBytes } from '@shared/lib/formatBytes'
 import { useAuth } from '@features/auth/AuthProvider'
+import { AssetsPermissionsDialog } from '@features/assets/components/AssetsPermissionsDialog'
 import { adminApi } from './services/adminApi'
+import { authApi } from '@features/auth/services/authApi'
 import { UsersTable } from './components/UsersTable'
 import { UserFormDialog } from './components/UserFormDialog'
 import { PasswordResetDialog } from './components/PasswordResetDialog'
@@ -29,7 +31,7 @@ function StatCard({ icon: Icon, label, value }: { icon: LucideIcon; label: strin
 }
 
 export function AdminPage() {
-  const { user } = useAuth()
+  const { user, setUser } = useAuth()
   const toast = useToast()
   const [tab, setTab] = useState<Tab>('overview')
 
@@ -43,6 +45,12 @@ export function AdminPage() {
   const [pwdUser, setPwdUser] = useState<AdminUser | null>(null)
   const [deleteUser, setDeleteUser] = useState<AdminUser | null>(null)
   const [deleting, setDeleting] = useState(false)
+
+  const GB = 1024 ** 3
+  const [capOpen, setCapOpen] = useState(false)
+  const [capGb, setCapGb] = useState('')
+  const [savingCap, setSavingCap] = useState(false)
+  const [assetsPermOpen, setAssetsPermOpen] = useState(false)
 
   const load = useCallback(() => {
     setLoading(true)
@@ -64,6 +72,33 @@ export function AdminPage() {
       load()
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Error')
+    }
+  }
+
+  const openCapacity = () => {
+    setCapGb(stats && stats.server_capacity_bytes > 0 ? String(Math.round(stats.server_capacity_bytes / GB)) : '')
+    setCapOpen(true)
+  }
+
+  const saveCapacity = async () => {
+    const gb = parseFloat(capGb)
+    if (!Number.isFinite(gb) || gb <= 0) {
+      toast.error('Introduce una capacidad válida en GB')
+      return
+    }
+    setSavingCap(true)
+    try {
+      const res = await adminApi.updateCapacity(Math.round(gb * GB))
+      // Refresca el usuario en memoria para que sidebar/perfil reflejen el cambio.
+      if (res.user) setUser(res.user)
+      else await authApi.me().then(setUser)
+      toast.success('Capacidad actualizada')
+      setCapOpen(false)
+      load()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error')
+    } finally {
+      setSavingCap(false)
     }
   }
 
@@ -124,11 +159,52 @@ export function AdminPage() {
             <Spinner size={32} />
           </div>
         ) : tab === 'overview' && stats ? (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard icon={Users} label="Usuarios" value={String(stats.users)} />
-            <StatCard icon={Shield} label="Administradores" value={String(stats.admins)} />
-            <StatCard icon={HardDrive} label="Espacio usado" value={formatBytes(stats.used)} />
-            <StatCard icon={HardDrive} label="Cuota asignada" value={formatBytes(stats.quota)} />
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <StatCard icon={Users} label="Usuarios" value={String(stats.users)} />
+              <StatCard icon={Shield} label="Administradores" value={String(stats.admins)} />
+              <StatCard icon={HardDrive} label="Espacio usado" value={formatBytes(stats.used)} />
+              <StatCard icon={HardDrive} label="Asignado a usuarios" value={formatBytes(stats.allocated_users)} />
+            </div>
+
+            {/* Capacidad real del servidor (editable). */}
+            <div className="flex items-center gap-4 rounded-drive border border-border bg-surface p-4">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-subtle text-primary">
+                <Server size={22} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm text-content-tertiary">Capacidad real del servidor</p>
+                <p className="text-2xl font-medium text-content-primary">
+                  {stats.server_capacity_bytes > 0 ? formatBytes(stats.server_capacity_bytes) : 'No definida'}
+                </p>
+                <p className="text-xs text-content-tertiary">
+                  Asignado a usuarios: {formatBytes(stats.allocated_users)}
+                  {stats.server_capacity_bytes > 0 && stats.allocated_users > stats.server_capacity_bytes && (
+                    <span className="text-danger"> — supera la capacidad del servidor</span>
+                  )}
+                </p>
+              </div>
+              <Button size="sm" variant="secondary" leftIcon={Pencil} onClick={openCapacity}>
+                Ajustar
+              </Button>
+            </div>
+
+            {/* Acceso a la carpeta compartida "assets". */}
+            <div className="flex items-center gap-4 rounded-drive border border-border bg-surface p-4">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-subtle text-primary">
+                <Images size={22} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm text-content-tertiary">Carpeta compartida (assets)</p>
+                <p className="text-base font-medium text-content-primary">Acceso restringido</p>
+                <p className="text-xs text-content-tertiary">
+                  Solo tú y los usuarios que autorices pueden verla e interactuar con ella.
+                </p>
+              </div>
+              <Button size="sm" variant="secondary" leftIcon={Images} onClick={() => setAssetsPermOpen(true)}>
+                Gestionar acceso
+              </Button>
+            </div>
           </div>
         ) : tab === 'users' ? (
           <UsersTable
@@ -159,6 +235,33 @@ export function AdminPage() {
           </>
         }
       />
+
+      <Dialog
+        open={capOpen}
+        onClose={() => (savingCap ? undefined : setCapOpen(false))}
+        title="Capacidad real del servidor"
+        description="Ajusta la capacidad total asignada a tu hosting. Es la base para repartir cuotas entre usuarios."
+        size="sm"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setCapOpen(false)} disabled={savingCap}>Cancelar</Button>
+            <Button onClick={saveCapacity} loading={savingCap}>Guardar</Button>
+          </>
+        }
+      >
+        <Input
+          label="Capacidad (GB)"
+          type="number"
+          min={1}
+          step={1}
+          value={capGb}
+          onChange={(e) => setCapGb(e.target.value)}
+          placeholder="25"
+          autoFocus
+        />
+      </Dialog>
+
+      <AssetsPermissionsDialog open={assetsPermOpen} onClose={() => setAssetsPermOpen(false)} />
     </div>
   )
 }

@@ -36,4 +36,14 @@ export const authApi = {
   me(signal?: AbortSignal): Promise<User> {
     return api.get<User>('/auth/me', { signal })
   },
+
+  /** Actualiza el perfil propio (nombre visible y/o correo). */
+  updateProfile(payload: { display_name?: string; email?: string }): Promise<User> {
+    return api.patch<User>('/auth/me', payload)
+  },
+
+  /** Cambia la contraseña propia (verifica la actual). */
+  changePassword(payload: { current_password: string; new_password: string }): Promise<{ ok: true }> {
+    return api.post<{ ok: true }>('/auth/me/password', payload)
+  },
 }

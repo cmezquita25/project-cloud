@@ -11,6 +11,8 @@ import { TrashPage } from '@features/trash/TrashPage'
 import { SearchPage } from '@features/search/SearchPage'
 import { AdminPage } from '@features/admin/AdminPage'
 import { StoragePage } from '@features/storage-quota/StoragePage'
+import { ProfilePage } from '@features/profile/ProfilePage'
+import { AssetsPage } from '@features/assets/AssetsPage'
 import { LoginPage } from '@features/auth/LoginPage'
 
 /**
@@ -50,6 +52,8 @@ const router = createBrowserRouter([
               { path: 'trash', element: <TrashPage /> },
               { path: 'search', element: <SearchPage /> },
               { path: 'storage', element: <StoragePage /> },
+              { path: 'profile', element: <ProfilePage /> },
+              { path: 'assets', element: <AssetsPage /> },
               // Solo administradores.
               {
                 element: <RequireAdmin />,

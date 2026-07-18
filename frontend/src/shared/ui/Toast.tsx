@@ -71,14 +71,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={value}>
       {children}
       <Portal>
-        <div className="pointer-events-none fixed inset-x-0 bottom-4 z-toast flex flex-col items-center gap-2 px-4 sm:left-6 sm:items-start">
+        <div className="pointer-events-none fixed right-4 top-[4.5rem] z-toast flex flex-col items-end gap-2">
           {items.map((t) => {
             const Icon = TONE_ICON[t.tone]
             return (
               <div
                 key={t.id}
                 role="status"
-                className="pointer-events-auto flex w-full max-w-sm animate-slide-up items-center gap-3 rounded-xl bg-content-primary px-4 py-3 text-content-inverse shadow-elevation-3"
+                className="pointer-events-auto flex w-[calc(100vw-2rem)] max-w-sm animate-slide-in-right items-center gap-3 rounded-xl bg-content-primary px-4 py-3 text-content-inverse shadow-elevation-3"
               >
                 <Icon size={20} className={cn('shrink-0', TONE_COLOR[t.tone])} />
                 <span className="flex-1 text-sm">{t.message}</span>

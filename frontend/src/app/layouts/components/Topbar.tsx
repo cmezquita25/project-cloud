@@ -44,7 +44,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
   const email = user?.email ?? ''
 
   const accountItems: MenuItem[] = [
-    { id: 'profile', label: 'Mi perfil', icon: User, onSelect: () => {} },
+    { id: 'profile', label: 'Mi perfil', icon: User, onSelect: () => navigate('/profile') },
     {
       id: 'logout',
       label: 'Cerrar sesión',
@@ -115,6 +115,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
             items={accountItems}
             title="Cuenta"
             align="right"
+            anchorRef={anchor}
           >
             <div className="flex items-center gap-3 px-3 py-2">
               <Avatar name={displayName} size={40} />

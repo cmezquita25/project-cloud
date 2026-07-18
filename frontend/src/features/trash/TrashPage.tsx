@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Trash2, RotateCcw, Trash, MoreVertical } from 'lucide-react'
 import { ApiError } from '@shared/api'
 import { Button, EmptyState, Spinner, IconButton, Dialog, useToast, Menu, type MenuItem } from '@shared/ui'
@@ -205,6 +205,7 @@ interface TrashRowProps {
 function TrashRow({ item, busy, onRestore, onPurge }: TrashRowProps) {
   const { icon: Icon, className } = getFileIcon(item.name, item.type === 'folder')
   const menu = useDisclosure()
+  const anchor = useRef<HTMLDivElement>(null)
 
   const menuItems: MenuItem[] = [
     { id: 'restore', label: 'Restaurar', icon: RotateCcw, onSelect: onRestore },
@@ -213,8 +214,8 @@ function TrashRow({ item, busy, onRestore, onPurge }: TrashRowProps) {
 
   return (
     <tr className="group border-b border-border/60 last:border-0">
-      <td className="py-2 pl-3">
-        <div className="flex items-center gap-3">
+      <td className="max-w-0 py-2 pl-3">
+        <div className="flex min-w-0 items-center gap-3">
           <Icon size={20} className={cn('shrink-0', className)} />
           <span className="truncate text-content-primary">{item.name}</span>
         </div>
@@ -232,7 +233,7 @@ function TrashRow({ item, busy, onRestore, onPurge }: TrashRowProps) {
           ) : (
             <IconButton icon={RotateCcw} label="Restaurar" size="sm" onClick={onRestore} />
           )}
-          <div className="relative">
+          <div ref={anchor} className="relative">
             <IconButton
               icon={MoreVertical}
               label="Más acciones"
@@ -240,7 +241,14 @@ function TrashRow({ item, busy, onRestore, onPurge }: TrashRowProps) {
               active={menu.isOpen}
               onClick={menu.toggle}
             />
-            <Menu open={menu.isOpen} onClose={menu.close} items={menuItems} title={item.name} align="right" />
+            <Menu
+              open={menu.isOpen}
+              onClose={menu.close}
+              items={menuItems}
+              title={item.name}
+              align="right"
+              anchorRef={anchor}
+            />
           </div>
         </div>
       </td>

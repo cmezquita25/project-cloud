@@ -1,13 +1,16 @@
-import { useState, type FormEvent } from 'react'
-import { User, Mail, Lock, IdCard } from 'lucide-react'
+import { useEffect, useState, type FormEvent } from 'react'
+import { User, Mail, Lock, IdCard, HardDrive } from 'lucide-react'
 import { Button, Input } from '@shared/ui'
 import { ApiError } from '@shared/api'
+import { formatBytes } from '@shared/lib/formatBytes'
 import { installApi } from '../services/installApi'
 
 interface StepAdminProps {
   onBack: () => void
   onDone: () => void
 }
+
+const GB = 1024 ** 3
 
 /** Paso 3: crea la cuenta del primer administrador y bloquea el instalador. */
 export function StepAdmin({ onBack, onDone }: StepAdminProps) {
@@ -17,9 +20,28 @@ export function StepAdmin({ onBack, onDone }: StepAdminProps) {
     email: '',
     password: '',
   })
+  const [capacityGb, setCapacityGb] = useState('')
+  const [detected, setDetected] = useState<{ total: number | null; free: number | null } | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
+
+  // Sugerencia de capacidad a partir de la detección del disco del servidor.
+  useEffect(() => {
+    const c = new AbortController()
+    installApi
+      .check(c.signal)
+      .then((r) => {
+        if (!r.disk) return
+        setDetected({ total: r.disk.total_bytes, free: r.disk.free_bytes })
+        if (r.disk.total_bytes && capacityGb === '') {
+          setCapacityGb(String(Math.round(r.disk.total_bytes / GB)))
+        }
+      })
+      .catch(() => {})
+    return () => c.abort()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const set = (key: keyof typeof form) => (e: { target: { value: string } }) =>
     setForm((f) => ({ ...f, [key]: e.target.value }))
@@ -30,7 +52,12 @@ export function StepAdmin({ onBack, onDone }: StepAdminProps) {
     setError(null)
     setFieldErrors({})
     try {
-      await installApi.createAdmin(form)
+      const gb = parseFloat(capacityGb)
+      const payload = {
+        ...form,
+        ...(Number.isFinite(gb) && gb > 0 ? { server_capacity_bytes: Math.round(gb * GB) } : {}),
+      }
+      await installApi.createAdmin(payload)
       onDone()
     } catch (err) {
       if (err instanceof ApiError) {
@@ -103,6 +130,23 @@ export function StepAdmin({ onBack, onDone }: StepAdminProps) {
           placeholder="Escribe una contraseña"
           autoComplete="new-password"
           required
+        />
+        <Input
+          label="Capacidad real del servidor (GB)"
+          type="number"
+          min={1}
+          step={1}
+          leftIcon={HardDrive}
+          value={capacityGb}
+          onChange={(e) => setCapacityGb(e.target.value)}
+          hint={
+            detected?.total
+              ? `Detectado en el volumen: ${formatBytes(detected.total)} totales${
+                  detected.free ? `, ${formatBytes(detected.free)} libres` : ''
+                }. En hosting compartido puede reflejar el disco físico completo: ajústalo a tu cuota real (p. ej. 25).`
+              : 'Introduce la capacidad asignada a tu cuenta de hosting (p. ej. 25). Es la base de las cuotas.'
+          }
+          placeholder="25"
         />
       </div>
 
