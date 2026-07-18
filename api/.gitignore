@@ -1,0 +1,7 @@
+# Configuración generada por el instalador (contiene credenciales y secreto JWT).
+config/config.php
+config/install.lock
+
+# Sesiones de subida temporales.
+storage/.uploads/
+*.log

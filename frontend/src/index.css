@@ -1,0 +1,143 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/**
+ * ============================================================================
+ *  TOKENS DE THEME — Project Cloud
+ *  Valores en formato "R G B" (sin coma) para soportar <alpha-value> de Tailwind.
+ *  Editar aquí = re-brandear toda la app.
+ * ============================================================================
+ */
+
+@layer base {
+  :root {
+    /* Superficies (modo claro) */
+    --color-canvas: 255 255 255;
+    --color-surface: 255 255 255;
+    --color-surface-hover: 241 243 244;
+    --color-surface-active: 232 240 254;
+    --color-surface-container: 248 250 253;
+    --color-overlay: 32 33 36;
+
+    /* Contenido */
+    --color-content-primary: 32 33 36; /* #202124 */
+    --color-content-secondary: 95 99 104; /* #5f6368 */
+    --color-content-tertiary: 128 134 139; /* #80868b */
+    --color-content-inverse: 255 255 255;
+
+    /* Bordes */
+    --color-border: 218 220 224; /* #dadce0 */
+    --color-border-strong: 189 193 198; /* #bdc1c6 */
+
+    /* Marca — azul Google Drive */
+    --color-primary: 26 115 232; /* #1a73e8 */
+    --color-primary-hover: 23 101 204; /* #1765cc */
+    --color-primary-active: 24 90 188; /* #185abc */
+    --color-primary-subtle: 232 240 254; /* #e8f0fe */
+    --color-primary-on: 255 255 255;
+
+    /* Funcionales */
+    --color-success: 24 128 56; /* #188038 */
+    --color-warning: 249 171 0; /* #f9ab00 */
+    --color-danger: 217 48 37; /* #d93025 */
+    --color-danger-subtle: 252 232 230; /* #fce8e6 */
+    --color-danger-on: 255 255 255;
+
+    /* Foco */
+    --color-focus: 26 115 232;
+
+    color-scheme: light;
+  }
+
+  .dark {
+    /* Superficies (modo oscuro) */
+    --color-canvas: 27 27 27; /* #1b1b1b */
+    --color-surface: 40 42 44; /* #282a2c */
+    --color-surface-hover: 51 53 55; /* #333537 */
+    --color-surface-active: 30 58 95; /* #1e3a5f */
+    --color-surface-container: 30 31 32; /* #1e1f20 */
+    --color-overlay: 0 0 0;
+
+    /* Contenido */
+    --color-content-primary: 227 227 227; /* #e3e3e3 */
+    --color-content-secondary: 196 199 197; /* #c4c7c5 */
+    --color-content-tertiary: 154 160 166; /* #9aa0a6 */
+    --color-content-inverse: 32 33 36;
+
+    /* Bordes */
+    --color-border: 60 64 67; /* #3c4043 */
+    --color-border-strong: 95 99 104; /* #5f6368 */
+
+    /* Marca — azul Google Drive (variante oscura) */
+    --color-primary: 138 180 248; /* #8ab4f8 */
+    --color-primary-hover: 158 193 250; /* #9ec1fa */
+    --color-primary-active: 174 203 250; /* #aecbfa */
+    --color-primary-subtle: 30 58 95; /* #1e3a5f */
+    --color-primary-on: 32 33 36; /* texto oscuro sobre azul claro */
+
+    /* Funcionales */
+    --color-success: 129 201 149; /* #81c995 */
+    --color-warning: 253 214 99; /* #fdd663 */
+    --color-danger: 242 139 130; /* #f28b82 */
+    --color-danger-subtle: 60 31 29; /* #3c1f1d */
+    --color-danger-on: 32 33 36;
+
+    /* Foco */
+    --color-focus: 138 180 248;
+
+    color-scheme: dark;
+  }
+
+  * {
+    border-color: rgb(var(--color-border));
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-canvas text-content-primary font-sans antialiased;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Foco accesible y consistente */
+  :focus-visible {
+    outline: 2px solid rgb(var(--color-focus));
+    outline-offset: 2px;
+  }
+
+  /* Scrollbars sutiles estilo Google */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--color-border-strong)) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background-color: rgb(var(--color-border-strong));
+    border-radius: 9999px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: rgb(var(--color-content-tertiary));
+  }
+}
+
+@layer utilities {
+  /* Evita el flash de transición al alternar el tema */
+  .theme-transition,
+  .theme-transition * {
+    transition:
+      background-color 200ms ease,
+      border-color 200ms ease,
+      color 200ms ease;
+  }
+}

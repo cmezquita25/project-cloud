@@ -1,0 +1,28 @@
+# Dependencias
+node_modules/
+
+# Builds
+dist/
+dist-ssr/
+
+# Configuración sensible del backend (generada por el instalador)
+api/config/config.php
+api/config/install.lock
+
+# Sesiones de subida y archivos de usuarios (no versionar contenido real)
+storage/
+api/storage/.uploads/
+
+# Entorno
+.env
+.env.*
+!.env.example
+
+# Editor / SO
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+*.log
+*.local

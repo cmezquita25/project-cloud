@@ -1,0 +1,102 @@
+# ==========================================================================
+#  Project Cloud — .htaccess raíz (producción · drive.techmaleon.mx)
+#  Sirve el SPA de React (build de Vite) + enruta la API PHP + hardening.
+#  Este archivo vive en la raíz del front (httpdocs de Plesk).
+# ==========================================================================
+
+# --- 0. Ajustes base -------------------------------------------------------
+Options -Indexes -MultiViews
+DirectoryIndex index.html
+
+<IfModule mod_headers.c>
+
+    # 1. CABECERAS DE SEGURIDAD GLOBALES
+    # ----------------------------------------------------------------------
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    Header always set X-XSS-Protection "0"
+
+    # Permitimos embeber el contenido en iframes del mismo origen (visores PDF, etc.)
+    Header always set X-Frame-Options "SAMEORIGIN"
+
+    # Desactivamos permisos de hardware innecesarios para un servidor de archivos
+    Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+
+    # 2. CONTENT SECURITY POLICY (CSP) — adaptada a un drive/repositorio
+    # ----------------------------------------------------------------------
+    # default-src * e img-src * : los archivos del drive se pueden servir a cualquier sitio.
+    # frame-ancestors 'self'    : protege la app para que no la embeban en iframes externos.
+    Header always set Content-Security-Policy "default-src * data: blob: 'unsafe-inline' 'unsafe-eval'; frame-ancestors 'self'; object-src 'none'; base-uri 'self';"
+
+    # 3. CORS PARA ARCHIVOS ESTÁTICOS (imprescindible para PDFs y Fetch/Axios de terceros)
+    # ----------------------------------------------------------------------
+    <FilesMatch "\.(jpg|jpeg|png|gif|svg|webp|avif|ico|js|css|woff2?|ttf|otf|eot|pdf|mp4|webm|mp3|wav|ogg|json)$">
+        # Reflejamos el origen de la petición externa
+        SetEnvIf Origin "^(.+)$" ORIGIN_SUB=$1
+        Header always set Access-Control-Allow-Origin "%{ORIGIN_SUB}e" env=ORIGIN_SUB
+        # Si la petición no trae Origin (descarga directa), permitimos todo
+        Header always set Access-Control-Allow-Origin "*" env=!ORIGIN_SUB
+
+        Header always set Access-Control-Allow-Methods "GET, HEAD, OPTIONS"
+        Header always set Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept, Range, Authorization"
+        Header always set Access-Control-Max-Age "86400"
+        # Nota: NO usamos Access-Control-Allow-Credentials porque es incompatible
+        # con Allow-Origin "*" y los archivos son públicos (no requieren cookies).
+    </FilesMatch>
+
+    # 4. CACHÉ
+    # ----------------------------------------------------------------------
+    # Assets con hash en el nombre (Vite) -> caché larga e inmutable.
+    <FilesMatch "\.(js|css|woff2?|ttf|otf|eot|svg|png|jpg|jpeg|gif|webp|avif|ico)$">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </FilesMatch>
+    # index.html NUNCA se cachea, para que cada deploy se vea al instante.
+    <FilesMatch "^index\.html$">
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+    </FilesMatch>
+
+</IfModule>
+
+# --- 5. Compresión ---------------------------------------------------------
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/css text/xml
+    AddOutputFilterByType DEFLATE application/javascript application/json
+    AddOutputFilterByType DEFLATE image/svg+xml application/xml
+</IfModule>
+
+# --- 6. ENRUTAMIENTO -------------------------------------------------------
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    # 6a. Preflight CORS (OPTIONS) -> responde 204 sin procesar de más.
+    RewriteCond %{REQUEST_METHOD} OPTIONS
+    RewriteRule ^ - [R=204,L]
+
+    # 6b. API -> front controller PHP. El guard evita bucles cuando la ruta
+    #     ya apunta a api/public/. index.php lee la ruta desde REQUEST_URI.
+    RewriteRule ^api/public/ - [L]
+    RewriteRule ^api/ api/public/index.php [L,QSA]
+
+    # 6c. Los archivos de /storage se sirven directos (URLs públicas del drive).
+    RewriteRule ^storage/ - [L]
+
+    # 6d. Si el recurso existe físicamente (assets, favicon...), servirlo tal cual.
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # 6e. SPA fallback: cualquier otra ruta -> index.html (React Router).
+    RewriteRule ^ index.html [L]
+</IfModule>
+
+# --- 7. PROTECCIÓN DE ARCHIVOS SENSIBLES -----------------------------------
+# Bloquea dotfiles y extensiones que nunca deben servirse desde el front.
+<FilesMatch "(^\.(?!well-known)|\.(env|ini|log|sh|sql|bak|config|dist)$)">
+    Require all denied
+    <IfModule !mod_authz_core.c>
+        Order deny,allow
+        Deny from all
+    </IfModule>
+</FilesMatch>
