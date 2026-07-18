@@ -33,12 +33,12 @@ final class InstallController
         );
     }
 
-    /** El esquema puede venir en database/ (raíz) o bundleado en api/. */
+    /** El esquema viaja empaquetado en api/database/ (también acepta ubicaciones antiguas). */
     private function resolveSchemaPath(string $apiRoot): string
     {
         $candidates = [
-            dirname($apiRoot) . '/database/schema.sql',
-            $apiRoot . '/database/schema.sql',
+            $apiRoot . '/database/schema.sql',       // empaquetado con la API (recomendado)
+            dirname($apiRoot) . '/database/schema.sql', // carpeta database/ en la raíz (legado)
             $apiRoot . '/schema.sql',
         ];
         foreach ($candidates as $path) {

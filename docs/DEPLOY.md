@@ -46,8 +46,7 @@ Sube los archivos hasta dejar el docroot así:
 ├── index.html            ← contenido de frontend/dist/
 ├── app-assets/           ← contenido de frontend/dist/
 ├── .htaccess             ← el .htaccess de la RAÍZ del repo
-├── api/                  ← carpeta completa del repo (SIN config/config.php)
-├── database/             ← carpeta del repo (schema.sql + .htaccess)
+├── api/                  ← carpeta completa (incluye api/database/schema.sql)
 ├── assets/               ← 🟢 YA EXISTE — NO LA TOQUES
 └── storage/              ← 🔵 la crea el instalador automáticamente
 ```
@@ -59,7 +58,9 @@ Sube los archivos hasta dejar el docroot así:
 | `frontend/dist/*` (index.html + app-assets/) | raíz del docroot |
 | `.htaccess` (raíz del repo) | raíz del docroot |
 | `api/` (carpeta completa) | `{docroot}/api/` |
-| `database/` (carpeta completa) | `{docroot}/database/` |
+
+> El esquema de la base de datos viaja **dentro** de `api/database/schema.sql`,
+> así que no hay carpetas extra que recordar: con subir `api/` y `dist/` basta.
 
 **Qué NO subir:** `frontend/` (código fuente), `node_modules/`, `api/config/config.php`,
 `api/config/install.lock`, `storage/`.
@@ -116,17 +117,15 @@ Al terminar, `config/config.php` y `install.lock` existen, y la BD tiene las 6 t
 |---|---|
 | Instalador (crea BD, tablas, admin) | ✅ Fase 2 |
 | UI completa estilo Drive (claro/oscuro) | ✅ |
-| Iniciar sesión de verdad | 🔜 Fase 3 |
+| Iniciar sesión de verdad (JWT) | ✅ Fase 3 |
 | Explorador de archivos, subidas | 🔜 Fases 4–5 |
-
-> En esta etapa puedes validar que **la instalación funciona en tu hosting real**
-> y ver la interfaz. El login funcional y la gestión de archivos llegan en las
-> siguientes fases.
 
 ## Solución de problemas
 
 | Síntoma | Causa / solución |
 |---|---|
+| `SCHEMA_MISSING` / "No se encontró el esquema" | El esquema viaja en `api/database/schema.sql`. Sube la carpeta `api/` **completa** (incluida su subcarpeta `database/`). |
+| `could not find named location "@fallback"` (nginx) | Hay una directiva nginx personalizada en Plesk que referencia `@fallback` sin definirla. Ver la sección **9. nginx** abajo. |
 | `/api/v1/health` da **403 Forbidden** | Sube la versión actual de `api/` (front controller en `api/index.php`, sin carpeta `public/`) y el `.htaccess` raíz. Verifica que el dominio use **Apache + nginx** en Plesk. |
 | Abre el mock en `/` y **no** el instalador | Ocurre cuando la API responde error (p.ej. 403). Arreglado el acceso a `/api`, `/` redirige solo a `/install`. |
 | `/api/v1/health` da **404** | El `.htaccess` raíz no se aplica (mod_rewrite/AllowOverride). Revisa que subiste el `.htaccess` a la raíz y que Plesk permite `.htaccess`. |
@@ -137,8 +136,24 @@ Al terminar, `config/config.php` y `install.lock` existen, y la BD tiene las 6 t
 Borra `api/config/install.lock` (y opcionalmente `api/config/config.php`) desde
 el File Manager. Al recargar, el asistente vuelve a aparecer.
 
-## 9. Nota sobre Plesk + nginx
+## 9. Plesk + nginx
 
-Si el dominio está en modo **“Apache + nginx”** (por defecto), el `.htaccess`
-funciona. Si lo tienes en **“solo nginx”**, el enrutado SPA no aplicará y hay
-que añadir reglas nginx equivalentes (pídemelas si es tu caso).
+Este proyecto usa el `.htaccess` (Apache) para todo el enrutado (SPA + `/api`).
+Para que funcione, nginx debe **proxear a Apache**, no servir por su cuenta.
+
+**En Plesk → Dominio → Apache & nginx Settings:**
+
+1. Activa **“Proxy mode”** (que nginx pase las peticiones dinámicas a Apache).
+2. En **“Additional nginx directives”**, elimina cualquier directiva propia que
+   uses `try_files ... @fallback;` sin definir el bloque `location @fallback { }`.
+   Ese es el origen del error de log `could not find named location "@fallback"`.
+   Deja el recuadro **vacío** para que Apache/.htaccess gestione el enrutado.
+3. Guarda. Verifica con `https://tu-dominio/api/v1/health`.
+
+> Si prefieres que **nginx** sirva el SPA directamente (sin Apache), la directiva
+> correcta NO es `@fallback`, sino:
+> ```nginx
+> location / { try_files $uri $uri/ /index.html; }
+> ```
+> …pero además tendrías que proxear `/api` a Apache/PHP. Es más complejo; lo
+> recomendado es dejar que Apache (el `.htaccess`) haga todo con Proxy mode ON.
