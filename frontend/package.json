@@ -1,7 +1,7 @@
 {
   "name": "project-cloud-frontend",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.3.0",
   "type": "module",
   "description": "Project Cloud — clon de Google Drive auto-hosteado (frontend)",
   "scripts": {

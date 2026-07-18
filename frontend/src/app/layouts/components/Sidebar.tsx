@@ -3,16 +3,17 @@ import { NavLink } from 'react-router-dom'
 import { cn } from '@shared/lib/cn'
 import { Button } from '@shared/ui'
 import { StorageIndicator } from '@features/storage-quota/components/StorageIndicator'
+import { useAuth } from '@features/auth/AuthProvider'
 import { NAV_ITEMS } from '../navigation'
 
 interface SidebarProps {
   /** Cierra el drawer en móvil al navegar. */
   onNavigate?: () => void
-  isAdmin?: boolean
 }
 
 /** Barra lateral de navegación (clon de Google Drive). */
-export function Sidebar({ onNavigate, isAdmin = true }: SidebarProps) {
+export function Sidebar({ onNavigate }: SidebarProps) {
+  const { user, isAdmin } = useAuth()
   const items = NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin)
 
   return (
@@ -51,8 +52,10 @@ export function Sidebar({ onNavigate, isAdmin = true }: SidebarProps) {
       </nav>
 
       <div className="border-t border-border pb-2 pt-2">
-        {/* Datos de ejemplo hasta conectar `GET /quota` en Fase 6. */}
-        <StorageIndicator usedBytes={3.2 * 1024 ** 3} totalBytes={15 * 1024 ** 3} />
+        <StorageIndicator
+          usedBytes={user?.used_bytes ?? 0}
+          totalBytes={user?.quota_bytes ?? 0}
+        />
       </div>
     </div>
   )

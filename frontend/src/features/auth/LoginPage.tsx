@@ -1,18 +1,38 @@
 import { useState, type FormEvent } from 'react'
-import { Mail, Lock } from 'lucide-react'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { User, Lock } from 'lucide-react'
 import { Button, Input } from '@shared/ui'
+import { ApiError } from '@shared/api'
+import { getVersionFooter } from '@shared/config/version'
+import { useAuth } from './AuthProvider'
 
-/**
- * Pantalla de inicio de sesión (maqueta).
- * La lógica de autenticación (JWT + refresh) se implementa en la Fase 3.
- */
+/** Pantalla de inicio de sesión (funcional). */
 export function LoginPage() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const { login } = useAuth()
+  const navigate = useNavigate()
+  const location = useLocation()
 
-  const onSubmit = (e: FormEvent) => {
+  const [form, setForm] = useState({ login: '', password: '' })
+  const [error, setError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+
+  const from = (location.state as { from?: string } | null)?.from ?? '/'
+
+  const set = (key: keyof typeof form) => (e: { target: { value: string } }) =>
+    setForm((f) => ({ ...f, [key]: e.target.value }))
+
+  const onSubmit = async (e: FormEvent) => {
     e.preventDefault()
-    // Fase 3: llamar a POST /auth/login
+    setSubmitting(true)
+    setError(null)
+    try {
+      await login({ login: form.login.trim(), password: form.password })
+      navigate(from, { replace: true })
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'No se pudo iniciar sesión')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -22,31 +42,39 @@ export function LoginPage() {
         <p className="mt-1 text-sm text-content-secondary">Accede a tu almacenamiento</p>
       </div>
 
+      {error && (
+        <div className="mb-4 rounded-drive border border-danger/40 bg-danger-subtle p-3 text-sm text-danger">
+          {error}
+        </div>
+      )}
+
       <form onSubmit={onSubmit} className="space-y-4">
         <Input
-          label="Correo electrónico"
-          type="email"
-          leftIcon={Mail}
-          placeholder="tucorreo@techmaleon.mx"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          autoComplete="email"
+          label="Correo o nombre de usuario"
+          leftIcon={User}
+          placeholder="Escribe tu correo o usuario"
+          value={form.login}
+          onChange={set('login')}
+          autoComplete="username"
+          autoFocus
           required
         />
         <Input
           label="Contraseña"
           type="password"
           leftIcon={Lock}
-          placeholder="••••••••"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Escribe tu contraseña"
+          value={form.password}
+          onChange={set('password')}
           autoComplete="current-password"
           required
         />
-        <Button type="submit" fullWidth size="lg">
+        <Button type="submit" fullWidth size="lg" loading={submitting}>
           Entrar
         </Button>
       </form>
+
+      <p className="mt-8 text-center text-xs text-content-tertiary">{getVersionFooter()}</p>
     </div>
   )
 }

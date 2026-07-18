@@ -1,5 +1,6 @@
 import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom'
 import { RootGate } from './RootGate'
+import { RequireAuth, RequireAdmin, RedirectIfAuth } from './guards'
 import { AppLayout } from '@app/layouts/AppLayout'
 import { AuthLayout } from '@app/layouts/AuthLayout'
 import { InstallWizard } from '@features/install/InstallWizard'
@@ -12,35 +13,48 @@ import { AdminPage } from '@features/admin/AdminPage'
 import { LoginPage } from '@features/auth/LoginPage'
 
 /**
- * Rutas de la aplicación. Todas cuelgan de RootGate, que gestiona la
- * redirección al instalador cuando la app aún no está instalada.
- * Los guards de sesión (RequireAuth / RequireAdmin) se añaden en la Fase 3.
+ * Rutas de la aplicación.
+ * RootGate → (instalador | login | app con guards de sesión/admin).
  */
 const router = createBrowserRouter([
   {
     element: <RootGate />,
     children: [
-      // Instalador (pantalla propia, sin layout de app).
+      // Instalador (sin sesión, pantalla propia).
       { path: '/install', element: <InstallWizard /> },
 
-      // Autenticación.
+      // Login: si ya hay sesión, redirige a la app.
       {
-        element: <AuthLayout />,
-        children: [{ path: '/login', element: <LoginPage /> }],
+        element: <RedirectIfAuth />,
+        children: [
+          {
+            element: <AuthLayout />,
+            children: [{ path: '/login', element: <LoginPage /> }],
+          },
+        ],
       },
 
       // App autenticada.
       {
-        path: '/',
-        element: <AppLayout />,
+        element: <RequireAuth />,
         children: [
-          { index: true, element: <DriveExplorerPage /> },
-          { path: 'folder/:folderId', element: <DriveExplorerPage /> },
-          { path: 'recent', element: <RecentPage /> },
-          { path: 'starred', element: <StarredPage /> },
-          { path: 'trash', element: <TrashPage /> },
-          { path: 'search', element: <SearchPage /> },
-          { path: 'admin', element: <AdminPage /> },
+          {
+            path: '/',
+            element: <AppLayout />,
+            children: [
+              { index: true, element: <DriveExplorerPage /> },
+              { path: 'folder/:folderId', element: <DriveExplorerPage /> },
+              { path: 'recent', element: <RecentPage /> },
+              { path: 'starred', element: <StarredPage /> },
+              { path: 'trash', element: <TrashPage /> },
+              { path: 'search', element: <SearchPage /> },
+              // Solo administradores.
+              {
+                element: <RequireAdmin />,
+                children: [{ path: 'admin', element: <AdminPage /> }],
+              },
+            ],
+          },
         ],
       },
 

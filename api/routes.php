@@ -13,6 +13,9 @@ declare(strict_types=1);
 use ProjectCloud\Core\Router;
 use ProjectCloud\Controllers\HealthController;
 use ProjectCloud\Controllers\InstallController;
+use ProjectCloud\Controllers\AuthController;
+use ProjectCloud\Middleware\AuthMiddleware;
+use ProjectCloud\Middleware\RateLimit;
 
 return static function (Router $router): void {
     // --- Diagnóstico ---
@@ -26,8 +29,8 @@ return static function (Router $router): void {
     $router->post('/v1/install/admin',     [InstallController::class, 'admin']);
 
     // --- Fase 3: Autenticación ---
-    // $router->post('/v1/auth/login',   [AuthController::class, 'login'], [new RateLimit('login', 5, 300)]);
-    // $router->post('/v1/auth/refresh', [AuthController::class, 'refresh']);
-    // $router->post('/v1/auth/logout',  [AuthController::class, 'logout']);
-    // $router->get('/v1/auth/me',       [AuthController::class, 'me'], [new AuthMiddleware()]);
+    $router->post('/v1/auth/login',   [AuthController::class, 'login'], [new RateLimit('login', 8, 300)]);
+    $router->post('/v1/auth/refresh', [AuthController::class, 'refresh'], [new RateLimit('refresh', 60, 300)]);
+    $router->post('/v1/auth/logout',  [AuthController::class, 'logout']);
+    $router->get('/v1/auth/me',       [AuthController::class, 'me'], [new AuthMiddleware()]);
 };

@@ -1,8 +1,9 @@
 import { useRef } from 'react'
-import { Menu as MenuIcon, Search, HelpCircle, Settings, LogOut, User } from 'lucide-react'
+import { Menu as MenuIcon, Search, HelpCircle, LogOut, User } from 'lucide-react'
 import { IconButton, Avatar, Menu, type MenuItem } from '@shared/ui'
 import { useDisclosure } from '@shared/hooks/useDisclosure'
 import { ThemeToggle } from '@features/settings/components/ThemeToggle'
+import { useAuth } from '@features/auth/AuthProvider'
 
 interface TopbarProps {
   onMenuClick: () => void
@@ -12,14 +13,23 @@ interface TopbarProps {
 export function Topbar({ onMenuClick }: TopbarProps) {
   const account = useDisclosure()
   const anchor = useRef<HTMLDivElement>(null)
+  const { user, logout } = useAuth()
 
-  // Usuario de ejemplo hasta conectar `GET /auth/me` en Fase 3.
-  const user = { name: 'Usuario Demo', email: 'demo@techmaleon.mx', avatar: null }
+  const displayName = user?.display_name ?? 'Usuario'
+  const email = user?.email ?? ''
 
   const accountItems: MenuItem[] = [
     { id: 'profile', label: 'Mi perfil', icon: User, onSelect: () => {} },
-    { id: 'settings', label: 'Configuración', icon: Settings, onSelect: () => {} },
-    { id: 'logout', label: 'Cerrar sesión', icon: LogOut, onSelect: () => {}, danger: true, divider: true },
+    {
+      id: 'logout',
+      label: 'Cerrar sesión',
+      icon: LogOut,
+      onSelect: () => {
+        void logout()
+      },
+      danger: true,
+      divider: true,
+    },
   ]
 
   return (
@@ -60,7 +70,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
             aria-label="Cuenta"
             className="rounded-full focus-visible:outline-focus"
           >
-            <Avatar name={user.name} src={user.avatar} size={32} />
+            <Avatar name={displayName} size={32} />
           </button>
           <Menu
             open={account.isOpen}
@@ -70,10 +80,10 @@ export function Topbar({ onMenuClick }: TopbarProps) {
             align="right"
           >
             <div className="flex items-center gap-3 px-3 py-2">
-              <Avatar name={user.name} src={user.avatar} size={40} />
+              <Avatar name={displayName} size={40} />
               <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-content-primary">{user.name}</p>
-                <p className="truncate text-xs text-content-tertiary">{user.email}</p>
+                <p className="truncate text-sm font-medium text-content-primary">{displayName}</p>
+                <p className="truncate text-xs text-content-tertiary">{email}</p>
               </div>
             </div>
             <div className="my-1 h-px bg-border" />
