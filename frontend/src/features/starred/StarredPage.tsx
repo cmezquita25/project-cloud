@@ -41,6 +41,7 @@ export function StarredPage() {
           loading={loading}
           error={error}
           reload={() => load()}
+          showLocation
           empty={{
             icon: Star,
             title: 'No tienes elementos destacados',

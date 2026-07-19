@@ -78,17 +78,32 @@ final class QuotaService
         if ($mime === 'application/pdf' || $ext === 'pdf') {
             return 'pdf';
         }
-        if (in_array($ext, ['doc', 'docx', 'txt', 'rtf', 'odt', 'md'], true)) {
+        if (in_array($ext, ['doc', 'docx', 'txt', 'rtf', 'odt', 'md', 'pages', 'epub', 'tex', 'log'], true)) {
             return 'document';
         }
-        if (in_array($ext, ['xls', 'xlsx', 'csv', 'ods'], true)) {
+        if (in_array($ext, ['xls', 'xlsx', 'csv', 'ods', 'tsv', 'numbers'], true)) {
             return 'spreadsheet';
         }
-        if (in_array($ext, ['zip', 'rar', '7z', 'tar', 'gz'], true)) {
+        if (in_array($ext, ['ppt', 'pptx', 'odp', 'key'], true)) {
+            return 'presentation';
+        }
+        if (in_array($ext, ['zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz', 'iso', 'tgz', 'cab'], true)) {
             return 'archive';
         }
-        if (in_array($ext, ['js', 'ts', 'tsx', 'jsx', 'html', 'css', 'json', 'php', 'py', 'java', 'sql'], true)) {
+        if (in_array($ext, [
+            'js', 'ts', 'tsx', 'jsx', 'html', 'css', 'scss', 'less', 'json', 'xml', 'yml', 'yaml',
+            'php', 'py', 'java', 'c', 'cpp', 'h', 'cs', 'go', 'rb', 'rs', 'kt', 'swift', 'sh', 'vue', 'sql',
+        ], true)) {
             return 'code';
+        }
+        if (in_array($ext, [
+            'psd', 'ai', 'eps', 'indd', 'xd', 'aep', 'prproj', 'fig', 'sketch',
+            'afdesign', 'afphoto', 'cdr', 'dwg',
+        ], true)) {
+            return 'design';
+        }
+        if (in_array($ext, ['exe', 'msi', 'dmg', 'apk', 'deb', 'rpm', 'appimage', 'bin', 'bat'], true)) {
+            return 'executable';
         }
         return 'other';
     }

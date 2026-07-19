@@ -74,14 +74,25 @@ export function forceRefresh(): Promise<void> {
 
 async function raw(method: Method, path: string, body: unknown, options: RequestOptions): Promise<Response> {
   const headers: Record<string, string> = {}
-  if (body !== undefined) headers['Content-Type'] = 'application/json'
+  
+  let fetchBody: BodyInit | undefined = undefined
+  if (body !== undefined) {
+    if (body instanceof FormData) {
+      fetchBody = body
+      // El navegador pondrá el Content-Type automáticamente con el boundary para FormData.
+    } else {
+      headers['Content-Type'] = 'application/json'
+      fetchBody = JSON.stringify(body)
+    }
+  }
+
   const access = session.getAccess()
   if (access) headers['Authorization'] = `Bearer ${access}`
 
   return fetch(`${BASE_URL}${path}`, {
     method,
     headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body: fetchBody,
     signal: options.signal,
   })
 }

@@ -29,6 +29,7 @@ import { getFileIcon } from '@shared/lib/fileIcons'
 import { formatBytes } from '@shared/lib/formatBytes'
 import { usePreview } from '@features/preview'
 import { NamePromptDialog } from '@features/drive-explorer/components/dialogs/NamePromptDialog'
+import { useMarqueeSelection } from '@features/drive-explorer/hooks/useMarqueeSelection'
 import type { FileItem } from '@features/drive-explorer/types'
 import { assetsApi, type AssetFile, type AssetItem, type AssetsListing } from './services/assetsApi'
 import { useAssetsAccess } from './hooks/useAssetsAccess'
@@ -105,6 +106,18 @@ export function AssetsPage() {
   const fileItems = useMemo(() => (listing?.files ?? []).map((f, i) => toFileItem(f, i + 1)), [listing])
 
   const clearSelection = () => setSelected(new Set())
+
+  // Selección por área (lazo). Las claves de `data-sel-key` son las rutas.
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const marqueeBase = useRef<Set<string>>(new Set())
+  const { overlay: marqueeOverlay } = useMarqueeSelection({
+    containerRef: scrollRef,
+    onBegin: (additive) => {
+      marqueeBase.current = additive ? new Set(selected) : new Set()
+      if (!additive) setSelected(new Set())
+    },
+    onSelect: (keys) => setSelected(new Set([...marqueeBase.current, ...keys])),
+  })
 
   const onItemClick = (item: AssetItem, e: React.MouseEvent) => {
     if (e.ctrlKey || e.metaKey) {
@@ -323,7 +336,7 @@ export function AssetsPage() {
       </div>
 
       {/* Contenido */}
-      <div className="min-h-0 flex-1 overflow-y-auto" onContextMenu={onBackgroundContextMenu}>
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto" onContextMenu={onBackgroundContextMenu}>
         {loading ? (
           <div className="flex h-64 items-center justify-center text-content-tertiary">
             <Spinner size={32} />
@@ -413,6 +426,9 @@ export function AssetsPage() {
           items={ctxItems()}
         />
       )}
+
+      {/* Rectángulo de selección por área */}
+      {marqueeOverlay}
     </div>
   )
 }
@@ -461,6 +477,7 @@ function AssetFolderChip({
 
   return (
     <div
+      data-sel-key={folder.path}
       draggable
       onDragStart={onDragStart}
       onClick={onClick}
@@ -528,6 +545,7 @@ function AssetFileCard({
 
   return (
     <div
+      data-sel-key={file.path}
       draggable
       onDragStart={onDragStart}
       onClick={onClick}
@@ -540,7 +558,18 @@ function AssetFileCard({
     >
       <div className="flex aspect-square items-center justify-center overflow-hidden bg-surface-container">
         {isImage(file) ? (
-          <img src={file.url} alt={file.name} className="h-full w-full object-cover" loading="lazy" />
+          <img
+            src={`/api/v1/assets/thumb?path=${encodeURIComponent(file.path)}&s=400`}
+            alt={file.name}
+            draggable={false}
+            className="h-full w-full object-cover"
+            loading="lazy"
+            decoding="async"
+            onError={(e) => {
+              const img = e.currentTarget
+              if (img.src !== file.url) img.src = file.url
+            }}
+          />
         ) : (
           <Icon size={52} className={cn('opacity-70', className)} strokeWidth={1.5} />
         )}

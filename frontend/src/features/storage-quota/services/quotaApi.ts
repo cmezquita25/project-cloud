@@ -7,8 +7,11 @@ export type FileKind =
   | 'pdf'
   | 'document'
   | 'spreadsheet'
+  | 'presentation'
   | 'archive'
   | 'code'
+  | 'design'
+  | 'executable'
   | 'other'
 
 export interface QuotaBreakdown {

@@ -21,23 +21,33 @@ export const session = {
   },
   getRefresh(): string | null {
     try {
-      return localStorage.getItem(REFRESH_KEY)
+      return localStorage.getItem(REFRESH_KEY) || sessionStorage.getItem(REFRESH_KEY)
     } catch {
       return null
     }
   },
-  setRefresh(token: string | null): void {
+  setRefresh(token: string | null, remember: boolean = true): void {
     try {
-      if (token) localStorage.setItem(REFRESH_KEY, token)
-      else localStorage.removeItem(REFRESH_KEY)
+      if (token) {
+        if (remember) {
+          localStorage.setItem(REFRESH_KEY, token)
+          sessionStorage.removeItem(REFRESH_KEY)
+        } else {
+          sessionStorage.setItem(REFRESH_KEY, token)
+          localStorage.removeItem(REFRESH_KEY)
+        }
+      } else {
+        localStorage.removeItem(REFRESH_KEY)
+        sessionStorage.removeItem(REFRESH_KEY)
+      }
     } catch {
       /* almacenamiento no disponible */
     }
   },
   /** Guarda ambos tokens tras un login/refresh exitoso. */
-  set(access: string, refresh: string): void {
+  set(access: string, refresh: string, remember: boolean = true): void {
     this.setAccess(access)
-    this.setRefresh(refresh)
+    this.setRefresh(refresh, remember)
   },
   clear(): void {
     accessToken = null

@@ -5,7 +5,7 @@ import type { AuthTokens, LoginCredentials, User } from '../types'
 export const authApi = {
   async login(credentials: LoginCredentials): Promise<User> {
     const data = await api.post<AuthTokens>('/auth/login', credentials, { skipAuthRefresh: true })
-    session.set(data.access_token, data.refresh_token)
+    session.set(data.access_token, data.refresh_token, credentials.remember ?? true)
     return data.user
   },
 
@@ -45,5 +45,17 @@ export const authApi = {
   /** Cambia la contraseña propia (verifica la actual). */
   changePassword(payload: { current_password: string; new_password: string }): Promise<{ ok: true }> {
     return api.post<{ ok: true }>('/auth/me/password', payload)
+  },
+
+  /** Sube o reemplaza la foto de perfil (multipart). */
+  uploadAvatar(file: File): Promise<User> {
+    const fd = new FormData()
+    fd.append('avatar', file)
+    return api.post<User>('/auth/me/avatar', fd)
+  },
+
+  /** Elimina la foto de perfil (vuelve a las iniciales). */
+  removeAvatar(): Promise<User> {
+    return api.delete<User>('/auth/me/avatar')
   },
 }

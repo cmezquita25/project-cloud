@@ -1,10 +1,12 @@
 import { Outlet } from 'react-router-dom'
+import { useState, useEffect } from 'react'
 import { Portal } from '@shared/ui'
 import { useDisclosure } from '@shared/hooks/useDisclosure'
 import { useIsMobile } from '@shared/hooks/useMediaQuery'
 import { UploadDock } from '@features/uploads/components/UploadDock'
 import { Topbar } from './components/Topbar'
 import { Sidebar } from './components/Sidebar'
+import { HeaderSearchProvider } from './HeaderSearchContext'
 
 /**
  * Layout principal de la app autenticada (clon de Google Drive):
@@ -14,8 +16,27 @@ import { Sidebar } from './components/Sidebar'
 export function AppLayout() {
   const drawer = useDisclosure()
   const isMobile = useIsMobile()
+  const [isClosing, setIsClosing] = useState(false)
+
+  // Manejar el cierre con animación
+  useEffect(() => {
+    if (drawer.isOpen) {
+      setIsClosing(false)
+    }
+  }, [drawer.isOpen])
+
+  const handleClose = () => {
+    setIsClosing(true)
+    setTimeout(() => {
+      drawer.close()
+      setIsClosing(false)
+    }, 200) // Duración de la animación (menor o igual a la duración CSS)
+  }
+
+  const showDrawer = isMobile && (drawer.isOpen || isClosing)
 
   return (
+    <HeaderSearchProvider>
     <div className="flex h-full flex-col overflow-hidden">
       <Topbar onMenuClick={drawer.open} />
 
@@ -26,16 +47,16 @@ export function AppLayout() {
         </aside>
 
         {/* Drawer móvil */}
-        {isMobile && drawer.isOpen && (
+        {showDrawer && (
           <Portal>
             <div className="fixed inset-0 z-sidebar">
               <div
-                className="absolute inset-0 animate-fade-in bg-overlay/60 backdrop-blur-sm"
-                onClick={drawer.close}
+                className={`absolute inset-0 bg-overlay/60 backdrop-blur-sm ${isClosing ? 'animate-fade-out' : 'animate-fade-in'}`}
+                onClick={handleClose}
                 aria-hidden="true"
               />
-              <div className="absolute left-0 top-0 h-full w-72 animate-slide-in-left shadow-elevation-3">
-                <Sidebar onNavigate={drawer.close} />
+              <div className={`absolute left-0 top-0 h-full w-72 shadow-elevation-3 ${isClosing ? 'animate-slide-out-left' : 'animate-slide-in-left'}`}>
+                <Sidebar onNavigate={handleClose} />
               </div>
             </div>
           </Portal>
@@ -52,5 +73,6 @@ export function AppLayout() {
       {/* Tarjeta de progreso de subidas (global) */}
       <UploadDock />
     </div>
+    </HeaderSearchProvider>
   )
 }

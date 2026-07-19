@@ -197,10 +197,101 @@ final class AdminController
             ActivityLogger::log($request, 'settings.update', 'setting', null, ['server_capacity_bytes' => $capacity]);
         }
 
+        if (array_key_exists('organization_name', $body)) {
+            $orgName = trim((string) $body['organization_name']);
+            if ($orgName === '') {
+                $settings->delete('organization_name');
+            } else {
+                $settings->set('organization_name', $orgName);
+            }
+            ActivityLogger::log($request, 'settings.update', 'setting', null, ['organization_name' => $orgName]);
+        }
+
+        if (array_key_exists('organization_slogan', $body)) {
+            // Leyenda opcional (≤150) que se muestra bajo el logo en el login.
+            $slogan = trim((string) $body['organization_slogan']);
+            if (mb_strlen($slogan) > 150) {
+                $slogan = mb_substr($slogan, 0, 150);
+            }
+            if ($slogan === '') {
+                $settings->delete('organization_slogan');
+            } else {
+                $settings->set('organization_slogan', $slogan);
+            }
+            ActivityLogger::log($request, 'settings.update', 'setting', null, ['organization_slogan' => $slogan]);
+        }
+
         return Response::success([
             'server_capacity_bytes' => $settings->getInt('server_capacity_bytes', 0),
             'user' => $updatedUser !== null ? \ProjectCloud\Services\AuthService::publicUser($updatedUser) : null,
         ]);
+    }
+
+    /** POST /admin/settings/logo — Sube un logo (favicon, white, dark, mobile) */
+    public function uploadLogo(Request $request): Response
+    {
+        $type = $request->post('type');
+        $validTypes = ['favicon', 'white', 'dark', 'mobile'];
+        if (!in_array($type, $validTypes, true)) {
+            throw HttpException::badRequest('Tipo de logo inválido.');
+        }
+
+        $file = $request->file('file');
+        if ($file === null || $file['error'] !== UPLOAD_ERR_OK) {
+            throw HttpException::badRequest('No se recibió el archivo o hubo un error al subirlo.');
+        }
+
+        // Validar tamaño máximo 5MB (para que no abusen)
+        if ($file['size'] > 5 * 1024 * 1024) {
+            throw HttpException::badRequest('El logo no debe superar los 5MB.');
+        }
+
+        $mime = mime_content_type($file['tmp_name']);
+        $allowedMimes = ['image/png', 'image/jpeg', 'image/x-icon', 'image/vnd.microsoft.icon'];
+        if (!in_array($mime, $allowedMimes, true)) {
+            throw HttpException::badRequest('Formato no permitido. Solo se aceptan PNG, JPG y ICO.');
+        }
+
+        // Si es favicon, validar resolución max 512x512
+        if ($type === 'favicon') {
+            $info = getimagesize($file['tmp_name']);
+            if ($info !== false) {
+                if ($info[0] > 512 || $info[1] > 512) {
+                    throw HttpException::badRequest('El favicon no puede superar los 512x512 píxeles.');
+                }
+            }
+        }
+
+        $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+        if (!$ext) {
+            // asume extensión por mime si puede
+            $map = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/gif' => 'gif', 'image/svg+xml' => 'svg', 'image/webp' => 'webp', 'image/x-icon' => 'ico'];
+            $ext = $map[$mime] ?? 'png';
+        }
+        
+        $filename = "logo_{$type}_" . time() . ".{$ext}";
+        $destDir = __DIR__ . '/../../../storage/platform';
+        
+        if (!is_dir($destDir)) {
+            mkdir($destDir, 0777, true);
+        }
+
+        $dest = $destDir . '/' . $filename;
+        if (!move_uploaded_file($file['tmp_name'], $dest)) {
+            throw new HttpException(500, 'UPLOAD_ERROR', 'No se pudo guardar la imagen.');
+        }
+
+        $settings = new SettingsRepository();
+        // Obtener el viejo para borrarlo
+        $oldFile = $settings->get("logo_{$type}");
+        if ($oldFile && file_exists($destDir . '/' . $oldFile)) {
+            @unlink($destDir . '/' . $oldFile);
+        }
+
+        $settings->set("logo_{$type}", $filename);
+        ActivityLogger::log($request, 'settings.update', 'setting', null, ["logo_{$type}" => $filename]);
+
+        return Response::success(['ok' => true, 'filename' => $filename]);
     }
 
     /** GET /admin/activity */

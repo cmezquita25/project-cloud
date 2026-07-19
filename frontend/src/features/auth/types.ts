@@ -7,6 +7,7 @@ export interface User {
   quota_bytes: number
   used_bytes: number
   max_upload_bytes: number
+  avatar_url: string | null
   created_at: string | null
 }
 
@@ -21,4 +22,5 @@ export interface AuthTokens {
 export interface LoginCredentials {
   login: string
   password: string
+  remember?: boolean
 }

@@ -54,10 +54,16 @@ const router = createBrowserRouter([
               { path: 'storage', element: <StoragePage /> },
               { path: 'profile', element: <ProfilePage /> },
               { path: 'assets', element: <AssetsPage /> },
-              // Solo administradores.
+              // Solo administradores. Cada sección de administración es su
+              // propia ruta (accesible desde el sidebar), todas sobre AdminPage.
               {
                 element: <RequireAdmin />,
-                children: [{ path: 'admin', element: <AdminPage /> }],
+                children: [
+                  { path: 'admin', element: <AdminPage /> },
+                  { path: 'admin/users', element: <AdminPage /> },
+                  { path: 'admin/activity', element: <AdminPage /> },
+                  { path: 'admin/settings', element: <AdminPage /> },
+                ],
               },
             ],
           },

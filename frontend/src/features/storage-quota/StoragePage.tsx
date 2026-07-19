@@ -3,19 +3,7 @@ import { Spinner } from '@shared/ui'
 import { cn } from '@shared/lib/cn'
 import { formatBytes, usagePercent } from '@shared/lib/formatBytes'
 import { useQuota } from './hooks/useQuota'
-import type { FileKind } from './services/quotaApi'
-
-const KIND_META: Record<FileKind, { label: string; bar: string; dot: string }> = {
-  image: { label: 'Imágenes', bar: 'bg-[#4285f4]', dot: 'bg-[#4285f4]' },
-  video: { label: 'Videos', bar: 'bg-[#ea4335]', dot: 'bg-[#ea4335]' },
-  audio: { label: 'Audio', bar: 'bg-[#fbbc04]', dot: 'bg-[#fbbc04]' },
-  pdf: { label: 'PDF', bar: 'bg-[#d93025]', dot: 'bg-[#d93025]' },
-  document: { label: 'Documentos', bar: 'bg-[#1a73e8]', dot: 'bg-[#1a73e8]' },
-  spreadsheet: { label: 'Hojas de cálculo', bar: 'bg-[#188038]', dot: 'bg-[#188038]' },
-  archive: { label: 'Comprimidos', bar: 'bg-[#e8710a]', dot: 'bg-[#e8710a]' },
-  code: { label: 'Código', bar: 'bg-[#9334e6]', dot: 'bg-[#9334e6]' },
-  other: { label: 'Otros', bar: 'bg-content-tertiary', dot: 'bg-content-tertiary' },
-}
+import { KIND_META } from './kindMeta'
 
 export function StoragePage() {
   const { data, loading } = useQuota()

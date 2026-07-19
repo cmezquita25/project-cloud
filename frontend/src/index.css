@@ -13,8 +13,8 @@
 @layer base {
   :root {
     /* Superficies (modo claro) */
-    --color-canvas: 255 255 255;
-    --color-surface: 255 255 255;
+    --color-canvas: 249 250 252; /* #f9fafc — fondo de la zona de archivos/contenido */
+    --color-surface: 255 255 255; /* blanco — navbar, sidebar, tarjetas, paneles */
     --color-surface-hover: 241 243 244;
     --color-surface-active: 232 240 254;
     --color-surface-container: 248 250 253;
@@ -105,6 +105,16 @@
     text-rendering: optimizeLegibility;
   }
 
+  /* Encabezados con la fuente de títulos (Google Sans). */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-heading;
+  }
+
   /* Foco accesible y consistente */
   :focus-visible {
     outline: 2px solid rgb(var(--color-focus));
@@ -132,12 +142,22 @@
 }
 
 @layer utilities {
-  /* Evita el flash de transición al alternar el tema */
+  /*
+   * Transición suave del tema SOLO en fondos y bordes. El color del texto NO se
+   * anima: interpolar el color de la tipografía entre claro/oscuro pasa por
+   * tonos grises intermedios y produce un "parpadeo/lavado" visible en los
+   * textos. Snap inmediato del color = sin parpadeo.
+   */
   .theme-transition,
   .theme-transition * {
     transition:
       background-color 200ms ease,
       border-color 200ms ease,
-      color 200ms ease;
+      fill 200ms ease;
+  }
+  /* El texto y los iconos-color cambian al instante (sin animar). */
+  .theme-transition *,
+  .theme-transition {
+    transition-property: background-color, border-color, fill;
   }
 }

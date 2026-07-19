@@ -41,6 +41,7 @@ export function RecentPage() {
           loading={loading}
           error={error}
           reload={() => load()}
+          showLocation
           empty={{
             icon: Clock,
             title: 'Sin actividad reciente',

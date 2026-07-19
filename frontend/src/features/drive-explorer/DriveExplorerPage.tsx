@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   FolderPlus,
@@ -7,28 +7,36 @@ import {
   FolderInput,
   Copy,
   Trash2,
-  Plus,
   FileUp,
   FolderUp,
   FolderSymlink,
+  Search,
+  FileType2,
+  Users,
+  ChevronDown,
+  Download,
 } from 'lucide-react'
 import { Button, EmptyState, Spinner, IconButton, Menu, useToast, type MenuItem } from '@shared/ui'
-import { useDisclosure } from '@shared/hooks/useDisclosure'
 import { useUploads } from '@features/uploads/UploadProvider'
 import { useUploadPicker } from '@features/uploads/hooks/useUploadPicker'
 import { usePreview } from '@features/preview'
 import { useAssetsAccess } from '@features/assets/hooks/useAssetsAccess'
+import { useHeaderSearch } from '@app/layouts/HeaderSearchContext'
+import { usePlatformSettings } from '@shared/hooks/usePlatformSettings'
+import { useAuth } from '@features/auth/AuthProvider'
 import { useFolderContents } from './hooks/useFolderContents'
 import { driveApi } from './services/driveApi'
 import { Breadcrumbs } from './components/Breadcrumbs'
 import { ViewToggle } from './components/ViewToggle'
 import { FileListView } from './components/FileListView'
 import { FileGridView } from './components/FileGridView'
+import { SortControl, sortDriveItems, useSortState } from './components/SortControl'
 import { DetailsPanel } from './components/DetailsPanel'
 import { NamePromptDialog } from './components/dialogs/NamePromptDialog'
 import { DeleteDialog } from './components/dialogs/DeleteDialog'
 import { MoveDialog } from './components/dialogs/MoveDialog'
 import { buildItemMenu } from './components/itemMenu'
+import { useMarqueeSelection } from './hooks/useMarqueeSelection'
 import { dragState, isInternalDrag, PC_DND_MIME } from './services/dragState'
 import type { DriveItem, FolderItem, FolderRef, ItemAction, ItemInteractions, ViewMode } from './types'
 
@@ -67,9 +75,52 @@ export function DriveExplorerPage() {
   const { pickFiles, pickFolder } = useUploadPicker(folderId)
   const preview = usePreview()
   const { access: assetsAccess } = useAssetsAccess()
+  const settings = usePlatformSettings()
+  const { user } = useAuth()
   const atRoot = folderId === 'root'
-  const newMenu = useDisclosure()
-  const newAnchor = useRef<HTMLDivElement>(null)
+
+  // Home: buscador "hero" + colapso hacia el Header al hacer scroll (escritorio).
+  const { setShowInHeader } = useHeaderSearch()
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const heroSentinelRef = useRef<HTMLDivElement>(null)
+  const [heroTerm, setHeroTerm] = useState('')
+
+  useEffect(() => {
+    // Fuera de la raíz, el buscador vive siempre en el Header.
+    if (!atRoot) {
+      setShowInHeader(true)
+      return
+    }
+    const sentinel = heroSentinelRef.current
+    const root = scrollRef.current
+    if (!sentinel || !root) return
+    const obs = new IntersectionObserver(
+      (entries) => setShowInHeader(!entries[0]?.isIntersecting),
+      { root, threshold: 0 }
+    )
+    obs.observe(sentinel)
+    return () => {
+      obs.disconnect()
+      setShowInHeader(true)
+    }
+  }, [atRoot, loading, setShowInHeader])
+
+  const submitHeroSearch = (e: FormEvent) => {
+    e.preventDefault()
+    const q = heroTerm.trim()
+    navigate(q === '' ? '/search' : `/search?q=${encodeURIComponent(q)}`)
+  }
+
+  // Selección por área (lazo) sobre la zona de contenido.
+  const marqueeBase = useRef<Set<string>>(new Set())
+  const { overlay: marqueeOverlay } = useMarqueeSelection({
+    containerRef: scrollRef,
+    onBegin: (additive) => {
+      marqueeBase.current = additive ? new Set(selected) : new Set()
+      if (!additive) setSelected(new Set())
+    },
+    onSelect: (keys) => setSelected(new Set([...marqueeBase.current, ...keys])),
+  })
 
   // Recarga cuando una subida se completa (aparecen archivos/carpetas nuevos).
   const lastTick = useRef(0)
@@ -87,9 +138,10 @@ export function DriveExplorerPage() {
     return () => window.removeEventListener('pc:new-folder', handler)
   }, [])
 
+  const [sort, setSort] = useSortState()
   const items = useMemo<DriveItem[]>(
-    () => [...(data?.folders ?? []), ...(data?.files ?? [])],
-    [data]
+    () => sortDriveItems([...(data?.folders ?? []), ...(data?.files ?? [])], sort),
+    [data, sort]
   )
   const selectedItems = useMemo(() => items.filter((i) => selected.has(key(i))), [items, selected])
 
@@ -317,7 +369,11 @@ export function DriveExplorerPage() {
   ]
 
   // --- Drag & drop desde el SO ---
-  const hasFiles = (e: React.DragEvent) => e.dataTransfer.types.includes('Files')
+  // Solo tratamos como subida un arrastre EXTERNO real de archivos: debe traer
+  // 'Files' y NO ser un arrastre interno (mover elementos) ni tener elementos
+  // en curso en dragState. Esto evita el bug de duplicado al arrastrar miniaturas.
+  const hasFiles = (e: React.DragEvent) =>
+    e.dataTransfer.types.includes('Files') && !isInternalDrag(e) && dragState.get().length === 0
   const onDragEnter = (e: React.DragEvent) => {
     if (!hasFiles(e)) return
     e.preventDefault()
@@ -385,6 +441,10 @@ export function DriveExplorerPage() {
                 {selected.size} seleccionado(s)
               </span>
               <div className="flex items-center gap-1">
+                {/* Solo archivos → se habilita Descargar (acción exclusiva de archivos). */}
+                {selectedItems.length > 0 && selectedItems.every((i) => i.type === 'file') && (
+                  <IconButton icon={Download} label="Descargar" size="sm" onClick={() => selectedItems.forEach(download)} />
+                )}
                 <IconButton icon={FolderInput} label="Mover" size="sm" onClick={() => setDialog({ kind: 'move', mode: 'move', items: selectedItems })} />
                 <IconButton icon={Copy} label="Copiar" size="sm" onClick={() => setDialog({ kind: 'move', mode: 'copy', items: selectedItems })} />
                 <IconButton icon={Trash2} label="Eliminar" size="sm" onClick={() => setDialog({ kind: 'delete', items: selectedItems })} />
@@ -397,41 +457,79 @@ export function DriveExplorerPage() {
             />
           )}
           <div className="flex shrink-0 items-center gap-2">
-            <div ref={newAnchor} className="relative">
-              <Button size="sm" leftIcon={Plus} onClick={newMenu.toggle}>
-                <span className="hidden sm:inline">Nuevo</span>
-              </Button>
-              <Menu
-                open={newMenu.isOpen}
-                onClose={newMenu.close}
-                items={newMenuItems}
-                title="Nuevo"
-                align="right"
-                anchorRef={newAnchor}
-              />
-            </div>
+            <SortControl value={sort} onChange={setSort} />
             <ViewToggle value={view} onChange={setViewMode} />
           </div>
         </div>
 
-        {/* Acceso a la carpeta compartida "assets": aparece dentro de Mi unidad
-            (solo en la raíz y si el usuario tiene acceso). La carpeta raíz no se
-            puede eliminar; su contenido se edita desde el explorador de assets. */}
-        {atRoot && assetsAccess?.allowed && (
-          <button
-            onClick={() => navigate('/assets')}
-            className="group mb-4 flex w-full items-center gap-3 rounded-xl border border-border bg-surface-container px-3 py-3 text-left transition-colors hover:bg-surface-hover sm:max-w-xs"
-          >
-            <FolderSymlink size={22} className="shrink-0 text-primary" />
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-content-primary">Assets</p>
-              <p className="truncate text-xs text-content-tertiary">Carpeta compartida</p>
-            </div>
-          </button>
-        )}
-
         {/* Contenido */}
-        <div className="min-h-0 flex-1 overflow-y-auto" onContextMenu={onBackgroundContextMenu}>
+        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto" onContextMenu={onBackgroundContextMenu}>
+          {/* Hero de bienvenida (solo en Mi unidad / raíz). El buscador se
+              colapsa hacia el Header al hacer scroll. */}
+          {atRoot && (
+            <div className="mb-8 flex flex-col items-center px-2 pt-4 text-center sm:pt-8">
+              <h1 className="mb-6 text-2xl font-normal text-content-primary sm:text-[28px]">
+                Te damos la bienvenida a {settings?.organization_name || 'Drive'}
+              </h1>
+              <form
+                onSubmit={submitHeroSearch}
+                role="search"
+                className="flex h-12 w-full max-w-2xl items-center gap-3 rounded-pill border border-border bg-surface-container px-5 text-content-secondary transition-colors focus-within:bg-surface focus-within:shadow-elevation-1"
+              >
+                <button type="submit" aria-label="Buscar" className="shrink-0 focus-visible:outline-focus">
+                  <Search size={20} />
+                </button>
+                <input
+                  type="search"
+                  value={heroTerm}
+                  onChange={(e) => setHeroTerm(e.target.value)}
+                  placeholder={`Buscar en ${settings?.organization_name || 'Drive'}`}
+                  aria-label="Buscar"
+                  className="min-w-0 flex-1 bg-transparent text-content-primary outline-none placeholder:text-content-tertiary [&::-webkit-search-cancel-button]:appearance-none"
+                />
+              </form>
+
+              {/* Sentinela: al salir de la vista, el buscador reaparece en el Header. */}
+              <div ref={heroSentinelRef} aria-hidden className="mt-4 h-px w-full" />
+
+              {/* Filtros (aún no implementados: se muestran como próximos). */}
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                {[
+                  { label: 'Tipo', icon: FileType2 },
+                  { label: 'Personas', icon: Users },
+                ].map(({ label, icon: Icon }) => (
+                  <button
+                    key={label}
+                    type="button"
+                    disabled
+                    title="Próximamente"
+                    className="flex cursor-not-allowed items-center gap-2 rounded-pill border border-border bg-surface-container px-3.5 py-1.5 text-sm text-content-secondary opacity-70"
+                  >
+                    <Icon size={16} />
+                    <span>{label}</span>
+                    <ChevronDown size={14} />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Acceso a la unidad compartida "assets": dentro de Mi unidad (solo en
+              la raíz y si el usuario tiene acceso). La carpeta raíz no se puede
+              eliminar; su contenido se edita desde el explorador de assets. */}
+          {atRoot && assetsAccess?.allowed && (
+            <button
+              onClick={() => navigate('/assets')}
+              className="group mb-4 flex w-full items-center gap-3 rounded-xl border border-border bg-surface-container px-3 py-3 text-left transition-colors hover:bg-surface-hover sm:max-w-xs"
+            >
+              <FolderSymlink size={22} className="shrink-0 text-primary" />
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-content-primary">Unidad compartida</p>
+                <p className="truncate text-xs text-content-tertiary">Carpeta compartida del equipo</p>
+              </div>
+            </button>
+          )}
+
           {loading ? (
             <div className="flex h-64 items-center justify-center text-content-tertiary">
               <Spinner size={32} />
@@ -457,12 +555,15 @@ export function DriveExplorerPage() {
               }
             />
           ) : view === 'list' ? (
-            <FileListView items={items} selected={selected} onOpen={openItem} onSelectToggle={toggleSelect} onAction={onAction} interactions={interactions} />
+            <FileListView items={items} selected={selected} onOpen={openItem} onSelectToggle={toggleSelect} onAction={onAction} interactions={interactions} ownerName={user?.display_name} />
           ) : (
             <FileGridView items={items} selected={selected} onOpen={openItem} onSelectToggle={toggleSelect} onAction={onAction} interactions={interactions} />
           )}
         </div>
       </div>
+
+      {/* Rectángulo de selección por área */}
+      {marqueeOverlay}
 
       {/* Panel de detalles */}
       {details && (

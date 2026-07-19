@@ -72,10 +72,10 @@ export function UploadDock() {
     <div className="fixed inset-x-0 bottom-0 z-toast flex justify-center px-0 sm:inset-x-auto sm:bottom-6 sm:right-6 sm:px-0">
       <div className="w-full overflow-hidden rounded-t-2xl bg-surface shadow-elevation-3 sm:w-96 sm:rounded-2xl">
         {/* Cabecera */}
-        <div className="flex items-center gap-2 bg-content-primary px-4 py-3 text-content-inverse">
+        <div className="flex items-center gap-2 border-b border-border bg-surface-container px-4 py-3 text-content-primary">
           <div className="flex items-center gap-2">
             {active > 0 ? (
-              <Loader2 size={18} className="animate-spin" />
+              <Loader2 size={18} className="animate-spin text-primary" />
             ) : errors > 0 ? (
               <AlertCircle size={18} className="text-danger" />
             ) : (
@@ -86,14 +86,14 @@ export function UploadDock() {
           <div className="ml-auto flex items-center gap-1">
             <button
               onClick={() => setMinimized((m) => !m)}
-              className="rounded-full p-1 hover:bg-white/10"
+              className="rounded-full p-1 text-content-secondary hover:bg-surface-hover"
               aria-label={minimized ? 'Expandir' : 'Minimizar'}
             >
               {minimized ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
             </button>
             <button
               onClick={() => (active > 0 ? clearFinished() : dismissAll())}
-              className="rounded-full p-1 hover:bg-white/10"
+              className="rounded-full p-1 text-content-secondary hover:bg-surface-hover"
               aria-label="Cerrar"
             >
               <X size={18} />

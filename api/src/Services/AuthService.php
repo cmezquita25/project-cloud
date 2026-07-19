@@ -143,6 +143,7 @@ final class AuthService
             'quota_bytes'      => (int) $user['quota_bytes'],
             'used_bytes'       => (int) $user['used_bytes'],
             'max_upload_bytes' => (int) $user['max_upload_bytes'],
+            'avatar_url'       => AvatarService::urlFor((int) $user['id']),
             'created_at'       => $user['created_at'] ?? null,
         ];
     }

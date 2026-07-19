@@ -7,11 +7,12 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   hint?: string
   error?: string
   leftIcon?: LucideIcon
+  rightElement?: React.ReactNode
 }
 
 /** Campo de texto con etiqueta flotante superior, hint y estado de error. */
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
-  { label, hint, error, leftIcon: LeftIcon, className, id, ...props },
+  { label, hint, error, leftIcon: LeftIcon, rightElement, className, id, ...props },
   ref
 ) {
   const autoId = useId()
@@ -43,11 +44,17 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
             'transition-colors focus:outline-none focus:ring-2 focus:ring-focus focus:border-transparent',
             'disabled:cursor-not-allowed disabled:opacity-60',
             LeftIcon && 'pl-11',
+            rightElement && 'pr-11',
             error ? 'border-danger focus:ring-danger' : 'border-border-strong',
             className
           )}
           {...props}
         />
+        {rightElement && (
+          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+            {rightElement}
+          </div>
+        )}
       </div>
       {error ? (
         <p id={`${inputId}-error`} className="text-xs text-danger">

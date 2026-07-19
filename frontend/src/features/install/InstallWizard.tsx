@@ -4,9 +4,10 @@ import { Stepper } from './components/Stepper'
 import { StepRequirements } from './components/StepRequirements'
 import { StepDatabase } from './components/StepDatabase'
 import { StepAdmin } from './components/StepAdmin'
+import { StepConfig } from './components/StepConfig'
 import { StepDone } from './components/StepDone'
 
-const STEPS = ['Requisitos', 'Base de datos', 'Administrador', 'Listo']
+const STEPS = ['Requisitos', 'Base de datos', 'Administrador', 'Configuración', 'Listo']
 
 /** Asistente de instalación de 4 pasos (estilo Google Drive). */
 export function InstallWizard() {
@@ -18,7 +19,7 @@ export function InstallWizard() {
         <ThemeToggle />
       </div>
 
-      <div className="w-full max-w-xl">
+      <div className="w-full max-w-3xl">
         <div className="mb-6 flex items-center justify-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-on">
             <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6">
@@ -32,14 +33,16 @@ export function InstallWizard() {
         </div>
 
         <div className="rounded-2xl border border-border bg-surface p-6 shadow-elevation-1 sm:p-8">
-          <div className="mb-8">
+          {/* overflow-x por si el ancho no alcanza para todos los pasos. */}
+          <div className="mb-8 overflow-x-auto">
             <Stepper steps={STEPS} current={step} />
           </div>
 
           {step === 0 && <StepRequirements onNext={() => setStep(1)} />}
           {step === 1 && <StepDatabase onBack={() => setStep(0)} onNext={() => setStep(2)} />}
           {step === 2 && <StepAdmin onBack={() => setStep(1)} onDone={() => setStep(3)} />}
-          {step === 3 && <StepDone />}
+          {step === 3 && <StepConfig onBack={() => setStep(2)} onDone={() => setStep(4)} />}
+          {step === 4 && <StepDone />}
         </div>
       </div>
     </div>

@@ -19,6 +19,7 @@ use ProjectCloud\Controllers\FileController;
 use ProjectCloud\Controllers\UploadController;
 use ProjectCloud\Controllers\QuotaController;
 use ProjectCloud\Controllers\AdminController;
+use ProjectCloud\Controllers\SettingsController;
 use ProjectCloud\Controllers\TrashController;
 use ProjectCloud\Controllers\LibraryController;
 use ProjectCloud\Controllers\AssetsController;
@@ -30,6 +31,17 @@ return static function (Router $router): void {
     // --- Diagnóstico ---
     $router->get('/v1/health', [HealthController::class, 'index']);
     $router->get('/health', [HealthController::class, 'index']); // alias de conveniencia
+
+    // --- Fase 9: Configuraciones públicas ---
+    $router->get('/v1/settings/public', [SettingsController::class, 'publicConfig']);
+    $router->get('/v1/settings/logo/{type}', [SettingsController::class, 'serveLogo']);
+
+    // Avatares de usuario (públicos, como los logos).
+    $router->get('/v1/auth/avatar/{id}', [AuthController::class, 'serveAvatar']);
+
+    // Miniaturas de imágenes (públicas; los archivos ya son públicos por URL).
+    $router->get('/v1/files/{id}/thumb', [FileController::class, 'thumb']);
+    $router->get('/v1/assets/thumb', [AssetsController::class, 'thumb']);
 
     // --- Fase 2: Instalador ---
     $router->get('/v1/install/status',    [InstallController::class, 'status']);
@@ -44,6 +56,8 @@ return static function (Router $router): void {
     $router->get('/v1/auth/me',       [AuthController::class, 'me'], [new AuthMiddleware()]);
     $router->patch('/v1/auth/me',     [AuthController::class, 'updateProfile'], [new AuthMiddleware()]);
     $router->post('/v1/auth/me/password', [AuthController::class, 'changePassword'], [new AuthMiddleware()]);
+    $router->post('/v1/auth/me/avatar',   [AuthController::class, 'uploadAvatar'], [new AuthMiddleware()]);
+    $router->delete('/v1/auth/me/avatar', [AuthController::class, 'deleteAvatar'], [new AuthMiddleware()]);
 
     // --- Fase 4: Explorador de archivos (requiere sesión) ---
     $auth = [new AuthMiddleware()];
@@ -96,6 +110,7 @@ return static function (Router $router): void {
     $admin = [new AuthMiddleware(), new AdminOnly()];
     $router->get('/v1/admin/stats',               [AdminController::class, 'stats'], $admin);
     $router->patch('/v1/admin/settings',          [AdminController::class, 'updateSettings'], $admin);
+    $router->post('/v1/admin/settings/logo',      [AdminController::class, 'uploadLogo'], $admin);
     $router->get('/v1/admin/assets/permissions',  [AssetsController::class, 'permissions'], $admin);
     $router->put('/v1/admin/assets/permissions',  [AssetsController::class, 'setPermissions'], $admin);
     $router->get('/v1/admin/activity',            [AdminController::class, 'activity'], $admin);

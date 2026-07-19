@@ -24,4 +24,13 @@ export const adminApi = {
     api.patch<{ server_capacity_bytes: number; user: User | null }>('/admin/settings', {
       server_capacity_bytes: bytes,
     }),
+  updateSettings: (payload: Record<string, string | number | boolean>) =>
+    api.patch<{ server_capacity_bytes?: number; user?: User | null }>('/admin/settings', payload),
+  /** Sube un logo (favicon, white, dark, mobile) */
+  uploadLogo(type: 'favicon' | 'white' | 'dark' | 'mobile', file: File): Promise<{ ok: true; filename: string }> {
+    const formData = new FormData()
+    formData.append('type', type)
+    formData.append('file', file)
+    return api.post<{ ok: true; filename: string }>('/admin/settings/logo', formData)
+  },
 }

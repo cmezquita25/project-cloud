@@ -78,7 +78,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               <div
                 key={t.id}
                 role="status"
-                className="pointer-events-auto flex w-[calc(100vw-2rem)] max-w-sm animate-slide-in-right items-center gap-3 rounded-xl bg-content-primary px-4 py-3 text-content-inverse shadow-elevation-3"
+                className="pointer-events-auto flex w-[calc(100vw-2rem)] max-w-sm animate-slide-in-right items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3 text-content-primary shadow-elevation-3"
               >
                 <Icon size={20} className={cn('shrink-0', TONE_COLOR[t.tone])} />
                 <span className="flex-1 text-sm">{t.message}</span>
@@ -96,7 +96,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 <button
                   onClick={() => dismiss(t.id)}
                   aria-label="Descartar"
-                  className="shrink-0 rounded-full p-1 hover:bg-white/10"
+                  className="shrink-0 rounded-full p-1 text-content-tertiary hover:bg-surface-hover"
                 >
                   <X size={16} />
                 </button>

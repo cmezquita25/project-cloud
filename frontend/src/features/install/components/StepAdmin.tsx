@@ -4,6 +4,7 @@ import { Button, Input } from '@shared/ui'
 import { ApiError } from '@shared/api'
 import { formatBytes } from '@shared/lib/formatBytes'
 import { installApi } from '../services/installApi'
+import { useAuth } from '@features/auth/AuthProvider'
 
 interface StepAdminProps {
   onBack: () => void
@@ -25,6 +26,7 @@ export function StepAdmin({ onBack, onDone }: StepAdminProps) {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
+  const { login } = useAuth()
 
   // Sugerencia de capacidad a partir de la detección del disco del servidor.
   useEffect(() => {
@@ -58,6 +60,8 @@ export function StepAdmin({ onBack, onDone }: StepAdminProps) {
         ...(Number.isFinite(gb) && gb > 0 ? { server_capacity_bytes: Math.round(gb * GB) } : {}),
       }
       await installApi.createAdmin(payload)
+      // Iniciar sesión automáticamente
+      await login({ login: form.username, password: form.password, remember: true })
       onDone()
     } catch (err) {
       if (err instanceof ApiError) {

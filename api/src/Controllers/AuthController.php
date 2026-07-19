@@ -13,6 +13,7 @@ use ProjectCloud\Repositories\ActivityRepository;
 use ProjectCloud\Repositories\RefreshTokenRepository;
 use ProjectCloud\Repositories\UserRepository;
 use ProjectCloud\Services\AuthService;
+use ProjectCloud\Services\AvatarService;
 
 /**
  * Endpoints de autenticación: login, refresh, logout, me.
@@ -135,6 +136,52 @@ final class AuthController
 
         $repo->update($userId, $fields);
         return Response::success(AuthService::publicUser($repo->findById($userId) ?? $current));
+    }
+
+    /** POST /auth/me/avatar — sube o reemplaza la foto de perfil. */
+    public function uploadAvatar(Request $request): Response
+    {
+        $userId = $request->userId();
+        if ($userId === null) {
+            throw HttpException::unauthorized();
+        }
+        (new AvatarService())->store($userId, $request->file('avatar') ?? []);
+        $user = (new UserRepository())->findById($userId);
+        if ($user === null) {
+            throw HttpException::unauthorized('Usuario no encontrado');
+        }
+        return Response::success(AuthService::publicUser($user));
+    }
+
+    /** DELETE /auth/me/avatar — elimina la foto (vuelve a las iniciales). */
+    public function deleteAvatar(Request $request): Response
+    {
+        $userId = $request->userId();
+        if ($userId === null) {
+            throw HttpException::unauthorized();
+        }
+        (new AvatarService())->delete($userId);
+        $user = (new UserRepository())->findById($userId);
+        if ($user === null) {
+            throw HttpException::unauthorized('Usuario no encontrado');
+        }
+        return Response::success(AuthService::publicUser($user));
+    }
+
+    /** GET /auth/avatar/{id} — sirve la imagen del avatar (pública, como los logos). */
+    public function serveAvatar(Request $request): void
+    {
+        $id = (int) $request->param('id');
+        $path = (new AvatarService())->pathFor($id);
+        if ($path === null) {
+            throw HttpException::notFound('Sin avatar');
+        }
+        $mime = mime_content_type($path) ?: 'application/octet-stream';
+        header('Content-Type: ' . $mime);
+        header('Content-Length: ' . (string) filesize($path));
+        header('Cache-Control: public, max-age=300');
+        readfile($path);
+        exit;
     }
 
     /** POST /auth/me/password — cambia la contraseña propia (verifica la actual). */

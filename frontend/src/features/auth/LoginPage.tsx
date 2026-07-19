@@ -1,9 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { User, Lock } from 'lucide-react'
-import { Button, Input } from '@shared/ui'
+import { Eye, EyeOff } from 'lucide-react'
+import { Button, Input, Checkbox } from '@shared/ui'
 import { ApiError } from '@shared/api'
-import { getVersionFooter } from '@shared/config/version'
 import { useAuth } from './AuthProvider'
 
 /** Pantalla de inicio de sesión (funcional). */
@@ -12,7 +11,8 @@ export function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
 
-  const [form, setForm] = useState({ login: '', password: '' })
+  const [form, setForm] = useState({ login: '', password: '', remember: true })
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -26,7 +26,7 @@ export function LoginPage() {
     setSubmitting(true)
     setError(null)
     try {
-      await login({ login: form.login.trim(), password: form.password })
+      await login({ login: form.login.trim(), password: form.password, remember: form.remember })
       navigate(from, { replace: true })
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'No se pudo iniciar sesión')
@@ -37,9 +37,11 @@ export function LoginPage() {
 
   return (
     <div>
-      <div className="mb-6 text-center">
-        <h1 className="text-2xl font-medium text-content-primary">Inicia sesión</h1>
-        <p className="mt-1 text-sm text-content-secondary">Accede a tu almacenamiento</p>
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold text-content-primary">Iniciar sesión</h1>
+        <p className="mt-1 text-sm text-content-secondary">
+          Ingresa tu correo y contraseña para acceder.
+        </p>
       </div>
 
       {error && (
@@ -48,11 +50,10 @@ export function LoginPage() {
         </div>
       )}
 
-      <form onSubmit={onSubmit} className="space-y-4">
+      <form onSubmit={onSubmit} className="space-y-5">
         <Input
-          label="Correo o nombre de usuario"
-          leftIcon={User}
-          placeholder="Escribe tu correo o usuario"
+          label="Correo electrónico o usuario"
+          placeholder="tucorreo@ejemplo.com"
           value={form.login}
           onChange={set('login')}
           autoComplete="username"
@@ -61,20 +62,35 @@ export function LoginPage() {
         />
         <Input
           label="Contraseña"
-          type="password"
-          leftIcon={Lock}
-          placeholder="Escribe tu contraseña"
+          type={showPassword ? 'text' : 'password'}
+          rightElement={
+            <button
+              type="button"
+              onClick={() => setShowPassword((s) => !s)}
+              className="rounded-full p-1 text-content-tertiary transition-colors hover:text-content-secondary focus-visible:outline-focus"
+              aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          }
+          placeholder="••••••••"
           value={form.password}
           onChange={set('password')}
           autoComplete="current-password"
           required
         />
-        <Button type="submit" fullWidth size="lg" loading={submitting}>
-          Entrar
+        <label className="flex cursor-pointer items-center gap-2 text-sm text-content-secondary">
+          <Checkbox
+            id="remember"
+            checked={form.remember}
+            onChange={(e) => setForm((f) => ({ ...f, remember: e.target.checked }))}
+          />
+          Recuérdame
+        </label>
+        <Button type="submit" fullWidth size="lg" loading={submitting} className="mt-1">
+          Iniciar sesión
         </Button>
       </form>
-
-      <p className="mt-8 text-center text-xs text-content-tertiary">{getVersionFooter()}</p>
     </div>
   )
 }

@@ -5,6 +5,8 @@ export interface FolderItem {
   name: string
   path: string
   is_starred: boolean
+  /** Nombre de la carpeta padre (Recientes/Destacados/Búsqueda). null = raíz. */
+  location?: string | null
   deleted_at?: string | null
   created_at: string | null
   updated_at: string | null
@@ -21,6 +23,8 @@ export interface FileItem {
   extension: string | null
   is_starred: boolean
   url: string
+  /** Nombre de la carpeta padre (Recientes/Destacados/Búsqueda). null = raíz. */
+  location?: string | null
   deleted_at?: string | null
   created_at: string | null
   updated_at: string | null

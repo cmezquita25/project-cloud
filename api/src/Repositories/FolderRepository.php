@@ -191,7 +191,10 @@ class FolderRepository
     public function starred(int $userId): array
     {
         $stmt = $this->pdo->prepare(
-            'SELECT * FROM folders WHERE user_id = ? AND deleted_at IS NULL AND is_starred = 1 ORDER BY name'
+            "SELECT fo.*, pp.name AS location_name
+               FROM folders fo
+               LEFT JOIN folders pp ON pp.id = fo.parent_id
+              WHERE fo.user_id = ? AND fo.deleted_at IS NULL AND fo.is_starred = 1 ORDER BY fo.name"
         );
         $stmt->execute([$userId]);
         return $stmt->fetchAll();
@@ -202,8 +205,11 @@ class FolderRepository
     {
         $limit = max(1, min(200, $limit));
         $stmt = $this->pdo->prepare(
-            "SELECT * FROM folders WHERE user_id = ? AND deleted_at IS NULL AND name LIKE ? ESCAPE '\\\\'
-              ORDER BY name LIMIT $limit"
+            "SELECT fo.*, pp.name AS location_name
+               FROM folders fo
+               LEFT JOIN folders pp ON pp.id = fo.parent_id
+              WHERE fo.user_id = ? AND fo.deleted_at IS NULL AND fo.name LIKE ? ESCAPE '\\\\'
+              ORDER BY fo.name LIMIT $limit"
         );
         $stmt->execute([$userId, '%' . FileRepository::escapeLike($term) . '%']);
         return $stmt->fetchAll();

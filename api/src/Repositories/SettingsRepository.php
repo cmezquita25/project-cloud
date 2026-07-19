@@ -41,4 +41,11 @@ class SettingsRepository
         );
         $stmt->execute([$key, $value]);
     }
+
+    /** Elimina una clave de configuración (p. ej. al vaciar nombre/eslogan). */
+    public function delete(string $key): void
+    {
+        $stmt = $this->pdo->prepare('DELETE FROM settings WHERE `key` = ?');
+        $stmt->execute([$key]);
+    }
 }

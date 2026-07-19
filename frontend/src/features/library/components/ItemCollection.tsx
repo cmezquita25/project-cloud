@@ -1,16 +1,20 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { X, FolderInput, Copy, Trash2, type LucideIcon } from 'lucide-react'
-import { EmptyState, Spinner, IconButton, useToast } from '@shared/ui'
+import { X, FolderInput, Copy, Trash2, Download, type LucideIcon } from 'lucide-react'
+import { EmptyState, Spinner, IconButton, Menu, useToast } from '@shared/ui'
 import { usePreview } from '@features/preview'
+import { useAuth } from '@features/auth/AuthProvider'
 import { driveApi } from '@features/drive-explorer/services/driveApi'
 import { ViewToggle } from '@features/drive-explorer/components/ViewToggle'
 import { FileListView } from '@features/drive-explorer/components/FileListView'
 import { FileGridView } from '@features/drive-explorer/components/FileGridView'
+import { SortControl, sortDriveItems, useSortState } from '@features/drive-explorer/components/SortControl'
 import { DetailsPanel } from '@features/drive-explorer/components/DetailsPanel'
 import { NamePromptDialog } from '@features/drive-explorer/components/dialogs/NamePromptDialog'
 import { MoveDialog } from '@features/drive-explorer/components/dialogs/MoveDialog'
 import { DeleteDialog } from '@features/drive-explorer/components/dialogs/DeleteDialog'
+import { buildItemMenu } from '@features/drive-explorer/components/itemMenu'
+import { useMarqueeSelection } from '@features/drive-explorer/hooks/useMarqueeSelection'
 import type { DriveItem, FolderRef, ItemAction, ViewMode } from '@features/drive-explorer/types'
 
 interface EmptyConfig {
@@ -25,6 +29,8 @@ interface ItemCollectionProps {
   error: string | null
   reload: () => void
   empty: EmptyConfig
+  /** Muestra la columna "Ubicación" (Recientes/Destacados). */
+  showLocation?: boolean
 }
 
 type DialogState =
@@ -40,10 +46,11 @@ const key = (i: DriveItem) => `${i.type}-${i.id}`
  * búsqueda comparten la misma cuadrícula/lista, selección múltiple, panel de
  * detalles, vista previa y acciones que el explorador.
  */
-export function ItemCollection({ items, loading, error, reload, empty }: ItemCollectionProps) {
+export function ItemCollection({ items, loading, error, reload, empty, showLocation = false }: ItemCollectionProps) {
   const navigate = useNavigate()
   const toast = useToast()
   const preview = usePreview()
+  const { user } = useAuth()
 
   const [view, setView] = useState<ViewMode>(
     () => (localStorage.getItem('pc-view') as ViewMode) || 'list'
@@ -51,9 +58,24 @@ export function ItemCollection({ items, loading, error, reload, empty }: ItemCol
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [details, setDetails] = useState<DriveItem | null>(null)
   const [dialog, setDialog] = useState<DialogState>(null)
+  const [ctxMenu, setCtxMenu] = useState<{ item: DriveItem; x: number; y: number } | null>(null)
 
-  const selectedItems = useMemo(() => items.filter((i) => selected.has(key(i))), [items, selected])
+  const [sort, setSort] = useSortState()
+  const sorted = useMemo(() => sortDriveItems(items, sort), [items, sort])
+  const selectedItems = useMemo(() => sorted.filter((i) => selected.has(key(i))), [sorted, selected])
   const clearSelection = () => setSelected(new Set())
+
+  // Selección por área (lazo).
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const marqueeBase = useRef<Set<string>>(new Set())
+  const { overlay: marqueeOverlay } = useMarqueeSelection({
+    containerRef: scrollRef,
+    onBegin: (additive) => {
+      marqueeBase.current = additive ? new Set(selected) : new Set()
+      if (!additive) setSelected(new Set())
+    },
+    onSelect: (keys) => setSelected(new Set([...marqueeBase.current, ...keys])),
+  })
 
   // Selección por clic (el mosaico ya no muestra casilla): clic selecciona,
   // Ctrl/Cmd alterna. Se pinta el elemento seleccionado.
@@ -70,6 +92,15 @@ export function ItemCollection({ items, loading, error, reload, empty }: ItemCol
     }
   }
 
+  // Clic derecho: selecciona el elemento (si no lo estaba) y abre el menú
+  // contextual con las mismas acciones que el menú de tres puntos.
+  const onItemContextMenu = (item: DriveItem, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!selected.has(key(item))) setSelected(new Set([key(item)]))
+    setCtxMenu({ item, x: e.clientX, y: e.clientY })
+  }
+
   const setViewMode = (m: ViewMode) => {
     setView(m)
     localStorage.setItem('pc-view', m)
@@ -77,7 +108,7 @@ export function ItemCollection({ items, loading, error, reload, empty }: ItemCol
 
   const openItem = (item: DriveItem) => {
     if (item.type === 'folder') navigate(`/folder/${item.id}`)
-    else preview.open(item, items)
+    else preview.open(item, sorted)
   }
 
   const toggleSelect = (item: DriveItem) => {
@@ -186,6 +217,9 @@ export function ItemCollection({ items, loading, error, reload, empty }: ItemCol
                 {selected.size} seleccionado(s)
               </span>
               <div className="flex items-center gap-1">
+                {selectedItems.length > 0 && selectedItems.every((i) => i.type === 'file') && (
+                  <IconButton icon={Download} label="Descargar" size="sm" onClick={() => selectedItems.forEach(download)} />
+                )}
                 <IconButton icon={FolderInput} label="Mover" size="sm" onClick={() => setDialog({ kind: 'move', mode: 'move', items: selectedItems })} />
                 <IconButton icon={Copy} label="Copiar" size="sm" onClick={() => setDialog({ kind: 'move', mode: 'copy', items: selectedItems })} />
                 <IconButton icon={Trash2} label="Eliminar" size="sm" onClick={() => setDialog({ kind: 'delete', items: selectedItems })} />
@@ -196,11 +230,14 @@ export function ItemCollection({ items, loading, error, reload, empty }: ItemCol
               {items.length > 0 ? `${items.length} elemento(s)` : ''}
             </span>
           )}
-          <ViewToggle value={view} onChange={setViewMode} />
+          <div className="flex shrink-0 items-center gap-2">
+            <SortControl value={sort} onChange={setSort} showOwner={false} />
+            <ViewToggle value={view} onChange={setViewMode} />
+          </div>
         </div>
 
         {/* Contenido */}
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
           {loading ? (
             <div className="flex h-64 items-center justify-center text-content-tertiary">
               <Spinner size={32} />
@@ -212,12 +249,15 @@ export function ItemCollection({ items, loading, error, reload, empty }: ItemCol
           ) : items.length === 0 ? (
             <EmptyState icon={empty.icon} title={empty.title} description={empty.description} />
           ) : view === 'list' ? (
-            <FileListView items={items} selected={selected} onOpen={openItem} onSelectToggle={toggleSelect} onAction={onAction} interactions={{ onItemClick }} />
+            <FileListView items={sorted} selected={selected} onOpen={openItem} onSelectToggle={toggleSelect} onAction={onAction} interactions={{ onItemClick, onItemContextMenu }} ownerName={user?.display_name} showLocation={showLocation} />
           ) : (
-            <FileGridView items={items} selected={selected} onOpen={openItem} onSelectToggle={toggleSelect} onAction={onAction} interactions={{ onItemClick }} />
+            <FileGridView items={sorted} selected={selected} onOpen={openItem} onSelectToggle={toggleSelect} onAction={onAction} interactions={{ onItemClick, onItemContextMenu }} />
           )}
         </div>
       </div>
+
+      {/* Rectángulo de selección por área */}
+      {marqueeOverlay}
 
       {/* Panel de detalles */}
       {details && (
@@ -249,6 +289,26 @@ export function ItemCollection({ items, loading, error, reload, empty }: ItemCol
         onClose={() => setDialog(null)}
         onConfirm={() => runDelete(dialog?.kind === 'delete' ? dialog.items : [])}
       />
+
+      {/* Menú contextual (clic derecho): mismas acciones que los tres puntos.
+          Si hay varios seleccionados, ofrece acciones masivas. */}
+      {ctxMenu && (
+        <Menu
+          open
+          onClose={() => setCtxMenu(null)}
+          position={{ x: ctxMenu.x, y: ctxMenu.y }}
+          title={ctxMenu.item.name}
+          items={
+            selectedItems.length > 1 && selected.has(key(ctxMenu.item))
+              ? [
+                  { id: 'move', label: `Mover ${selectedItems.length} elementos`, icon: FolderInput, onSelect: () => setDialog({ kind: 'move', mode: 'move', items: selectedItems }) },
+                  { id: 'copy', label: 'Copiar a', icon: Copy, onSelect: () => setDialog({ kind: 'move', mode: 'copy', items: selectedItems }) },
+                  { id: 'delete', label: 'Enviar a la papelera', icon: Trash2, danger: true, divider: true, onSelect: () => setDialog({ kind: 'delete', items: selectedItems }) },
+                ]
+              : buildItemMenu(ctxMenu.item, (a) => onAction(ctxMenu.item, a))
+          }
+        />
+      )}
     </div>
   )
 }

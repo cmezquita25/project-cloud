@@ -1,10 +1,13 @@
-import { useState, type FormEvent } from 'react'
-import { Save, KeyRound, ShieldCheck, User as UserIcon } from 'lucide-react'
-import { Avatar, Button, Input, useToast } from '@shared/ui'
+import { useRef, useState, type FormEvent } from 'react'
+import { Save, KeyRound, ShieldCheck, User as UserIcon, Cloud, Camera, Trash2 } from 'lucide-react'
+import { Avatar, Button, Input, Spinner, useToast } from '@shared/ui'
 import { ApiError } from '@shared/api'
+import { cn } from '@shared/lib/cn'
 import { formatBytes, usagePercent } from '@shared/lib/formatBytes'
 import { useAuth } from '@features/auth/AuthProvider'
 import { authApi } from '@features/auth/services/authApi'
+import { useQuota } from '@features/storage-quota/hooks/useQuota'
+import { KIND_META } from '@features/storage-quota/kindMeta'
 
 export function ProfilePage() {
   const { user, setUser } = useAuth()
@@ -18,6 +21,38 @@ export function ProfilePage() {
   const [next, setNext] = useState('')
   const [confirm, setConfirm] = useState('')
   const [savingPassword, setSavingPassword] = useState(false)
+
+  const { data: quota } = useQuota()
+
+  const avatarInput = useRef<HTMLInputElement>(null)
+  const [avatarBusy, setAvatarBusy] = useState(false)
+
+  const onAvatarChange = async (e: FormEvent<HTMLInputElement>) => {
+    const file = (e.target as HTMLInputElement).files?.[0]
+    if (avatarInput.current) avatarInput.current.value = ''
+    if (!file) return
+    setAvatarBusy(true)
+    try {
+      setUser(await authApi.uploadAvatar(file))
+      toast.success('Foto de perfil actualizada')
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'No se pudo subir la foto')
+    } finally {
+      setAvatarBusy(false)
+    }
+  }
+
+  const removeAvatar = async () => {
+    setAvatarBusy(true)
+    try {
+      setUser(await authApi.removeAvatar())
+      toast.success('Foto de perfil eliminada')
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'No se pudo eliminar la foto')
+    } finally {
+      setAvatarBusy(false)
+    }
+  }
 
   if (!user) return null
 
@@ -71,7 +106,25 @@ export function ProfilePage() {
 
       {/* Cabecera de identidad */}
       <div className="mb-4 flex items-center gap-4 rounded-drive border border-border bg-surface p-6">
-        <Avatar name={user.display_name} size={64} />
+        <div className="relative shrink-0">
+          <Avatar name={user.display_name} src={user.avatar_url} size={64} />
+          <button
+            type="button"
+            onClick={() => avatarInput.current?.click()}
+            disabled={avatarBusy}
+            aria-label="Cambiar foto de perfil"
+            className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-surface bg-primary text-primary-on shadow-elevation-1 transition-colors hover:bg-primary-hover disabled:opacity-60"
+          >
+            {avatarBusy ? <Spinner size={13} /> : <Camera size={14} />}
+          </button>
+          <input
+            ref={avatarInput}
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            className="hidden"
+            onChange={onAvatarChange}
+          />
+        </div>
         <div className="min-w-0">
           <p className="truncate text-lg font-medium text-content-primary">{user.display_name}</p>
           <p className="truncate text-sm text-content-secondary">@{user.username}</p>
@@ -83,8 +136,60 @@ export function ProfilePage() {
             <span>
               {formatBytes(user.used_bytes)} de {formatBytes(user.quota_bytes)} usados ({percent.toFixed(0)}%)
             </span>
+            {user.avatar_url && (
+              <button
+                type="button"
+                onClick={removeAvatar}
+                disabled={avatarBusy}
+                className="inline-flex items-center gap-1 text-danger hover:underline disabled:opacity-60"
+              >
+                <Trash2 size={12} /> Quitar foto
+              </button>
+            )}
           </div>
         </div>
+      </div>
+
+      {/* Almacenamiento: uso total + desglose por tipo (igual que Almacenamiento). */}
+      <div className="mb-4 rounded-drive border border-border bg-surface p-6">
+        <div className="mb-2 flex items-center gap-2 text-content-secondary">
+          <Cloud size={20} />
+          <span className="font-medium">Almacenamiento</span>
+        </div>
+        <p className="text-sm text-content-tertiary">
+          {formatBytes(user.used_bytes)} de {formatBytes(user.quota_bytes)} usados ({percent.toFixed(0)}%)
+        </p>
+
+        {/* Barra segmentada por tipo */}
+        <div className="mt-3 flex h-3.5 w-full overflow-hidden rounded-pill bg-surface-hover">
+          {(quota?.breakdown ?? []).map((b) => {
+            const w = quota && quota.quota_bytes > 0 ? (b.bytes / quota.quota_bytes) * 100 : 0
+            return (
+              <div
+                key={b.kind}
+                className={cn('h-full', KIND_META[b.kind].bar)}
+                style={{ width: `${w}%` }}
+                title={`${KIND_META[b.kind].label}: ${formatBytes(b.bytes)}`}
+              />
+            )
+          })}
+        </div>
+
+        {/* Desglose por tipo */}
+        {quota && quota.breakdown.length > 0 ? (
+          <ul className="mt-4 grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
+            {quota.breakdown.map((b) => (
+              <li key={b.kind} className="flex items-center gap-2.5 text-sm">
+                <span className={cn('h-2.5 w-2.5 shrink-0 rounded-full', KIND_META[b.kind].dot)} />
+                <span className="flex-1 truncate text-content-primary">{KIND_META[b.kind].label}</span>
+                <span className="text-xs text-content-tertiary">{b.count}</span>
+                <span className="w-20 text-right font-medium text-content-primary">{formatBytes(b.bytes)}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-3 text-xs text-content-tertiary">Aún no has subido archivos.</p>
+        )}
       </div>
 
       {/* Datos del perfil */}

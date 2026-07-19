@@ -28,6 +28,15 @@ class FileRepository
         return $stmt->fetch() ?: null;
     }
 
+    /** Busca un archivo vivo por id sin acotar por usuario (para servir miniaturas
+     *  de archivos que ya son públicos por URL). */
+    public function findAnyById(int $id): ?array
+    {
+        $stmt = $this->pdo->prepare('SELECT * FROM files WHERE id = ? AND deleted_at IS NULL LIMIT 1');
+        $stmt->execute([$id]);
+        return $stmt->fetch() ?: null;
+    }
+
     /** @return array<int,array<string,mixed>> Archivos vivos de una carpeta. */
     public function inFolder(int $userId, ?int $folderId): array
     {
@@ -260,8 +269,11 @@ class FileRepository
     {
         $limit = max(1, min(200, $limit)); // entero saneado: seguro para interpolar en LIMIT
         $stmt = $this->pdo->prepare(
-            "SELECT * FROM files WHERE user_id = ? AND deleted_at IS NULL
-              ORDER BY updated_at DESC, id DESC LIMIT $limit"
+            "SELECT f.*, pf.name AS location_name
+               FROM files f
+               LEFT JOIN folders pf ON pf.id = f.folder_id
+              WHERE f.user_id = ? AND f.deleted_at IS NULL
+              ORDER BY f.updated_at DESC, f.id DESC LIMIT $limit"
         );
         $stmt->execute([$userId]);
         return $stmt->fetchAll();
@@ -271,7 +283,10 @@ class FileRepository
     public function starred(int $userId): array
     {
         $stmt = $this->pdo->prepare(
-            'SELECT * FROM files WHERE user_id = ? AND deleted_at IS NULL AND is_starred = 1 ORDER BY name'
+            "SELECT f.*, pf.name AS location_name
+               FROM files f
+               LEFT JOIN folders pf ON pf.id = f.folder_id
+              WHERE f.user_id = ? AND f.deleted_at IS NULL AND f.is_starred = 1 ORDER BY f.name"
         );
         $stmt->execute([$userId]);
         return $stmt->fetchAll();
@@ -282,8 +297,11 @@ class FileRepository
     {
         $limit = max(1, min(200, $limit));
         $stmt = $this->pdo->prepare(
-            "SELECT * FROM files WHERE user_id = ? AND deleted_at IS NULL AND name LIKE ? ESCAPE '\\\\'
-              ORDER BY name LIMIT $limit"
+            "SELECT f.*, pf.name AS location_name
+               FROM files f
+               LEFT JOIN folders pf ON pf.id = f.folder_id
+              WHERE f.user_id = ? AND f.deleted_at IS NULL AND f.name LIKE ? ESCAPE '\\\\'
+              ORDER BY f.name LIMIT $limit"
         );
         $stmt->execute([$userId, '%' . self::escapeLike($term) . '%']);
         return $stmt->fetchAll();

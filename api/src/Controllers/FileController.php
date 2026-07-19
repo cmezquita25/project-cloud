@@ -9,9 +9,11 @@ use ProjectCloud\Core\Request;
 use ProjectCloud\Core\Response;
 use ProjectCloud\Repositories\FileRepository;
 use ProjectCloud\Repositories\FolderRepository;
+use ProjectCloud\Repositories\UserRepository;
 use ProjectCloud\Services\ActivityLogger;
 use ProjectCloud\Services\FileService;
 use ProjectCloud\Services\FileSystemService;
+use ProjectCloud\Services\ThumbnailService;
 
 /**
  * Operaciones sobre archivos.
@@ -91,6 +93,24 @@ final class FileController
             'url'  => FileService::publicUrl($username, (string) $file['path']),
             'name' => (string) $file['name'],
         ]);
+    }
+
+    /** GET /files/{id}/thumb — miniatura de imagen (pública, como la URL del archivo). */
+    public function thumb(Request $request): void
+    {
+        $file = (new FileRepository())->findAnyById((int) $request->param('id'));
+        if ($file === null) {
+            throw HttpException::notFound('Archivo no encontrado');
+        }
+        $user = (new UserRepository())->findById((int) $file['user_id']);
+        if ($user === null) {
+            throw HttpException::notFound('Archivo no encontrado');
+        }
+        $abs = (new FileSystemService())->userRoot((string) $user['username'])
+            . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, (string) $file['path']);
+
+        $size = (int) $request->input('s', 400);
+        (new ThumbnailService())->stream($abs, max(64, min(1024, $size)));
     }
 
     // --- Helpers ---

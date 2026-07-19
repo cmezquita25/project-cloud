@@ -18,14 +18,14 @@ export function StorageIndicator({ usedBytes, totalBytes, onNavigate }: StorageI
     <Link
       to="/storage"
       onClick={onNavigate}
-      className="block rounded-drive px-3 py-2 transition-colors hover:bg-surface-hover"
+      className="block rounded-xl bg-surface-container px-4 py-3 transition-colors hover:bg-surface-hover"
     >
-      <div className="mb-2 flex items-center gap-2 text-content-secondary">
+      <div className="mb-2.5 flex items-center gap-2 text-content-secondary">
         <Cloud size={18} />
         <span className="text-sm font-medium">Almacenamiento</span>
       </div>
       <ProgressBar value={percent} tone={tone} size="sm" />
-      <p className="mt-2 text-xs text-content-tertiary">
+      <p className="mt-2.5 text-xs text-content-tertiary">
         {formatBytes(usedBytes)} de {formatBytes(totalBytes)} usados
       </p>
     </Link>

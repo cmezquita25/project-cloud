@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Users, HardDrive, Shield, UserPlus, Activity as ActivityIcon, Pencil, Server, Images } from 'lucide-react'
+import { useLocation } from 'react-router-dom'
+import { Users, HardDrive, Shield, UserPlus, Pencil, Server, Images } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Button, Dialog, Input, Spinner, useToast } from '@shared/ui'
-import { cn } from '@shared/lib/cn'
 import { formatBytes } from '@shared/lib/formatBytes'
 import { useAuth } from '@features/auth/AuthProvider'
 import { AssetsPermissionsDialog } from '@features/assets/components/AssetsPermissionsDialog'
@@ -12,9 +12,10 @@ import { UsersTable } from './components/UsersTable'
 import { UserFormDialog } from './components/UserFormDialog'
 import { PasswordResetDialog } from './components/PasswordResetDialog'
 import { ActivityList } from './components/ActivityList'
+import { PlatformSettingsTab } from './components/PlatformSettingsTab'
 import type { ActivityItem, AdminStats, AdminUser } from './types'
 
-type Tab = 'overview' | 'users' | 'activity'
+type Tab = 'overview' | 'users' | 'activity' | 'config'
 
 function StatCard({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
   return (
@@ -30,10 +31,26 @@ function StatCard({ icon: Icon, label, value }: { icon: LucideIcon; label: strin
   )
 }
 
+/** Deriva la sección activa desde la URL (cada una es su propia ruta). */
+function tabFromPath(pathname: string): Tab {
+  if (pathname.startsWith('/admin/users')) return 'users'
+  if (pathname.startsWith('/admin/activity')) return 'activity'
+  if (pathname.startsWith('/admin/settings')) return 'config'
+  return 'overview'
+}
+
+const TAB_TITLE: Record<Tab, string> = {
+  overview: 'Panel de administración',
+  users: 'Usuarios',
+  activity: 'Registros de auditoría',
+  config: 'Configuración',
+}
+
 export function AdminPage() {
   const { user, setUser } = useAuth()
   const toast = useToast()
-  const [tab, setTab] = useState<Tab>('overview')
+  const location = useLocation()
+  const tab = tabFromPath(location.pathname)
 
   const [stats, setStats] = useState<AdminStats | null>(null)
   const [users, setUsers] = useState<AdminUser[]>([])
@@ -46,9 +63,11 @@ export function AdminPage() {
   const [deleteUser, setDeleteUser] = useState<AdminUser | null>(null)
   const [deleting, setDeleting] = useState(false)
 
+  const MB = 1024 ** 2
   const GB = 1024 ** 3
   const [capOpen, setCapOpen] = useState(false)
-  const [capGb, setCapGb] = useState('')
+  const [capVal, setCapVal] = useState('')
+  const [capUnit, setCapUnit] = useState<'MB' | 'GB'>('GB')
   const [savingCap, setSavingCap] = useState(false)
   const [assetsPermOpen, setAssetsPermOpen] = useState(false)
 
@@ -76,19 +95,28 @@ export function AdminPage() {
   }
 
   const openCapacity = () => {
-    setCapGb(stats && stats.server_capacity_bytes > 0 ? String(Math.round(stats.server_capacity_bytes / GB)) : '')
+    const bytes = stats?.server_capacity_bytes ?? 0
+    if (bytes > 0 && bytes < GB) {
+      // Menos de 1 GB: es más natural mostrarlo en MB.
+      setCapVal(String(Math.round(bytes / MB)))
+      setCapUnit('MB')
+    } else {
+      setCapVal(bytes > 0 ? String(Math.round(bytes / GB)) : '')
+      setCapUnit('GB')
+    }
     setCapOpen(true)
   }
 
   const saveCapacity = async () => {
-    const gb = parseFloat(capGb)
-    if (!Number.isFinite(gb) || gb <= 0) {
-      toast.error('Introduce una capacidad válida en GB')
+    const val = parseFloat(capVal)
+    if (!Number.isFinite(val) || val <= 0) {
+      toast.error(`Introduce una capacidad válida en ${capUnit}`)
       return
     }
+    const bytes = Math.round(val * (capUnit === 'GB' ? GB : MB))
     setSavingCap(true)
     try {
-      const res = await adminApi.updateCapacity(Math.round(gb * GB))
+      const res = await adminApi.updateCapacity(bytes)
       // Refresca el usuario en memoria para que sidebar/perfil reflejen el cambio.
       if (res.user) setUser(res.user)
       else await authApi.me().then(setUser)
@@ -117,40 +145,15 @@ export function AdminPage() {
     }
   }
 
-  const tabs: { id: Tab; label: string; icon: LucideIcon }[] = [
-    { id: 'overview', label: 'Resumen', icon: HardDrive },
-    { id: 'users', label: 'Usuarios', icon: Users },
-    { id: 'activity', label: 'Actividad', icon: ActivityIcon },
-  ]
-
   return (
     <div className="flex h-full flex-col">
       <div className="mb-4 flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-normal text-content-primary">Administración</h1>
+        <h1 className="text-2xl font-normal text-content-primary">{TAB_TITLE[tab]}</h1>
         {tab === 'users' && (
           <Button size="sm" leftIcon={UserPlus} onClick={() => { setEditUser(null); setFormOpen(true) }}>
             <span className="hidden sm:inline">Nuevo usuario</span>
           </Button>
         )}
-      </div>
-
-      {/* Pestañas */}
-      <div className="mb-4 flex gap-1 border-b border-border">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={cn(
-              'flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium transition-colors',
-              tab === t.id
-                ? 'border-primary text-primary'
-                : 'border-transparent text-content-secondary hover:text-content-primary'
-            )}
-          >
-            <t.icon size={16} />
-            {t.label}
-          </button>
-        ))}
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -215,6 +218,8 @@ export function AdminPage() {
             onToggleStatus={toggleStatus}
             onDelete={setDeleteUser}
           />
+        ) : tab === 'config' ? (
+          <PlatformSettingsTab />
         ) : (
           <ActivityList items={activity} />
         )}
@@ -249,16 +254,29 @@ export function AdminPage() {
           </>
         }
       >
-        <Input
-          label="Capacidad (GB)"
-          type="number"
-          min={1}
-          step={1}
-          value={capGb}
-          onChange={(e) => setCapGb(e.target.value)}
-          placeholder="25"
-          autoFocus
-        />
+        <div className="flex items-end gap-2">
+          <div className="flex-1">
+            <Input
+              label="Capacidad"
+              type="number"
+              min={1}
+              step={capUnit === 'GB' ? 1 : 100}
+              value={capVal}
+              onChange={(e) => setCapVal(e.target.value)}
+              placeholder={capUnit === 'GB' ? '25' : '500'}
+              autoFocus
+            />
+          </div>
+          <select
+            value={capUnit}
+            onChange={(e) => setCapUnit(e.target.value as 'MB' | 'GB')}
+            className="h-11 rounded-drive border border-border-strong bg-surface px-3 text-sm text-content-primary focus:border-transparent focus:outline-none focus:ring-2 focus:ring-focus"
+            aria-label="Unidad"
+          >
+            <option value="MB">MB</option>
+            <option value="GB">GB</option>
+          </select>
+        </div>
       </Dialog>
 
       <AssetsPermissionsDialog open={assetsPermOpen} onClose={() => setAssetsPermOpen(false)} />

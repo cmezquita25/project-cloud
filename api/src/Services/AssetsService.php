@@ -100,6 +100,16 @@ final class AssetsService
      *
      * @return array{path:string,breadcrumbs:list<array{name:string,path:string}>,folders:list<array<string,mixed>>,files:list<array<string,mixed>>}
      */
+    /** Ruta absoluta (validada contra traversal) de un archivo de assets. */
+    public function absoluteFile(string $relative): string
+    {
+        $abs = $this->safe($relative);
+        if (!is_file($abs)) {
+            throw HttpException::notFound('Archivo no encontrado en assets.');
+        }
+        return $abs;
+    }
+
     public function list(string $relative): array
     {
         $abs = $this->safe($relative);

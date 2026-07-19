@@ -98,6 +98,7 @@ function FolderChip({ item, selected, onOpen, onAction, interactions }: CardProp
 
   return (
     <div
+      data-sel-key={key}
       {...itemHandlers(item, onOpen, interactions)}
       {...dnd}
       className={cn(
@@ -124,6 +125,7 @@ function FileCard({ item, selected, onOpen, onAction, interactions }: CardProps<
 
   return (
     <div
+      data-sel-key={itemKey(item)}
       {...itemHandlers(item, onOpen, interactions)}
       className={cn(
         'group relative flex flex-col overflow-hidden rounded-xl border transition-shadow cursor-pointer',
@@ -135,7 +137,19 @@ function FileCard({ item, selected, onOpen, onAction, interactions }: CardProps<
       {/* Previsualización cuadrada */}
       <div className="flex aspect-square items-center justify-center overflow-hidden bg-surface-container">
         {isImage(item) ? (
-          <img src={item.url} alt={item.name} className="h-full w-full object-cover" loading="lazy" />
+          <img
+            src={`/api/v1/files/${item.id}/thumb?s=400`}
+            alt={item.name}
+            draggable={false}
+            className="h-full w-full object-cover"
+            loading="lazy"
+            decoding="async"
+            onError={(e) => {
+              // Si la miniatura falla, cae al archivo original.
+              const img = e.currentTarget
+              if (img.src !== item.url) img.src = item.url
+            }}
+          />
         ) : (
           <Icon size={52} className={cn('opacity-70', className)} strokeWidth={1.5} />
         )}

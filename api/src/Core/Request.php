@@ -133,6 +133,17 @@ final class Request
         return $this->params[$key] ?? $default;
     }
 
+    public function post(string $key, ?string $default = null): ?string
+    {
+        return $_POST[$key] ?? $default;
+    }
+
+    /** @return array<string,mixed>|null */
+    public function file(string $key): ?array
+    {
+        return $_FILES[$key] ?? null;
+    }
+
     public function ip(): string
     {
         return (string) ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0');

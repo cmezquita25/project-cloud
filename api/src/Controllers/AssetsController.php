@@ -11,6 +11,7 @@ use ProjectCloud\Core\Validator;
 use ProjectCloud\Repositories\UserRepository;
 use ProjectCloud\Services\ActivityLogger;
 use ProjectCloud\Services\AssetsService;
+use ProjectCloud\Services\ThumbnailService;
 
 /**
  * Unidad compartida "assets" (Fase 8, punto 6): navegación e interacción para
@@ -36,6 +37,13 @@ final class AssetsController
         $service = $this->guard($request);
         $path = (string) $request->input('path', '');
         return Response::success($service->list($path));
+    }
+
+    /** GET /assets/thumb?path=... — miniatura de una imagen de assets (pública). */
+    public function thumb(Request $request): void
+    {
+        $abs = $this->service()->absoluteFile((string) $request->input('path', ''));
+        (new ThumbnailService())->stream($abs, max(64, min(1024, (int) $request->input('s', 400))));
     }
 
     /** POST /assets/folder — crea una carpeta. */
