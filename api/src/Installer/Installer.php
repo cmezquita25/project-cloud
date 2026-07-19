@@ -216,22 +216,8 @@ final class Installer
 
     private function runMigrations(PDO $pdo): void
     {
-        $sql = file_get_contents($this->schemaPath);
-        if ($sql === false) {
-            throw new HttpException(500, 'SCHEMA_MISSING', 'No se encontró el esquema de la base de datos.');
-        }
-        // Normaliza saltos de línea.
-        $sql = str_replace(["\r\n", "\r"], "\n", $sql);
-        // Elimina TODOS los comentarios "--" (completos e inline), hasta el fin
-        // de línea. Es imprescindible antes de dividir por ';', porque un ';'
-        // dentro de un comentario cortaría la sentencia (bug 1064 "near ''").
-        $sql = preg_replace('/--[^\n]*/', '', $sql) ?? $sql;
-        foreach (explode(';', $sql) as $statement) {
-            $statement = trim($statement);
-            if ($statement !== '') {
-                $pdo->exec($statement);
-            }
-        }
+        // Fuente de verdad compartida con el endpoint admin de migraciones.
+        (new \ProjectCloud\Services\SchemaMigrator($this->schemaPath))->run($pdo);
     }
 
     /**

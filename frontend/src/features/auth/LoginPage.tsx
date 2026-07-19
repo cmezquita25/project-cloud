@@ -1,13 +1,14 @@
 import { useState, type FormEvent } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Eye, EyeOff } from 'lucide-react'
-import { Button, Input, Checkbox } from '@shared/ui'
+import { Button, Input, Checkbox, useLoader } from '@shared/ui'
 import { ApiError } from '@shared/api'
 import { useAuth } from './AuthProvider'
 
 /** Pantalla de inicio de sesión (funcional). */
 export function LoginPage() {
   const { login } = useAuth()
+  const loader = useLoader()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -26,7 +27,10 @@ export function LoginPage() {
     setSubmitting(true)
     setError(null)
     try {
-      await login({ login: form.login.trim(), password: form.password, remember: form.remember })
+      await loader.wrap(
+        login({ login: form.login.trim(), password: form.password, remember: form.remember }),
+        'Iniciando sesión…'
+      )
       navigate(from, { replace: true })
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'No se pudo iniciar sesión')
@@ -79,14 +83,22 @@ export function LoginPage() {
           autoComplete="current-password"
           required
         />
-        <label className="flex cursor-pointer items-center gap-2 text-sm text-content-secondary">
-          <Checkbox
-            id="remember"
-            checked={form.remember}
-            onChange={(e) => setForm((f) => ({ ...f, remember: e.target.checked }))}
-          />
-          Recuérdame
-        </label>
+        <div className="flex items-center justify-between gap-2">
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-content-secondary">
+            <Checkbox
+              id="remember"
+              checked={form.remember}
+              onChange={(e) => setForm((f) => ({ ...f, remember: e.target.checked }))}
+            />
+            Recuérdame
+          </label>
+          <Link
+            to="/forgot-password"
+            className="text-sm font-medium text-primary hover:underline"
+          >
+            ¿Olvidaste tu contraseña?
+          </Link>
+        </div>
         <Button type="submit" fullWidth size="lg" loading={submitting} className="mt-1">
           Iniciar sesión
         </Button>

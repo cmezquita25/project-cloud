@@ -6,6 +6,7 @@ import { useIsMobile } from '@shared/hooks/useMediaQuery'
 import { UploadDock } from '@features/uploads/components/UploadDock'
 import { Topbar } from './components/Topbar'
 import { Sidebar } from './components/Sidebar'
+import { Footer } from './components/Footer'
 import { HeaderSearchProvider } from './HeaderSearchContext'
 
 /**
@@ -69,6 +70,9 @@ export function AppLayout() {
           </div>
         </main>
       </div>
+
+      {/* Pie de página global */}
+      <Footer />
 
       {/* Tarjeta de progreso de subidas (global) */}
       <UploadDock />

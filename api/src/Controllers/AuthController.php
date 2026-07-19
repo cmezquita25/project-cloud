@@ -14,6 +14,10 @@ use ProjectCloud\Repositories\RefreshTokenRepository;
 use ProjectCloud\Repositories\UserRepository;
 use ProjectCloud\Services\AuthService;
 use ProjectCloud\Services\AvatarService;
+use ProjectCloud\Services\EmailTemplateService;
+use ProjectCloud\Services\MailService;
+use ProjectCloud\Services\PasswordResetService;
+use ProjectCloud\Services\UrlBuilder;
 
 /**
  * Endpoints de autenticación: login, refresh, logout, me.
@@ -79,6 +83,72 @@ final class AuthController
         if (is_string($token) && $token !== '') {
             $this->service()->logout($token);
         }
+        return Response::success(['ok' => true]);
+    }
+
+    /**
+     * POST /auth/password/forgot — inicia el restablecimiento. Respuesta neutra
+     * SIEMPRE (no revela si el correo/usuario existe). Si existe y el SMTP está
+     * configurado, envía el enlace único que caduca.
+     */
+    public function forgotPassword(Request $request): Response
+    {
+        $data = (new Validator($request->json()))->required('login')->validate();
+        $user = (new UserRepository())->findByLogin((string) $data['login']);
+
+        if ($user !== null && ($user['status'] ?? 'active') === 'active') {
+            try {
+                $token = (new PasswordResetService())->issue((int) $user['id'], $request->ip());
+                $mail = new MailService();
+                $rendered = (new EmailTemplateService())->render(EmailTemplateService::PASSWORD_RESET, [
+                    'user_name'       => (string) $user['display_name'],
+                    'reset_link'      => UrlBuilder::resetLink($token),
+                    'expires_minutes' => (string) PasswordResetService::TTL_MINUTES,
+                    'org_name'        => $mail->organizationName(),
+                ]);
+                $mail->send((string) $user['email'], (string) $user['display_name'], $rendered['subject'], $rendered['html']);
+            } catch (\Throwable $e) {
+                error_log('[forgotPassword] ' . $e->getMessage());
+            }
+        }
+
+        return Response::success(['ok' => true]);
+    }
+
+    /** GET /auth/password/reset/{token}/validate — comprueba si el enlace sigue vigente. */
+    public function validateResetToken(Request $request): Response
+    {
+        $row = (new PasswordResetService())->validate((string) $request->param('token'));
+        return Response::success(['valid' => $row !== null]);
+    }
+
+    /** POST /auth/password/reset — fija la nueva contraseña con un token válido. */
+    public function resetPassword(Request $request): Response
+    {
+        $data = (new Validator($request->json()))
+            ->required('token')
+            ->required('password')->minLength('password', 8)
+            ->validate();
+
+        $service = new PasswordResetService();
+        $row = $service->validate((string) $data['token']);
+        if ($row === null) {
+            throw new HttpException(422, 'INVALID_TOKEN', 'El enlace no es válido o ha caducado.');
+        }
+
+        $userId = (int) $row['user_id'];
+        (new UserRepository())->updatePassword($userId, Password::hash((string) $data['password']));
+        $service->consume((int) $row['id']);
+
+        // Cierra todas las sesiones activas del usuario por seguridad.
+        (new RefreshTokenRepository())->revokeAllForUser($userId);
+
+        try {
+            (new ActivityRepository())->log($userId, 'password_reset', 'user', $userId, null, $request->ip());
+        } catch (\Throwable) {
+            // la auditoría no debe romper la operación
+        }
+
         return Response::success(['ok' => true]);
     }
 

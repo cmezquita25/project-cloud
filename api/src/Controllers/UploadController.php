@@ -13,6 +13,7 @@ use ProjectCloud\Repositories\UserRepository;
 use ProjectCloud\Services\ActivityLogger;
 use ProjectCloud\Services\FileService;
 use ProjectCloud\Services\FileSystemService;
+use ProjectCloud\Services\QuotaService;
 use ProjectCloud\Services\UploadService;
 
 /**
@@ -68,6 +69,15 @@ final class UploadController
             'name' => $file['name'] ?? null,
             'size' => $file['size_bytes'] ?? null,
         ]);
+
+        // Aviso por correo si el usuario cruza el 90% de su cuota (no rompe la subida).
+        try {
+            (new QuotaService(new UserRepository(), new FileRepository()))
+                ->checkQuotaWarning((int) $request->userId());
+        } catch (\Throwable) {
+            // El aviso nunca debe tumbar la subida.
+        }
+
         return Response::created($this->filePublic($file, $username));
     }
 

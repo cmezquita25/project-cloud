@@ -14,7 +14,12 @@ use ProjectCloud\Repositories\FileRepository;
 use ProjectCloud\Repositories\SettingsRepository;
 use ProjectCloud\Repositories\UserRepository;
 use ProjectCloud\Services\ActivityLogger;
+use ProjectCloud\Services\AvatarService;
+use ProjectCloud\Services\EmailTemplateService;
 use ProjectCloud\Services\FileSystemService;
+use ProjectCloud\Services\MailService;
+use ProjectCloud\Services\PasswordResetService;
+use ProjectCloud\Services\UrlBuilder;
 
 /**
  * Panel de administración: usuarios, cuotas, estadísticas y actividad.
@@ -35,13 +40,19 @@ final class AdminController
     /** POST /admin/users */
     public function createUser(Request $request): Response
     {
-        $data = (new Validator($request->json()))
+        $body = $request->json();
+        // El admin puede fijar la contraseña o pedir una generada (8–10, con símbolos).
+        $generate = !empty($body['generate']);
+
+        $validator = (new Validator($body))
             ->required('username')->minLength('username', 3)->maxLength('username', 64)
             ->matches('username', '/^[A-Za-z0-9._-]+$/', 'Solo letras, números, punto, guion y guion bajo')
             ->required('email')->email('email')
-            ->required('display_name')->maxLength('display_name', 120)
-            ->required('password')->minLength('password', 8)
-            ->validate();
+            ->required('display_name')->maxLength('display_name', 120);
+        if (!$generate) {
+            $validator->required('password')->minLength('password', 8);
+        }
+        $data = $validator->validate();
 
         $users = new UserRepository();
         $username = strtolower((string) $data['username']);
@@ -53,10 +64,12 @@ final class AdminController
         $quota = (int) ($data['quota_bytes'] ?? 5 * 1024 ** 3);
         $maxUpload = (int) ($data['max_upload_bytes'] ?? 2 * 1024 ** 3);
 
+        $plainPassword = $generate ? Password::generate(10) : (string) $data['password'];
+
         $id = $users->create(
             $username,
             (string) $data['email'],
-            Password::hash((string) $data['password']),
+            Password::hash($plainPassword),
             (string) $data['display_name'],
             $role,
             $quota,
@@ -68,8 +81,32 @@ final class AdminController
 
         ActivityLogger::log($request, 'user.create', 'user', $id, ['username' => $username]);
 
+        // Correo de bienvenida con contraseña temporal + enlace para fijar la suya.
+        $emailSent = false;
+        try {
+            $token = (new PasswordResetService())->issue($id, $request->ip());
+            $mail = new MailService();
+            $rendered = (new EmailTemplateService())->render(EmailTemplateService::WELCOME, [
+                'user_name'     => (string) $data['display_name'],
+                'username'      => $username,
+                'temp_password' => $plainPassword,
+                'reset_link'    => UrlBuilder::resetLink($token),
+                'login_url'     => UrlBuilder::loginUrl(),
+                'org_name'      => $mail->organizationName(),
+            ]);
+            $emailSent = $mail->send((string) $data['email'], (string) $data['display_name'], $rendered['subject'], $rendered['html']);
+        } catch (\Throwable $e) {
+            error_log('[createUser welcome] ' . $e->getMessage());
+        }
+
         $user = $users->findById($id);
-        return Response::created($this->userPublic($user ?? []));
+        return Response::created([
+            'user'        => $this->userPublic($user ?? []),
+            'email_sent'  => $emailSent,
+            // Si no se pudo enviar el correo, se devuelve la contraseña generada
+            // para que el admin pueda comunicarla manualmente.
+            'generated_password' => ($generate && !$emailSent) ? $plainPassword : null,
+        ]);
     }
 
     /** PATCH /admin/users/{id} */
@@ -176,6 +213,19 @@ final class AdminController
         // Capacidad real del servidor (definida en la instalación, editable aquí).
         $stats['server_capacity_bytes'] = (new SettingsRepository())->getInt('server_capacity_bytes', 0);
         return Response::success($stats);
+    }
+
+    /** GET /admin/server-info */
+    public function serverInfo(Request $request): Response
+    {
+        $getIni = fn ($key) => ini_get($key) !== false ? ini_get($key) : 'N/A';
+        return Response::success([
+            'memory_limit' => $getIni('memory_limit'),
+            'max_execution_time' => $getIni('max_execution_time'),
+            'max_input_time' => $getIni('max_input_time'),
+            'post_max_size' => $getIni('post_max_size'),
+            'upload_max_filesize' => $getIni('upload_max_filesize'),
+        ]);
     }
 
     /** PATCH /admin/settings — ajusta la capacidad real del servidor. */
@@ -335,6 +385,7 @@ final class AdminController
             'quota_bytes'      => (int) ($u['quota_bytes'] ?? 0),
             'used_bytes'       => (int) ($u['used_bytes'] ?? 0),
             'max_upload_bytes' => (int) ($u['max_upload_bytes'] ?? 0),
+            'avatar_url'       => AvatarService::urlFor((int) ($u['id'] ?? 0)),
             'created_at'       => $u['created_at'] ?? null,
         ];
     }

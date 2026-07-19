@@ -129,7 +129,40 @@ INSERT INTO `settings` (`key`, `value`) VALUES
     ('site_name', 'Project Cloud'),
     ('allow_registration', '0'),
     ('default_quota_bytes', '5368709120'),
-    ('schema_version', '1')
+    ('schema_version', '2')
 ON DUPLICATE KEY UPDATE `key` = `key`;
+
+-- --------------------------------------------------------------------------
+--  password_reset_tokens — enlaces únicos de restablecimiento (caducan y de
+--  un solo uso). Espeja el patrón de refresh_tokens: el token viaja en la URL
+--  y solo se guarda su hash SHA-256, nunca en claro.
+-- --------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `password_reset_tokens` (
+    `id`         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `user_id`    BIGINT UNSIGNED NOT NULL,
+    `token_hash` CHAR(64) NOT NULL,                                 -- SHA-256 hex del token
+    `expires_at` DATETIME NOT NULL,
+    `used_at`    DATETIME NULL DEFAULT NULL,
+    `ip`         VARCHAR(45) NULL DEFAULT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_reset_token_hash` (`token_hash`),
+    KEY `idx_reset_user` (`user_id`),
+    KEY `idx_reset_expires` (`expires_at`),
+    CONSTRAINT `fk_reset_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------------------------
+--  email_templates — plantillas de correo personalizables por el admin. Si una
+--  clave no tiene fila (o el cuerpo está vacío), el servicio usa el default de
+--  código. Claves: welcome, password_reset, quota_warning.
+-- --------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `email_templates` (
+    `template_key` VARCHAR(64)  NOT NULL,
+    `subject`      VARCHAR(255) NOT NULL DEFAULT '',
+    `body_html`    MEDIUMTEXT   NULL DEFAULT NULL,
+    `updated_at`   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`template_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SET FOREIGN_KEY_CHECKS = 1;

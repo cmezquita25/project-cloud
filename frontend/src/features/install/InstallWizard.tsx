@@ -33,8 +33,7 @@ export function InstallWizard() {
         </div>
 
         <div className="rounded-2xl border border-border bg-surface p-6 shadow-elevation-1 sm:p-8">
-          {/* overflow-x por si el ancho no alcanza para todos los pasos. */}
-          <div className="mb-8 overflow-x-auto">
+          <div className="mb-8">
             <Stepper steps={STEPS} current={step} />
           </div>
 

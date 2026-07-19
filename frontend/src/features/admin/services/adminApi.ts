@@ -5,14 +5,19 @@ import type {
   AdminStats,
   AdminUser,
   CreateUserPayload,
+  CreateUserResult,
+  EmailTemplate,
+  SmtpSettings,
+  SmtpUpdatePayload,
   UpdateUserPayload,
 } from '../types'
 
 /** Cliente del panel de administración (endpoints /admin/*). */
 export const adminApi = {
   stats: () => api.get<AdminStats>('/admin/stats'),
+  serverInfo: () => api.get<Record<string, string>>('/admin/server-info'),
   users: () => api.get<{ users: AdminUser[] }>('/admin/users').then((r) => r.users),
-  createUser: (payload: CreateUserPayload) => api.post<AdminUser>('/admin/users', payload),
+  createUser: (payload: CreateUserPayload) => api.post<CreateUserResult>('/admin/users', payload),
   updateUser: (id: number, fields: UpdateUserPayload) =>
     api.patch<AdminUser>(`/admin/users/${id}`, fields),
   resetPassword: (id: number, password: string) =>
@@ -33,4 +38,21 @@ export const adminApi = {
     formData.append('file', file)
     return api.post<{ ok: true; filename: string }>('/admin/settings/logo', formData)
   },
+
+  // --- Correo saliente (SMTP) ---
+  getSmtp: () => api.get<SmtpSettings>('/admin/smtp'),
+  updateSmtp: (payload: SmtpUpdatePayload) => api.patch<SmtpSettings>('/admin/smtp', payload),
+  /** Prueba la conexión; si `to` viene, envía un correo de prueba a esa dirección. */
+  testSmtp: (payload: Partial<SmtpUpdatePayload> & { to?: string }) =>
+    api.post<{ ok: true; sent: boolean; message: string }>('/admin/smtp/test', payload),
+
+  // --- Plantillas de correo ---
+  getEmailTemplates: () =>
+    api.get<{ templates: EmailTemplate[] }>('/admin/email-templates').then((r) => r.templates),
+  updateEmailTemplate: (key: string, payload: { subject: string; body_html: string }) =>
+    api.patch<{ ok: true }>(`/admin/email-templates/${key}`, payload),
+  resetEmailTemplate: (key: string) =>
+    api.post<{ ok: true; subject: string; body_html: string }>(`/admin/email-templates/${key}/reset`, {}),
+  previewEmailTemplate: (key: string, payload: { subject?: string; body_html?: string }) =>
+    api.post<{ subject: string; html: string }>(`/admin/email-templates/${key}/preview`, payload),
 }

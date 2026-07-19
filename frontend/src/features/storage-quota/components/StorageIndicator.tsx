@@ -1,4 +1,3 @@
-import { Cloud } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { ProgressBar } from '@shared/ui'
 import { formatBytes, usagePercent } from '@shared/lib/formatBytes'
@@ -16,12 +15,12 @@ export function StorageIndicator({ usedBytes, totalBytes, onNavigate }: StorageI
 
   return (
     <Link
-      to="/storage"
+      to="/quota"
       onClick={onNavigate}
       className="block rounded-xl bg-surface-container px-4 py-3 transition-colors hover:bg-surface-hover"
     >
       <div className="mb-2.5 flex items-center gap-2 text-content-secondary">
-        <Cloud size={18} />
+        <span className="material-symbols-rounded text-[18px]">cloud</span>
         <span className="text-sm font-medium">Almacenamiento</span>
       </div>
       <ProgressBar value={percent} tone={tone} size="sm" />

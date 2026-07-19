@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { HelpCircle } from 'lucide-react'
-import { Dialog, Button, Input, Tooltip } from '@shared/ui'
+import { HelpCircle, MailCheck, KeyRound } from 'lucide-react'
+import { Dialog, Button, Input, Tooltip, Checkbox, useToast } from '@shared/ui'
 import { ApiError } from '@shared/api'
 import { adminApi } from '../services/adminApi'
 import type { AdminUser } from '../types'
@@ -42,7 +42,10 @@ const EMPTY = {
 /** Alta y edición de usuarios. */
 export function UserFormDialog({ open, user, onClose, onSaved }: UserFormDialogProps) {
   const isEdit = user !== null
+  const toast = useToast()
   const [form, setForm] = useState(EMPTY)
+  const [generate, setGenerate] = useState(true)
+  const [createdPassword, setCreatedPassword] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
   const [submitting, setSubmitting] = useState(false)
@@ -51,6 +54,8 @@ export function UserFormDialog({ open, user, onClose, onSaved }: UserFormDialogP
     if (!open) return
     setError(null)
     setFieldErrors({})
+    setGenerate(true)
+    setCreatedPassword(null)
     if (user) {
       const q = fromBytes(user.quota_bytes)
       const m = fromBytes(user.max_upload_bytes)
@@ -89,19 +94,30 @@ export function UserFormDialog({ open, user, onClose, onSaved }: UserFormDialogP
           quota_bytes,
           max_upload_bytes,
         })
+        onSaved()
+        onClose()
       } else {
-        await adminApi.createUser({
+        const res = await adminApi.createUser({
           username: form.username.trim().toLowerCase(),
           email: form.email.trim(),
           display_name: form.display_name.trim(),
-          password: form.password,
+          generate,
+          password: generate ? undefined : form.password,
           role: form.role,
           quota_bytes,
           max_upload_bytes,
         })
+        onSaved()
+        // Si se generó contraseña pero no hubo correo, se muestra para compartir.
+        if (res.generated_password) {
+          setCreatedPassword(res.generated_password)
+        } else {
+          toast.success(
+            res.email_sent ? 'Usuario creado. Se envió el correo de bienvenida.' : 'Usuario creado.'
+          )
+          onClose()
+        }
       }
-      onSaved()
-      onClose()
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message)
@@ -115,6 +131,43 @@ export function UserFormDialog({ open, user, onClose, onSaved }: UserFormDialogP
   }
 
   const fe = (k: string) => fieldErrors[k]?.[0]
+
+  // Panel de resultado: contraseña generada que no se pudo enviar por correo.
+  if (createdPassword) {
+    return (
+      <Dialog open={open} onClose={onClose} title="Usuario creado" size="md">
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 rounded-drive border border-warning/30 bg-warning/10 p-3 text-sm text-content-secondary">
+            <MailCheck size={20} className="mt-0.5 shrink-0 text-warning" />
+            <p>
+              No se pudo enviar el correo de bienvenida (revisa la configuración del SMTP).
+              Comparte esta contraseña temporal con el usuario de forma segura:
+            </p>
+          </div>
+          <div className="flex items-center gap-2 rounded-drive border border-border bg-surface-container p-3">
+            <KeyRound size={18} className="shrink-0 text-content-tertiary" />
+            <code className="flex-1 select-all font-mono text-base text-content-primary">{createdPassword}</code>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                navigator.clipboard?.writeText(createdPassword).then(
+                  () => toast.success('Contraseña copiada'),
+                  () => toast.error('No se pudo copiar')
+                )
+              }}
+            >
+              Copiar
+            </Button>
+          </div>
+          <div className="flex justify-end">
+            <Button onClick={onClose}>Entendido</Button>
+          </div>
+        </div>
+      </Dialog>
+    )
+  }
 
   return (
     <Dialog open={open} onClose={onClose} title={isEdit ? 'Editar usuario' : 'Nuevo usuario'} size="md">
@@ -130,7 +183,34 @@ export function UserFormDialog({ open, user, onClose, onSaved }: UserFormDialogP
         )}
         <Input label="Correo electrónico" type="email" value={form.email} onChange={set('email')} error={fe('email')} autoComplete="off" required />
         {!isEdit && (
-          <Input label="Contraseña" type="password" value={form.password} onChange={set('password')} error={fe('password')} hint="Mínimo 8 caracteres" autoComplete="new-password" required />
+          <div className="space-y-3">
+            <label className="flex cursor-pointer items-start gap-2 text-sm text-content-secondary">
+              <Checkbox
+                id="gen-pwd"
+                checked={generate}
+                onChange={(e) => setGenerate(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span>
+                Generar contraseña automática y enviarla por correo
+                <span className="block text-xs text-content-tertiary">
+                  El usuario recibe una contraseña temporal y un enlace para fijar la suya.
+                </span>
+              </span>
+            </label>
+            {!generate && (
+              <Input
+                label="Contraseña"
+                type="password"
+                value={form.password}
+                onChange={set('password')}
+                error={fe('password')}
+                hint="Mínimo 8 caracteres"
+                autoComplete="new-password"
+                required
+              />
+            )}
+          </div>
         )}
 
         <div>
@@ -147,7 +227,7 @@ export function UserFormDialog({ open, user, onClose, onSaved }: UserFormDialogP
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <QuotaField
-            label="Cuota de almacenamiento"
+            label="Almacenamiento"
             help="Espacio TOTAL que este usuario puede ocupar con todos sus archivos. Al alcanzarlo, no podrá subir más hasta liberar espacio."
             value={form.quotaVal}
             unit={form.quotaUnit}
@@ -155,7 +235,7 @@ export function UserFormDialog({ open, user, onClose, onSaved }: UserFormDialogP
             onUnit={(u) => setForm((f) => ({ ...f, quotaUnit: u }))}
           />
           <QuotaField
-            label="Máximo por archivo"
+            label="Subida máxima"
             help="Tamaño MÁXIMO permitido para un solo archivo al subirlo. Archivos que superen este límite serán rechazados."
             value={form.maxVal}
             unit={form.maxUnit}

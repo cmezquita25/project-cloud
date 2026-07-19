@@ -65,13 +65,14 @@ export function UsersTable(props: UsersTableProps) {
   return (
     <>
       {/* Escritorio */}
-      <div className="hidden overflow-hidden rounded-drive border border-border md:block">
+      <div className="hidden overflow-hidden rounded-drive border border-border bg-surface md:block">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs font-medium text-content-tertiary">
               <th className="px-4 py-2 font-medium">Usuario</th>
               <th className="py-2 font-medium">Rol</th>
               <th className="py-2 font-medium">Estado</th>
+              <th className="py-2 font-medium">Subida máx.</th>
               <th className="py-2 font-medium">Almacenamiento</th>
               <th className="w-12 py-2 pr-2" />
             </tr>
@@ -81,7 +82,7 @@ export function UsersTable(props: UsersTableProps) {
               <tr key={u.id} className="border-b border-border/60 last:border-0 hover:bg-surface-hover">
                 <td className="px-4 py-2">
                   <div className="flex items-center gap-3">
-                    <Avatar name={u.display_name} size={36} />
+                    <Avatar name={u.display_name} size={36} src={u.avatar_url} />
                     <div className="min-w-0">
                       <p className="truncate font-medium text-content-primary">{u.display_name}</p>
                       <p className="truncate text-xs text-content-tertiary">{u.email}</p>
@@ -93,6 +94,9 @@ export function UsersTable(props: UsersTableProps) {
                   <span className={cn('text-xs font-medium', u.status === 'active' ? 'text-success' : 'text-danger')}>
                     {u.status === 'active' ? 'Activo' : 'Suspendido'}
                   </span>
+                </td>
+                <td className="py-2 text-content-secondary">
+                  {u.max_upload_bytes > 0 ? formatBytes(u.max_upload_bytes) : 'Sin límite'}
                 </td>
                 <td className="py-2 pr-4">
                   <div className="w-40">
@@ -116,7 +120,7 @@ export function UsersTable(props: UsersTableProps) {
         {users.map((u) => (
           <div key={u.id} className="rounded-drive border border-border bg-surface p-3">
             <div className="flex items-center gap-3">
-              <Avatar name={u.display_name} size={40} />
+              <Avatar name={u.display_name} size={40} src={u.avatar_url} />
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium text-content-primary">{u.display_name}</p>
                 <p className="truncate text-xs text-content-tertiary">{u.email}</p>
@@ -127,6 +131,9 @@ export function UsersTable(props: UsersTableProps) {
               <RoleBadge role={u.role} />
               <span className={cn('text-xs font-medium', u.status === 'active' ? 'text-success' : 'text-danger')}>
                 {u.status === 'active' ? 'Activo' : 'Suspendido'}
+              </span>
+              <span className="text-xs text-content-tertiary ml-auto">
+                Subida máx: {u.max_upload_bytes > 0 ? formatBytes(u.max_upload_bytes) : 'Ilimitada'}
               </span>
             </div>
             <div className="mt-2">

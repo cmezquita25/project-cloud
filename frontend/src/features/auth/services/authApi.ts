@@ -58,4 +58,24 @@ export const authApi = {
   removeAvatar(): Promise<User> {
     return api.delete<User>('/auth/me/avatar')
   },
+
+  // --- Restablecimiento de contraseña (público) ---
+
+  /** Solicita el enlace de restablecimiento (respuesta neutra siempre). */
+  requestPasswordReset(login: string): Promise<{ ok: true }> {
+    return api.post<{ ok: true }>('/auth/password/forgot', { login }, { skipAuthRefresh: true })
+  },
+
+  /** Comprueba si un token de restablecimiento sigue vigente. */
+  validateResetToken(token: string): Promise<{ valid: boolean }> {
+    return api.get<{ valid: boolean }>(
+      `/auth/password/reset/${encodeURIComponent(token)}/validate`,
+      { skipAuthRefresh: true }
+    )
+  },
+
+  /** Fija la nueva contraseña con un token válido. */
+  confirmPasswordReset(token: string, password: string): Promise<{ ok: true }> {
+    return api.post<{ ok: true }>('/auth/password/reset', { token, password }, { skipAuthRefresh: true })
+  },
 }

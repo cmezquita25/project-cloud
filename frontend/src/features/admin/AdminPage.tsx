@@ -1,21 +1,20 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import { Users, HardDrive, Shield, UserPlus, Pencil, Server, Images } from 'lucide-react'
+import { Users, HardDrive, Shield, UserPlus, Pencil, Server } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Button, Dialog, Input, Spinner, useToast } from '@shared/ui'
 import { formatBytes } from '@shared/lib/formatBytes'
 import { useAuth } from '@features/auth/AuthProvider'
-import { AssetsPermissionsDialog } from '@features/assets/components/AssetsPermissionsDialog'
 import { adminApi } from './services/adminApi'
 import { authApi } from '@features/auth/services/authApi'
 import { UsersTable } from './components/UsersTable'
 import { UserFormDialog } from './components/UserFormDialog'
 import { PasswordResetDialog } from './components/PasswordResetDialog'
 import { ActivityList } from './components/ActivityList'
-import { PlatformSettingsTab } from './components/PlatformSettingsTab'
+import { ServerLimits } from './components/ServerLimits'
 import type { ActivityItem, AdminStats, AdminUser } from './types'
 
-type Tab = 'overview' | 'users' | 'activity' | 'config'
+type Tab = 'overview' | 'users' | 'activity'
 
 function StatCard({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
   return (
@@ -35,7 +34,6 @@ function StatCard({ icon: Icon, label, value }: { icon: LucideIcon; label: strin
 function tabFromPath(pathname: string): Tab {
   if (pathname.startsWith('/admin/users')) return 'users'
   if (pathname.startsWith('/admin/activity')) return 'activity'
-  if (pathname.startsWith('/admin/settings')) return 'config'
   return 'overview'
 }
 
@@ -43,7 +41,6 @@ const TAB_TITLE: Record<Tab, string> = {
   overview: 'Panel de administración',
   users: 'Usuarios',
   activity: 'Registros de auditoría',
-  config: 'Configuración',
 }
 
 export function AdminPage() {
@@ -53,6 +50,7 @@ export function AdminPage() {
   const tab = tabFromPath(location.pathname)
 
   const [stats, setStats] = useState<AdminStats | null>(null)
+  const [serverInfo, setServerInfo] = useState<Record<string, string> | null>(null)
   const [users, setUsers] = useState<AdminUser[]>([])
   const [activity, setActivity] = useState<ActivityItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -69,15 +67,15 @@ export function AdminPage() {
   const [capVal, setCapVal] = useState('')
   const [capUnit, setCapUnit] = useState<'MB' | 'GB'>('GB')
   const [savingCap, setSavingCap] = useState(false)
-  const [assetsPermOpen, setAssetsPermOpen] = useState(false)
 
   const load = useCallback(() => {
     setLoading(true)
-    Promise.all([adminApi.stats(), adminApi.users(), adminApi.activity(1, 40)])
-      .then(([s, u, a]) => {
+    Promise.all([adminApi.stats(), adminApi.users(), adminApi.activity(1, 40), adminApi.serverInfo()])
+      .then(([s, u, a, info]) => {
         setStats(s)
         setUsers(u)
         setActivity(a.items)
+        setServerInfo(info)
       })
       .catch((e) => toast.error(e.message))
       .finally(() => setLoading(false))
@@ -192,22 +190,12 @@ export function AdminPage() {
               </Button>
             </div>
 
-            {/* Acceso a la carpeta compartida "assets". */}
-            <div className="flex items-center gap-4 rounded-drive border border-border bg-surface p-4">
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-subtle text-primary">
-                <Images size={22} />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm text-content-tertiary">Carpeta compartida (assets)</p>
-                <p className="text-base font-medium text-content-primary">Acceso restringido</p>
-                <p className="text-xs text-content-tertiary">
-                  Solo tú y los usuarios que autorices pueden verla e interactuar con ella.
-                </p>
+            {/* Rendimiento y límites del servidor (PHP) — componente dedicado. */}
+            {serverInfo && (
+              <div className="mt-6">
+                <ServerLimits serverInfo={serverInfo} />
               </div>
-              <Button size="sm" variant="secondary" leftIcon={Images} onClick={() => setAssetsPermOpen(true)}>
-                Gestionar acceso
-              </Button>
-            </div>
+            )}
           </div>
         ) : tab === 'users' ? (
           <UsersTable
@@ -218,8 +206,6 @@ export function AdminPage() {
             onToggleStatus={toggleStatus}
             onDelete={setDeleteUser}
           />
-        ) : tab === 'config' ? (
-          <PlatformSettingsTab />
         ) : (
           <ActivityList items={activity} />
         )}
@@ -278,8 +264,6 @@ export function AdminPage() {
           </select>
         </div>
       </Dialog>
-
-      <AssetsPermissionsDialog open={assetsPermOpen} onClose={() => setAssetsPermOpen(false)} />
     </div>
   )
 }

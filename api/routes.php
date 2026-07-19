@@ -20,6 +20,8 @@ use ProjectCloud\Controllers\UploadController;
 use ProjectCloud\Controllers\QuotaController;
 use ProjectCloud\Controllers\AdminController;
 use ProjectCloud\Controllers\SettingsController;
+use ProjectCloud\Controllers\SmtpController;
+use ProjectCloud\Controllers\EmailTemplateController;
 use ProjectCloud\Controllers\TrashController;
 use ProjectCloud\Controllers\LibraryController;
 use ProjectCloud\Controllers\AssetsController;
@@ -53,6 +55,11 @@ return static function (Router $router): void {
     $router->post('/v1/auth/login',   [AuthController::class, 'login'], [new RateLimit('login', 8, 300)]);
     $router->post('/v1/auth/refresh', [AuthController::class, 'refresh'], [new RateLimit('refresh', 60, 300)]);
     $router->post('/v1/auth/logout',  [AuthController::class, 'logout']);
+
+    // Restablecimiento de contraseña (público, con límite de tasa).
+    $router->post('/v1/auth/password/forgot', [AuthController::class, 'forgotPassword'], [new RateLimit('pwforgot', 5, 900)]);
+    $router->post('/v1/auth/password/reset',  [AuthController::class, 'resetPassword'], [new RateLimit('pwreset', 10, 900)]);
+    $router->get('/v1/auth/password/reset/{token}/validate', [AuthController::class, 'validateResetToken']);
     $router->get('/v1/auth/me',       [AuthController::class, 'me'], [new AuthMiddleware()]);
     $router->patch('/v1/auth/me',     [AuthController::class, 'updateProfile'], [new AuthMiddleware()]);
     $router->post('/v1/auth/me/password', [AuthController::class, 'changePassword'], [new AuthMiddleware()]);
@@ -109,6 +116,7 @@ return static function (Router $router): void {
     // --- Fase 6: Administración (requiere admin) ---
     $admin = [new AuthMiddleware(), new AdminOnly()];
     $router->get('/v1/admin/stats',               [AdminController::class, 'stats'], $admin);
+    $router->get('/v1/admin/server-info',         [AdminController::class, 'serverInfo'], $admin);
     $router->patch('/v1/admin/settings',          [AdminController::class, 'updateSettings'], $admin);
     $router->post('/v1/admin/settings/logo',      [AdminController::class, 'uploadLogo'], $admin);
     $router->get('/v1/admin/assets/permissions',  [AssetsController::class, 'permissions'], $admin);
@@ -119,4 +127,15 @@ return static function (Router $router): void {
     $router->patch('/v1/admin/users/{id}',        [AdminController::class, 'updateUser'], $admin);
     $router->patch('/v1/admin/users/{id}/password', [AdminController::class, 'resetPassword'], $admin);
     $router->delete('/v1/admin/users/{id}',       [AdminController::class, 'deleteUser'], $admin);
+
+    // Correo saliente (SMTP)
+    $router->get('/v1/admin/smtp',        [SmtpController::class, 'get'], $admin);
+    $router->patch('/v1/admin/smtp',      [SmtpController::class, 'update'], $admin);
+    $router->post('/v1/admin/smtp/test',  [SmtpController::class, 'test'], $admin);
+
+    // Plantillas de correo
+    $router->get('/v1/admin/email-templates',                 [EmailTemplateController::class, 'list'], $admin);
+    $router->patch('/v1/admin/email-templates/{key}',         [EmailTemplateController::class, 'update'], $admin);
+    $router->post('/v1/admin/email-templates/{key}/reset',    [EmailTemplateController::class, 'reset'], $admin);
+    $router->post('/v1/admin/email-templates/{key}/preview',  [EmailTemplateController::class, 'preview'], $admin);
 };

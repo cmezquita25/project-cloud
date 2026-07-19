@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace ProjectCloud\Services;
 
 use ProjectCloud\Repositories\FileRepository;
+use ProjectCloud\Repositories\SettingsRepository;
 use ProjectCloud\Repositories\UserRepository;
 
 /**
@@ -12,10 +13,81 @@ use ProjectCloud\Repositories\UserRepository;
  */
 final class QuotaService
 {
+    /** Umbral de aviso por correo (%). */
+    private const WARN_PERCENT = 90.0;
+
     public function __construct(
         private readonly UserRepository $users,
         private readonly FileRepository $files,
     ) {
+    }
+
+    /**
+     * Envía un aviso por correo cuando el uso cruza el 90% de la cuota, una sola
+     * vez por cruce (clave settings 'quota_warned_{id}'). Al bajar del umbral se
+     * limpia la marca para poder avisar de nuevo en el futuro. No rompe la
+     * operación llamante: cualquier error se ignora (se invoca tras subir).
+     */
+    public function checkQuotaWarning(int $userId): void
+    {
+        $usage = $this->usage($userId);
+        $percent = (float) $usage['percent'];
+        $settings = new SettingsRepository();
+        $flagKey = 'quota_warned_' . $userId;
+
+        if ($percent < self::WARN_PERCENT) {
+            if ($settings->get($flagKey) !== null) {
+                $settings->delete($flagKey);
+            }
+            return;
+        }
+
+        // Ya avisado en este cruce: no repetir en cada subida.
+        if ($settings->get($flagKey) !== null) {
+            return;
+        }
+
+        $user = $this->users->findById($userId);
+        if ($user === null) {
+            return;
+        }
+
+        $mail = new MailService($settings);
+        if (!$mail->isEnabled()) {
+            return; // sin SMTP no se avisa (ni se marca: se reintentará cuando se configure)
+        }
+
+        $rendered = (new EmailTemplateService())->render(EmailTemplateService::QUOTA_WARNING, [
+            'user_name' => (string) $user['display_name'],
+            'percent'   => rtrim(rtrim(number_format($percent, 1, '.', ''), '0'), '.'),
+            'used'      => self::humanBytes((int) $usage['used_bytes']),
+            'quota'     => self::humanBytes((int) $usage['quota_bytes']),
+            'org_name'  => $mail->organizationName(),
+        ]);
+
+        $sent = $mail->send(
+            (string) $user['email'],
+            (string) $user['display_name'],
+            $rendered['subject'],
+            $rendered['html'],
+        );
+
+        if ($sent) {
+            $settings->set($flagKey, gmdate('c'));
+        }
+    }
+
+    /** Formato humano de bytes (equivalente ligero al del frontend). */
+    private static function humanBytes(int $bytes): string
+    {
+        if ($bytes <= 0) {
+            return '0 B';
+        }
+        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        $i = (int) floor(log($bytes, 1024));
+        $i = max(0, min($i, count($units) - 1));
+        $value = $bytes / (1024 ** $i);
+        return rtrim(rtrim(number_format($value, 1, '.', ''), '0'), '.') . ' ' . $units[$i];
     }
 
     /**

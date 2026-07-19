@@ -29,7 +29,9 @@ import { getFileIcon } from '@shared/lib/fileIcons'
 import { formatBytes } from '@shared/lib/formatBytes'
 import { usePreview } from '@features/preview'
 import { NamePromptDialog } from '@features/drive-explorer/components/dialogs/NamePromptDialog'
+import { ViewToggle } from '@features/drive-explorer/components/ViewToggle'
 import { useMarqueeSelection } from '@features/drive-explorer/hooks/useMarqueeSelection'
+import { Checkbox } from '@shared/ui'
 import type { FileItem } from '@features/drive-explorer/types'
 import { assetsApi, type AssetFile, type AssetItem, type AssetsListing } from './services/assetsApi'
 import { useAssetsAccess } from './hooks/useAssetsAccess'
@@ -62,6 +64,7 @@ export function AssetsPage() {
   const [listing, setListing] = useState<AssetsListing | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [view, setView] = useState<'grid' | 'list'>('grid')
 
   const [newFolder, setNewFolder] = useState(false)
   const [deleting, setDeleting] = useState<AssetItem | AssetItem[] | null>(null)
@@ -322,17 +325,20 @@ export function AssetsPage() {
           </div>
         )}
 
-        {canWrite && (
-          <div className="flex shrink-0 items-center gap-2">
-            <Button size="sm" variant="secondary" leftIcon={FolderPlus} onClick={() => setNewFolder(true)}>
-              <span className="hidden sm:inline">Nueva carpeta</span>
-            </Button>
-            <Button size="sm" leftIcon={Upload} loading={uploading} onClick={() => fileInput.current?.click()}>
-              <span className="hidden sm:inline">Subir</span>
-            </Button>
-            <input ref={fileInput} type="file" multiple hidden onChange={onPickFiles} />
-          </div>
-        )}
+        <div className="flex shrink-0 items-center gap-2">
+          <ViewToggle value={view} onChange={setView} />
+          {canWrite && (
+            <>
+              <Button size="sm" variant="secondary" leftIcon={FolderPlus} onClick={() => setNewFolder(true)}>
+                <span className="hidden sm:inline">Nueva carpeta</span>
+              </Button>
+              <Button size="sm" leftIcon={Upload} loading={uploading} onClick={() => fileInput.current?.click()}>
+                <span className="hidden sm:inline">Subir</span>
+              </Button>
+              <input ref={fileInput} type="file" multiple hidden onChange={onPickFiles} />
+            </>
+          )}
+        </div>
       </div>
 
       {/* Contenido */}
@@ -350,6 +356,29 @@ export function AssetsPage() {
             icon={Images}
             title="Esta carpeta está vacía"
             description={canWrite ? 'Sube archivos o crea carpetas con los botones de arriba.' : 'No hay elementos para mostrar.'}
+          />
+        ) : view === 'list' ? (
+          <AssetListView
+            items={allItems}
+            selected={selected}
+            canWrite={canWrite}
+            onOpen={(item) => (item.type === 'folder' ? setPath(item.path) : openPreview(item as AssetFile))}
+            onSelectToggle={(item) =>
+              setSelected((prev) => {
+                const next = new Set(prev)
+                next.has(item.path) ? next.delete(item.path) : next.add(item.path)
+                return next
+              })
+            }
+            onClick={onItemClick}
+            onContextMenu={onItemContextMenu}
+            onDragStart={onDragStart}
+            onDragOver={onFolderDragOver}
+            onDrop={onDropOnFolder}
+            dropTarget={dropTarget}
+            onCopyUrl={(item) => void copyUrl(item as AssetFile)}
+            onDownload={(item) => download(item as AssetFile)}
+            onDelete={setDeleting}
           />
         ) : (
           <div className="space-y-6">
@@ -628,3 +657,116 @@ function ConfirmDelete({
     />
   )
 }
+
+interface AssetListViewProps {
+  items: AssetItem[]
+  selected: Set<string>
+  canWrite: boolean
+  onOpen: (item: AssetItem) => void
+  onSelectToggle: (item: AssetItem) => void
+  onClick: (item: AssetItem, e: React.MouseEvent) => void
+  onContextMenu: (item: AssetItem, e: React.MouseEvent) => void
+  onDragStart: (item: AssetItem, e: React.DragEvent) => void
+  onDragOver: (folderPath: string, e: React.DragEvent) => void
+  onDrop: (folderPath: string, e: React.DragEvent) => void
+  dropTarget: string | null
+  onCopyUrl: (item: AssetItem) => void
+  onDownload: (item: AssetItem) => void
+  onDelete: (item: AssetItem) => void
+}
+
+function AssetListView({
+  items,
+  selected,
+  canWrite,
+  onOpen,
+  onSelectToggle,
+  onClick,
+  onContextMenu,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  dropTarget,
+  onCopyUrl,
+  onDownload,
+  onDelete,
+}: AssetListViewProps) {
+  return (
+    <div className="overflow-hidden rounded-drive border border-border bg-surface">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-border text-left text-xs font-medium text-content-tertiary">
+            <th className="w-10 py-2 pl-3" />
+            <th className="py-2 font-medium">Nombre</th>
+            <th className="hidden w-28 whitespace-nowrap py-2 font-medium md:table-cell">Tamaño</th>
+            <th className="w-12 py-2 pr-2" />
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((item) => {
+            const { icon: Icon, className } = getFileIcon(item.name, item.type === 'folder')
+            const isSelected = selected.has(item.path)
+            const isFolder = item.type === 'folder'
+            const isDropTarget = isFolder && dropTarget === item.path
+
+            const menu = useDisclosure()
+            const anchor = useRef<HTMLDivElement>(null)
+
+            const menuItems: MenuItem[] = isFolder
+              ? [
+                  { id: 'open', label: 'Abrir', icon: FolderOpen, onSelect: () => onOpen(item) },
+                  ...(canWrite ? [{ id: 'del', label: 'Eliminar', icon: Trash2, danger: true, divider: true, onSelect: () => onDelete(item) }] : []),
+                ]
+              : [
+                  { id: 'open', label: 'Vista previa', icon: FolderOpen, onSelect: () => onOpen(item) },
+                  { id: 'url', label: 'Copiar URL pública', icon: LinkIcon, onSelect: () => onCopyUrl(item) },
+                  { id: 'download', label: 'Descargar', icon: Download, onSelect: () => onDownload(item) },
+                  ...(canWrite ? [{ id: 'del', label: 'Eliminar', icon: Trash2, danger: true, divider: true, onSelect: () => onDelete(item) }] : []),
+                ]
+
+            return (
+              <tr
+                key={item.path}
+                data-sel-key={item.path}
+                draggable
+                onDragStart={(e) => onDragStart(item, e)}
+                onClick={(e) => onClick(item, e)}
+                onDoubleClick={() => onOpen(item)}
+                onContextMenu={(e) => onContextMenu(item, e)}
+                onDragOver={isFolder ? (e) => onDragOver(item.path, e) : undefined}
+                onDragLeave={isFolder ? (e) => (e.currentTarget.style.backgroundColor = '') : undefined}
+                onDrop={isFolder ? (e) => onDrop(item.path, e) : undefined}
+                className={cn(
+                  'group cursor-pointer border-b border-border/60 last:border-0 transition-colors',
+                  isDropTarget ? 'bg-primary-subtle ring-2 ring-inset ring-primary' : isSelected ? 'bg-primary-subtle' : 'hover:bg-surface-hover'
+                )}
+              >
+                <td className="py-2 pl-3">
+                  <span className={cn('block', isSelected ? '' : 'opacity-0 group-hover:opacity-100')}>
+                    <Checkbox checked={isSelected} onChange={() => onSelectToggle(item)} onClick={(e) => e.stopPropagation()} />
+                  </span>
+                </td>
+                <td className="py-2 pr-4">
+                  <div className="flex min-w-[200px] items-center gap-3">
+                    <Icon size={20} className={cn('shrink-0', className)} />
+                    <span className="truncate text-content-primary">{item.name}</span>
+                  </div>
+                </td>
+                <td className="hidden whitespace-nowrap py-2 text-content-secondary md:table-cell">
+                  {item.type === 'file' ? formatBytes((item as AssetFile).size_bytes) : '—'}
+                </td>
+                <td className="py-2 pr-2 text-right">
+                  <div ref={anchor} className="relative inline-block">
+                    <IconButton icon={MoreVertical} label="Más acciones" size="sm" active={menu.isOpen} onClick={(e) => { e.stopPropagation(); menu.toggle() }} />
+                    <Menu open={menu.isOpen} onClose={menu.close} items={menuItems} title={item.name} align="right" anchorRef={anchor} />
+                  </div>
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+

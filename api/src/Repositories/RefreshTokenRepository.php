@@ -60,6 +60,15 @@ class RefreshTokenRepository
         $stmt->execute([$familyId]);
     }
 
+    /** Revoca TODAS las sesiones de un usuario (p. ej. tras restablecer contraseña). */
+    public function revokeAllForUser(int $userId): void
+    {
+        $stmt = $this->pdo->prepare(
+            'UPDATE refresh_tokens SET revoked_at = UTC_TIMESTAMP() WHERE user_id = ? AND revoked_at IS NULL'
+        );
+        $stmt->execute([$userId]);
+    }
+
     /** Limpieza oportunista de tokens expirados. */
     public function deleteExpired(): void
     {

@@ -30,7 +30,7 @@ export function ActivityList({ items }: { items: ActivityItem[] }) {
   }
 
   return (
-    <ul className="divide-y divide-border overflow-hidden rounded-drive border border-border">
+    <ul className="divide-y divide-border overflow-hidden rounded-drive border border-border bg-surface">
       {items.map((item) => {
         const meta = ACTIONS[item.action] ?? { label: item.action, icon: Activity, className: 'text-content-tertiary' }
         const Icon = meta.icon

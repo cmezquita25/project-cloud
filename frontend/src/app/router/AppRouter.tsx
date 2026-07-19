@@ -10,10 +10,18 @@ import { StarredPage } from '@features/starred/StarredPage'
 import { TrashPage } from '@features/trash/TrashPage'
 import { SearchPage } from '@features/search/SearchPage'
 import { AdminPage } from '@features/admin/AdminPage'
+import { SettingsLayout } from '@features/admin/settings/SettingsLayout'
+import { GeneralSettings } from '@features/admin/settings/pages/GeneralSettings'
+import { AppearanceSettings } from '@features/admin/settings/pages/AppearanceSettings'
+import { EmailSettings } from '@features/admin/settings/pages/EmailSettings'
+import { EmailTemplatesSettings } from '@features/admin/settings/pages/EmailTemplatesSettings'
+import { AccessSettings } from '@features/admin/settings/pages/AccessSettings'
 import { StoragePage } from '@features/storage-quota/StoragePage'
 import { ProfilePage } from '@features/profile/ProfilePage'
 import { AssetsPage } from '@features/assets/AssetsPage'
 import { LoginPage } from '@features/auth/LoginPage'
+import { ForgotPasswordPage } from '@features/auth/ForgotPasswordPage'
+import { ResetPasswordPage } from '@features/auth/ResetPasswordPage'
 
 /**
  * Rutas de la aplicación.
@@ -37,6 +45,16 @@ const router = createBrowserRouter([
         ],
       },
 
+      // Restablecimiento de contraseña: público y accesible siempre (el enlace
+      // llega por correo), sin RedirectIfAuth.
+      {
+        element: <AuthLayout />,
+        children: [
+          { path: '/forgot-password', element: <ForgotPasswordPage /> },
+          { path: '/reset-password', element: <ResetPasswordPage /> },
+        ],
+      },
+
       // App autenticada.
       {
         element: <RequireAuth />,
@@ -51,7 +69,7 @@ const router = createBrowserRouter([
               { path: 'starred', element: <StarredPage /> },
               { path: 'trash', element: <TrashPage /> },
               { path: 'search', element: <SearchPage /> },
-              { path: 'storage', element: <StoragePage /> },
+              { path: 'quota', element: <StoragePage /> },
               { path: 'profile', element: <ProfilePage /> },
               { path: 'assets', element: <AssetsPage /> },
               // Solo administradores. Cada sección de administración es su
@@ -62,7 +80,18 @@ const router = createBrowserRouter([
                   { path: 'admin', element: <AdminPage /> },
                   { path: 'admin/users', element: <AdminPage /> },
                   { path: 'admin/activity', element: <AdminPage /> },
-                  { path: 'admin/settings', element: <AdminPage /> },
+                  // Configuración con pestañas verticales (layout propio + subrutas).
+                  {
+                    path: 'admin/settings',
+                    element: <SettingsLayout />,
+                    children: [
+                      { index: true, element: <GeneralSettings /> },
+                      { path: 'appearance', element: <AppearanceSettings /> },
+                      { path: 'email', element: <EmailSettings /> },
+                      { path: 'email-templates', element: <EmailTemplatesSettings /> },
+                      { path: 'access', element: <AccessSettings /> },
+                    ],
+                  },
                 ],
               },
             ],

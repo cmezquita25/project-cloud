@@ -520,7 +520,7 @@ export function DriveExplorerPage() {
           {atRoot && assetsAccess?.allowed && (
             <button
               onClick={() => navigate('/assets')}
-              className="group mb-4 flex w-full items-center gap-3 rounded-xl border border-border bg-surface-container px-3 py-3 text-left transition-colors hover:bg-surface-hover sm:max-w-xs"
+              className="group mb-4 flex w-full items-center gap-3 rounded-xl border border-border bg-surface px-3 py-3 text-left transition-colors hover:bg-surface-hover sm:max-w-xs"
             >
               <FolderSymlink size={22} className="shrink-0 text-primary" />
               <div className="min-w-0">

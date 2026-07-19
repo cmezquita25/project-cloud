@@ -5,8 +5,8 @@ import path from 'node:path'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  // Base relativa: el build funciona bajo cualquier subruta al subirlo a Plesk.
-  base: './',
+  // Base absoluta para soportar correctamente rutas anidadas en React Router (ej. /admin/users)
+  base: '/',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

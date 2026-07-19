@@ -200,13 +200,13 @@ export function TrashPage() {
             description="Los archivos y carpetas que elimines aparecerán aquí y podrás restaurarlos."
           />
         ) : (
-          <div className="overflow-hidden rounded-drive border border-border">
+          <div className="overflow-hidden rounded-drive border border-border bg-surface">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border text-left text-xs font-medium text-content-tertiary">
                   <th className="py-2 pl-3 font-medium">Nombre</th>
-                  <th className="hidden py-2 font-medium sm:table-cell">Eliminado</th>
-                  <th className="hidden py-2 font-medium md:table-cell">Tamaño</th>
+                  <th className="hidden whitespace-nowrap py-2 font-medium sm:table-cell">Eliminado</th>
+                  <th className="hidden whitespace-nowrap py-2 font-medium md:table-cell">Tamaño</th>
                   <th className="w-24 py-2 pr-2" />
                 </tr>
               </thead>
@@ -304,16 +304,16 @@ function TrashRow({ item, busy, selected, onClick, onRestore, onPurge }: TrashRo
         selected ? 'bg-primary-subtle' : 'hover:bg-surface-hover'
       )}
     >
-      <td className="max-w-0 py-2 pl-3">
-        <div className="flex min-w-0 items-center gap-3">
+      <td className="py-2 pl-3 pr-4">
+        <div className="flex min-w-[200px] items-center gap-3">
           <Icon size={20} className={cn('shrink-0', className)} />
           <span className="truncate text-content-primary">{item.name}</span>
         </div>
       </td>
-      <td className="hidden py-2 text-content-secondary sm:table-cell">
+      <td className="hidden whitespace-nowrap py-2 text-content-secondary sm:table-cell">
         {item.deleted_at ? formatRelative(item.deleted_at) : '—'}
       </td>
-      <td className="hidden py-2 text-content-secondary md:table-cell">
+      <td className="hidden whitespace-nowrap py-2 text-content-secondary md:table-cell">
         {item.type === 'file' ? formatBytes(item.size_bytes) : '—'}
       </td>
       <td className="py-2 pr-2" onClick={(e) => e.stopPropagation()}>

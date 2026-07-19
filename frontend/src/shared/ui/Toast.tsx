@@ -34,10 +34,10 @@ const TONE_ICON = {
   error: AlertCircle,
 }
 
-const TONE_COLOR: Record<ToastTone, string> = {
-  info: 'text-primary',
-  success: 'text-success',
-  error: 'text-danger',
+const TONE_CLASSES: Record<ToastTone, string> = {
+  info: 'text-primary bg-primary-subtle',
+  success: 'text-success bg-success-subtle',
+  error: 'text-danger bg-danger-subtle',
 }
 
 export function ToastProvider({ children }: { children: ReactNode }) {
@@ -78,17 +78,19 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               <div
                 key={t.id}
                 role="status"
-                className="pointer-events-auto flex w-[calc(100vw-2rem)] max-w-sm animate-slide-in-right items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3 text-content-primary shadow-elevation-3"
+                className="pointer-events-auto flex w-[calc(100vw-2rem)] max-w-sm animate-slide-in-right items-center rounded-lg bg-surface p-4 text-content-secondary shadow-elevation-3 border border-border"
               >
-                <Icon size={20} className={cn('shrink-0', TONE_COLOR[t.tone])} />
-                <span className="flex-1 text-sm">{t.message}</span>
+                <div className={cn("inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg", TONE_CLASSES[t.tone])}>
+                  <Icon size={20} />
+                </div>
+                <div className="ml-3 text-sm font-normal text-content-primary flex-1">{t.message}</div>
                 {t.action && (
                   <button
                     onClick={() => {
                       t.action?.onClick()
                       dismiss(t.id)
                     }}
-                    className="shrink-0 text-sm font-medium text-primary hover:underline"
+                    className="ml-2 shrink-0 text-sm font-medium text-primary hover:underline"
                   >
                     {t.action.label}
                   </button>
@@ -96,7 +98,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 <button
                   onClick={() => dismiss(t.id)}
                   aria-label="Descartar"
-                  className="shrink-0 rounded-full p-1 text-content-tertiary hover:bg-surface-hover"
+                  className="ml-auto -mr-1.5 -my-1.5 inline-flex h-8 w-8 items-center justify-center rounded-lg bg-transparent p-1.5 text-content-tertiary hover:bg-surface-hover hover:text-content-primary focus:ring-2 focus:ring-focus"
                 >
                   <X size={16} />
                 </button>

@@ -107,7 +107,7 @@ function FolderChip({ item, selected, onOpen, onAction, interactions }: CardProp
           ? 'border-primary bg-primary-subtle ring-2 ring-primary'
           : isSelected
             ? 'border-primary bg-primary-subtle'
-            : 'border-border bg-surface-container hover:bg-surface-hover'
+            : 'border-border bg-surface hover:bg-surface-hover'
       )}
     >
       <Icon size={22} className={cn('shrink-0', className)} />

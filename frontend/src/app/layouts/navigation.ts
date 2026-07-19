@@ -7,6 +7,7 @@ import {
   Users,
   ScrollText,
   Settings,
+  Shield,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -17,8 +18,9 @@ export interface NavItem {
   end?: boolean
   /** Solo visible para administradores. */
   adminOnly?: boolean
-  /** Solo visible si el usuario tiene acceso a la unidad compartida. */
   requiresAssets?: boolean
+  /** Elementos hijos para menú desplegable. */
+  subItems?: Omit<NavItem, 'subItems'>[]
 }
 
 export interface NavGroup {
@@ -50,12 +52,20 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    label: 'Administración',
+    label: 'Sistema',
     items: [
-      { to: '/admin', label: 'Panel', icon: LayoutDashboard, end: true, adminOnly: true },
-      { to: '/admin/users', label: 'Usuarios', icon: Users, adminOnly: true },
-      { to: '/admin/activity', label: 'Registros de auditoría', icon: ScrollText, adminOnly: true },
-      { to: '/admin/settings', label: 'Configuración', icon: Settings, adminOnly: true },
+      {
+        to: '/admin',
+        label: 'Administración',
+        icon: Shield,
+        adminOnly: true,
+        subItems: [
+          { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true, adminOnly: true },
+          { to: '/admin/users', label: 'Usuarios', icon: Users, adminOnly: true },
+          { to: '/admin/activity', label: 'Auditoría', icon: ScrollText, adminOnly: true },
+          { to: '/admin/settings', label: 'Configuración', icon: Settings, adminOnly: true },
+        ],
+      },
     ],
   },
 ]

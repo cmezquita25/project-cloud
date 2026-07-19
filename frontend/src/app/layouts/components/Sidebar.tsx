@@ -1,16 +1,92 @@
 import { useRef, useState, useEffect } from 'react'
 import { Plus, FolderPlus, FileUp, FolderUp } from 'lucide-react'
-import { NavLink, useParams, useNavigate, useSearchParams } from 'react-router-dom'
+import { NavLink, useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { cn } from '@shared/lib/cn'
 import { Button, Menu, type MenuItem, IconButton } from '@shared/ui'
-import { Search, X } from 'lucide-react'
+import { ChevronDown, ChevronRight, Search, X } from 'lucide-react'
 import { useDisclosure } from '@shared/hooks/useDisclosure'
 import { StorageIndicator } from '@features/storage-quota/components/StorageIndicator'
 import { useAuth } from '@features/auth/AuthProvider'
 import { useAssetsAccess } from '@features/assets/hooks/useAssetsAccess'
 import { useUploadPicker } from '@features/uploads/hooks/useUploadPicker'
 import type { FolderRef } from '@features/drive-explorer/types'
-import { NAV_GROUPS } from '../navigation'
+import { NAV_GROUPS, type NavItem } from '../navigation'
+
+function SidebarItem({ item, onNavigate }: { item: NavItem, onNavigate?: () => void }) {
+  const [open, setOpen] = useState(false)
+  const location = useLocation()
+  
+  useEffect(() => {
+    if (item.subItems?.some(s => location.pathname === s.to || location.pathname.startsWith(s.to + '/'))) {
+      setOpen(true)
+    }
+  }, [location.pathname, item.subItems])
+
+  const Icon = item.icon
+  
+  if (item.subItems) {
+    return (
+      <div className="flex flex-col">
+        <button
+          onClick={() => setOpen(!open)}
+          className={cn(
+            'flex items-center gap-4 rounded-pill px-4 py-2.5 text-sm font-medium transition-colors w-full text-left',
+            'text-content-secondary hover:bg-surface-hover'
+          )}
+        >
+          <Icon size={20} />
+          <span className="flex-1">{item.label}</span>
+          {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+        </button>
+        {open && (
+          <div className="mt-1 flex flex-col space-y-1 pl-4 pr-2">
+            {item.subItems.map((sub) => {
+              const SubIcon = sub.icon
+              return (
+                <NavLink
+                  key={sub.to!}
+                  to={sub.to!}
+                  end={sub.end}
+                  onClick={onNavigate}
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center gap-3 rounded-pill px-3 py-2 text-sm font-medium transition-colors',
+                      isActive
+                        ? 'bg-primary-subtle text-primary'
+                        : 'text-content-secondary hover:bg-surface-hover'
+                    )
+                  }
+                >
+                  <SubIcon size={18} />
+                  <span>{sub.label}</span>
+                </NavLink>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <NavLink
+      to={item.to!}
+      end={item.end}
+      onClick={onNavigate}
+      className={({ isActive }) =>
+        cn(
+          'flex items-center gap-4 rounded-pill px-4 py-2.5 text-sm font-medium transition-colors',
+          isActive
+            ? 'bg-primary-subtle text-primary'
+            : 'text-content-secondary hover:bg-surface-hover'
+        )
+      }
+    >
+      <Icon size={20} />
+      <span>{item.label}</span>
+    </NavLink>
+  )
+}
 
 interface SidebarProps {
   /** Cierra el drawer en móvil al navegar. */
@@ -125,24 +201,8 @@ export function Sidebar({ onNavigate }: SidebarProps) {
             <p className="px-4 pb-0.5 pt-1 text-xs font-medium uppercase tracking-wide text-content-tertiary">
               {group.label}
             </p>
-            {group.items.map(({ to, label, icon: Icon, end }) => (
-              <NavLink
-                key={to}
-                to={to}
-                end={end}
-                onClick={onNavigate}
-                className={({ isActive }) =>
-                  cn(
-                    'flex items-center gap-4 rounded-pill px-4 py-2.5 text-sm font-medium transition-colors',
-                    isActive
-                      ? 'bg-primary-subtle text-primary'
-                      : 'text-content-secondary hover:bg-surface-hover'
-                  )
-                }
-              >
-                <Icon size={20} />
-                <span>{label}</span>
-              </NavLink>
+            {group.items.map((item) => (
+              <SidebarItem key={item.label} item={item} onNavigate={onNavigate} />
             ))}
           </div>
         ))}

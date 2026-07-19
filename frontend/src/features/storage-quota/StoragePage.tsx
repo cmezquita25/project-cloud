@@ -1,4 +1,3 @@
-import { Cloud } from 'lucide-react'
 import { Spinner } from '@shared/ui'
 import { cn } from '@shared/lib/cn'
 import { formatBytes, usagePercent } from '@shared/lib/formatBytes'
@@ -27,7 +26,7 @@ export function StoragePage() {
 
       <div className="rounded-drive border border-border bg-surface p-6">
         <div className="mb-2 flex items-center gap-2 text-content-secondary">
-          <Cloud size={20} />
+          <span className="material-symbols-rounded text-[20px]">cloud</span>
           <span className="font-medium">
             {formatBytes(data.used_bytes)} de {formatBytes(data.quota_bytes)} usados
           </span>

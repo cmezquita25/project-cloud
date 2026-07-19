@@ -1,11 +1,8 @@
 import { CheckCircle2 } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
 import { Button } from '@shared/ui'
 
 /** Paso 4: instalación completada. */
 export function StepDone() {
-  const navigate = useNavigate()
-
   return (
     <div className="py-6 text-center">
       <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-success/10 text-success">
@@ -16,7 +13,9 @@ export function StepDone() {
         Project Cloud se instaló correctamente. El instalador quedó bloqueado por seguridad.
         Ya puedes iniciar sesión con tu cuenta de administrador.
       </p>
-      <Button size="lg" className="mt-6" onClick={() => navigate('/login', { replace: true })}>
+      {/* Recarga completa (no navegación SPA): así se re-consultan los ajustes
+          públicos recién guardados (organización, eslogan, logos). */}
+      <Button size="lg" className="mt-6" onClick={() => window.location.assign('/login')}>
         Ir a iniciar sesión
       </Button>
     </div>
