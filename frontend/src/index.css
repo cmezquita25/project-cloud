@@ -81,8 +81,8 @@
     --color-primary-on: 15 23 42; /* texto oscuro sobre azul claro */
 
     /* Gradientes */
-    --color-gradient-start: 138 180 248; /* primary dark */
-    --color-gradient-end: 192 132 252; /* purple-400 */
+    --color-gradient-start: 26 115 232; /* primary (match light mode) */
+    --color-gradient-end: 147 51 234; /* purple-600 (match light mode) */
 
     /* Funcionales */
     --color-success: 129 201 149; /* #81c995 */
