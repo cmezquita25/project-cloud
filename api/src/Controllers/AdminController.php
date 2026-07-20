@@ -33,8 +33,18 @@ final class AdminController
     public function users(Request $request): Response
     {
         $users = new UserRepository();
-        $list = array_map(fn (array $u) => $this->userPublic($u), $users->all());
-        return Response::success(['users' => $list]);
+        $limit = min(100, max(1, (int) ($request->query['limit'] ?? 50)));
+        $page = max(1, (int) ($request->query['page'] ?? 1));
+        
+        $result = $users->paginate($limit, ($page - 1) * $limit);
+        $list = array_map(fn (array $u) => $this->userPublic($u), $result['items']);
+        
+        return Response::success([
+            'items' => $list,
+            'total' => $result['total'],
+            'page'  => $page,
+            'limit' => $limit,
+        ]);
     }
 
     /** POST /admin/users */
@@ -269,6 +279,16 @@ final class AdminController
                 $settings->set('organization_slogan', $slogan);
             }
             ActivityLogger::log($request, 'settings.update', 'setting', null, ['organization_slogan' => $slogan]);
+        }
+
+        if (array_key_exists('support_email', $body)) {
+            $supportEmail = trim((string) $body['support_email']);
+            if ($supportEmail === '') {
+                $settings->delete('support_email');
+            } else {
+                $settings->set('support_email', $supportEmail);
+            }
+            ActivityLogger::log($request, 'settings.update', 'setting', null, ['support_email' => $supportEmail]);
         }
 
         return Response::success([

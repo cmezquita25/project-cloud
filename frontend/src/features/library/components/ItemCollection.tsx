@@ -1,10 +1,11 @@
 import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { X, FolderInput, Copy, Trash2, Download, type LucideIcon } from 'lucide-react'
+import { X, FolderInput, Copy, Trash2, Download, Info, type LucideIcon } from 'lucide-react'
 import { EmptyState, Spinner, IconButton, Menu, useToast } from '@shared/ui'
 import { usePreview } from '@features/preview'
 import { useAuth } from '@features/auth/AuthProvider'
 import { driveApi } from '@features/drive-explorer/services/driveApi'
+import { useDriveAdapter } from '@features/drive-explorer/adapters/useDriveAdapter'
 import { ViewToggle } from '@features/drive-explorer/components/ViewToggle'
 import { FileListView } from '@features/drive-explorer/components/FileListView'
 import { FileGridView } from '@features/drive-explorer/components/FileGridView'
@@ -56,9 +57,10 @@ export function ItemCollection({ items, loading, error, reload, empty, showLocat
     () => (localStorage.getItem('pc-view') as ViewMode) || 'list'
   )
   const [selected, setSelected] = useState<Set<string>>(new Set())
-  const [details, setDetails] = useState<DriveItem | null>(null)
+  const [showDetails, setShowDetails] = useState(false)
   const [dialog, setDialog] = useState<DialogState>(null)
   const [ctxMenu, setCtxMenu] = useState<{ item: DriveItem; x: number; y: number } | null>(null)
+  const driveAdapter = useDriveAdapter()
 
   const [sort, setSort] = useSortState()
   const sorted = useMemo(() => sortDriveItems(items, sort), [items, sort])
@@ -157,7 +159,7 @@ export function ItemCollection({ items, loading, error, reload, empty, showLocat
       case 'open':
         return openItem(item)
       case 'details':
-        return setDetails(item)
+        return setShowDetails(true)
       case 'download':
         return download(item)
       case 'copyUrl':
@@ -233,6 +235,7 @@ export function ItemCollection({ items, loading, error, reload, empty, showLocat
           <div className="flex shrink-0 items-center gap-2">
             <SortControl value={sort} onChange={setSort} showOwner={false} />
             <ViewToggle value={view} onChange={setViewMode} />
+            <IconButton icon={Info} label="Detalles" size="sm" active={showDetails} onClick={() => setShowDetails(!showDetails)} />
           </div>
         </div>
 
@@ -260,9 +263,9 @@ export function ItemCollection({ items, loading, error, reload, empty, showLocat
       {marqueeOverlay}
 
       {/* Panel de detalles */}
-      {details && (
+      {showDetails && (
         <div className="ml-4 hidden w-80 shrink-0 overflow-hidden rounded-drive border border-border lg:block">
-          <DetailsPanel item={details} onClose={() => setDetails(null)} />
+          <DetailsPanel items={selectedItems} onClose={() => setShowDetails(false)} />
         </div>
       )}
 
@@ -305,7 +308,7 @@ export function ItemCollection({ items, loading, error, reload, empty, showLocat
                   { id: 'copy', label: 'Copiar a', icon: Copy, onSelect: () => setDialog({ kind: 'move', mode: 'copy', items: selectedItems }) },
                   { id: 'delete', label: 'Enviar a la papelera', icon: Trash2, danger: true, divider: true, onSelect: () => setDialog({ kind: 'delete', items: selectedItems }) },
                 ]
-              : buildItemMenu(ctxMenu.item, (a) => onAction(ctxMenu.item, a))
+              : buildItemMenu(ctxMenu.item, (a) => onAction(ctxMenu.item, a), driveAdapter.capabilities)
           }
         />
       )}

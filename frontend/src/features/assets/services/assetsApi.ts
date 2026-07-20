@@ -23,6 +23,7 @@ export interface AssetsListing {
   breadcrumbs: { name: string; path: string }[]
   folders: AssetFolder[]
   files: AssetFile[]
+  has_more?: boolean
 }
 
 export interface AssetsAccess {
@@ -43,8 +44,18 @@ export interface AssetPermissionUser {
 export const assetsApi = {
   access: (signal?: AbortSignal) => api.get<AssetsAccess>('/assets/access', { signal }),
 
-  list: (path: string, signal?: AbortSignal) =>
-    api.get<AssetsListing>(`/assets?path=${encodeURIComponent(path)}`, { signal }),
+  list: (path: string, opts?: { signal?: AbortSignal, limit?: number, offset?: number, sort?: string, order?: string, q?: string, type?: string, date?: string }) => {
+    const params = new URLSearchParams()
+    params.set('path', path)
+    if (opts?.limit !== undefined) params.set('limit', String(opts.limit))
+    if (opts?.offset !== undefined) params.set('offset', String(opts.offset))
+    if (opts?.sort) params.set('sort', opts.sort)
+    if (opts?.order) params.set('order', opts.order)
+    if (opts?.q) params.set('q', opts.q)
+    if (opts?.type) params.set('type', opts.type)
+    if (opts?.date) params.set('date', opts.date)
+    return api.get<AssetsListing>(`/assets?${params.toString()}`, { signal: opts?.signal })
+  },
 
   createFolder: (path: string, name: string) =>
     api.post<AssetFolder>('/assets/folder', { path, name }),

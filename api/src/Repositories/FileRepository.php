@@ -38,20 +38,105 @@ class FileRepository
     }
 
     /** @return array<int,array<string,mixed>> Archivos vivos de una carpeta. */
-    public function inFolder(int $userId, ?int $folderId): array
+    public function inFolder(int $userId, ?int $folderId, string $sort = 'name', string $order = 'asc', ?int $limit = null, int $offset = 0, ?string $type = null, ?string $date = null): array
     {
-        if ($folderId === null) {
-            $stmt = $this->pdo->prepare(
-                'SELECT * FROM files WHERE user_id = ? AND folder_id IS NULL AND deleted_at IS NULL ORDER BY name'
-            );
-            $stmt->execute([$userId]);
-        } else {
-            $stmt = $this->pdo->prepare(
-                'SELECT * FROM files WHERE user_id = ? AND folder_id = ? AND deleted_at IS NULL ORDER BY name'
-            );
-            $stmt->execute([$userId, $folderId]);
+        if ($type === 'folder') {
+            return [];
         }
+
+        $allowedSorts = ['name', 'updated_at', 'created_at', 'size_bytes'];
+        if (!in_array($sort, $allowedSorts, true)) {
+            $sort = 'name';
+        }
+        $order = strtolower($order) === 'desc' ? 'DESC' : 'ASC';
+
+        $sql = 'SELECT * FROM files WHERE user_id = :user_id AND deleted_at IS NULL';
+        $params = [':user_id' => $userId];
+
+        if ($folderId === null) {
+            $sql .= ' AND folder_id IS NULL';
+        } else {
+            $sql .= ' AND folder_id = :folder_id';
+            $params[':folder_id'] = $folderId;
+        }
+
+        if ($type === 'document') {
+            $sql .= " AND extension IN ('pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'rtf', 'csv')";
+        } elseif ($type === 'image') {
+            $sql .= " AND mime_type LIKE 'image/%'";
+        } elseif ($type === 'video') {
+            $sql .= " AND mime_type LIKE 'video/%'";
+        } elseif ($type === 'audio') {
+            $sql .= " AND mime_type LIKE 'audio/%'";
+        } elseif ($type === 'archive') {
+            $sql .= " AND extension IN ('zip', 'rar', '7z', 'tar', 'gz')";
+        }
+
+        if ($date === 'today') {
+            $sql .= ' AND updated_at >= DATE(UTC_TIMESTAMP())';
+        } elseif ($date === '7days') {
+            $sql .= ' AND updated_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 7 DAY)';
+        } elseif ($date === '30days') {
+            $sql .= ' AND updated_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY)';
+        }
+
+        $sql .= " ORDER BY $sort $order";
+
+        if ($limit !== null) {
+            $sql .= ' LIMIT :limit OFFSET :offset';
+        }
+
+        $stmt = $this->pdo->prepare($sql);
+        foreach ($params as $k => $v) {
+            $stmt->bindValue($k, $v);
+        }
+        if ($limit !== null) {
+            $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+            $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+        }
+
+        $stmt->execute();
         return $stmt->fetchAll();
+    }
+
+    public function countInFolder(int $userId, ?int $folderId, ?string $type = null, ?string $date = null): int
+    {
+        if ($type === 'folder') {
+            return 0;
+        }
+
+        $sql = 'SELECT COUNT(*) FROM files WHERE user_id = :user_id AND deleted_at IS NULL AND ' . ($folderId === null ? 'folder_id IS NULL' : 'folder_id = :folder_id');
+        $params = [':user_id' => $userId];
+        if ($folderId !== null) {
+            $params[':folder_id'] = $folderId;
+        }
+
+        if ($type === 'document') {
+            $sql .= " AND extension IN ('pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'rtf', 'csv')";
+        } elseif ($type === 'image') {
+            $sql .= " AND mime_type LIKE 'image/%'";
+        } elseif ($type === 'video') {
+            $sql .= " AND mime_type LIKE 'video/%'";
+        } elseif ($type === 'audio') {
+            $sql .= " AND mime_type LIKE 'audio/%'";
+        } elseif ($type === 'archive') {
+            $sql .= " AND extension IN ('zip', 'rar', '7z', 'tar', 'gz')";
+        }
+
+        if ($date === 'today') {
+            $sql .= ' AND updated_at >= DATE(UTC_TIMESTAMP())';
+        } elseif ($date === '7days') {
+            $sql .= ' AND updated_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 7 DAY)';
+        } elseif ($date === '30days') {
+            $sql .= ' AND updated_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY)';
+        }
+
+        $stmt = $this->pdo->prepare($sql);
+        foreach ($params as $k => $v) {
+            $stmt->bindValue($k, $v);
+        }
+        $stmt->execute();
+        return (int) $stmt->fetchColumn();
     }
 
     public function existsByName(int $userId, ?int $folderId, string $name, int $excludeId = 0): bool
@@ -293,17 +378,49 @@ class FileRepository
     }
 
     /** @return array<int,array<string,mixed>> Búsqueda de archivos por nombre (vivos). */
-    public function search(int $userId, string $term, int $limit = 100): array
+    public function search(int $userId, string $term, string $type = '', string $date = '', int $limit = 100): array
     {
+        if ($type === 'folder') return []; // If searching for folders, files return empty
+
         $limit = max(1, min(200, $limit));
+        $where = ["f.user_id = ?", "f.deleted_at IS NULL"];
+        $params = [$userId];
+
+        if ($term !== '') {
+            $where[] = "f.name LIKE ? ESCAPE '\\\\'";
+            $params[] = '%' . self::escapeLike($term) . '%';
+        }
+
+        if ($type === 'document') {
+            $where[] = "f.extension IN ('pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'rtf', 'csv')";
+        } elseif ($type === 'image') {
+            $where[] = "f.mime_type LIKE 'image/%'";
+        } elseif ($type === 'video') {
+            $where[] = "f.mime_type LIKE 'video/%'";
+        } elseif ($type === 'audio') {
+            $where[] = "f.mime_type LIKE 'audio/%'";
+        } elseif ($type === 'archive') {
+            $where[] = "f.extension IN ('zip', 'rar', '7z', 'tar', 'gz')";
+        }
+
+        if ($date === 'today') {
+            $where[] = "f.updated_at >= DATE(UTC_TIMESTAMP())";
+        } elseif ($date === '7days') {
+            $where[] = "f.updated_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 7 DAY)";
+        } elseif ($date === '30days') {
+            $where[] = "f.updated_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY)";
+        }
+
+        $whereClause = implode(' AND ', $where);
+
         $stmt = $this->pdo->prepare(
             "SELECT f.*, pf.name AS location_name
                FROM files f
                LEFT JOIN folders pf ON pf.id = f.folder_id
-              WHERE f.user_id = ? AND f.deleted_at IS NULL AND f.name LIKE ? ESCAPE '\\\\'
+              WHERE $whereClause
               ORDER BY f.name LIMIT $limit"
         );
-        $stmt->execute([$userId, '%' . self::escapeLike($term) . '%']);
+        $stmt->execute($params);
         return $stmt->fetchAll();
     }
 

@@ -138,4 +138,7 @@ return static function (Router $router): void {
     $router->patch('/v1/admin/email-templates/{key}',         [EmailTemplateController::class, 'update'], $admin);
     $router->post('/v1/admin/email-templates/{key}/reset',    [EmailTemplateController::class, 'reset'], $admin);
     $router->post('/v1/admin/email-templates/{key}/preview',  [EmailTemplateController::class, 'preview'], $admin);
+
+    // Soporte y Reportes
+    $router->post('/v1/support/report', [\ProjectCloud\Controllers\SupportController::class, 'report'], $auth);
 };

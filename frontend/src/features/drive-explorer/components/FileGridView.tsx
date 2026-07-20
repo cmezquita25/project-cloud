@@ -3,6 +3,7 @@ import { cn } from '@shared/lib/cn'
 import { getFileIcon } from '@shared/lib/fileIcons'
 import { ItemActionsMenu } from './ItemActionsMenu'
 import type { DriveItem, FileItem, FolderItem, ItemAction, ItemInteractions } from '../types'
+import type { ExplorerCapabilities } from '../adapters/types'
 
 interface FileGridViewProps {
   items: DriveItem[]
@@ -11,6 +12,7 @@ interface FileGridViewProps {
   onSelectToggle: (item: DriveItem) => void
   onAction: (item: DriveItem, action: ItemAction) => void
   interactions?: ItemInteractions
+  capabilities?: ExplorerCapabilities
 }
 
 const itemKey = (i: DriveItem) => `${i.type}-${i.id}`
@@ -28,11 +30,12 @@ export function FileGridView({
   onOpen,
   onAction,
   interactions,
+  capabilities,
 }: FileGridViewProps) {
   const folders = items.filter((i): i is FolderItem => i.type === 'folder')
   const files = items.filter((i): i is FileItem => i.type === 'file')
 
-  const common = { selected, onOpen, onAction, interactions }
+  const common = { selected, onOpen, onAction, interactions, capabilities }
 
   return (
     <div className="space-y-6">
@@ -67,6 +70,7 @@ interface CardProps<T extends DriveItem> {
   onOpen: (item: DriveItem) => void
   onAction: (item: DriveItem, action: ItemAction) => void
   interactions?: ItemInteractions
+  capabilities?: ExplorerCapabilities
 }
 
 /** Props DOM comunes de interacción (clic con modificadores, menú contextual, arrastre). */
@@ -82,7 +86,7 @@ function itemHandlers(item: DriveItem, onOpen: (i: DriveItem) => void, interacti
 }
 
 /** Ficha rectangular de carpeta (fila superior, además destino de soltado). */
-function FolderChip({ item, selected, onOpen, onAction, interactions }: CardProps<FolderItem>) {
+function FolderChip({ item, selected, onOpen, onAction, interactions, capabilities }: CardProps<FolderItem>) {
   const { icon: Icon, className } = getFileIcon(item.name, true)
   const key = itemKey(item)
   const isSelected = selected.has(key)
@@ -113,13 +117,15 @@ function FolderChip({ item, selected, onOpen, onAction, interactions }: CardProp
       <Icon size={22} className={cn('shrink-0', className)} />
       <span className="min-w-0 flex-1 truncate text-sm font-medium text-content-primary">{item.name}</span>
       {item.is_starred && <Star size={14} className="shrink-0 fill-warning text-warning" />}
-      <ItemActionsMenu item={item} onAction={onAction} />
+      <div className="flex shrink-0 items-center justify-end p-1 opacity-0 group-hover:opacity-100 group-focus:opacity-100 group-focus-within:opacity-100" onClick={(e) => e.stopPropagation()}>
+        <ItemActionsMenu item={item} onAction={onAction} capabilities={capabilities} />
+      </div>
     </div>
   )
 }
 
 /** Tarjeta cuadrada de archivo con previsualización (cuadrícula inferior). */
-function FileCard({ item, selected, onOpen, onAction, interactions }: CardProps<FileItem>) {
+function FileCard({ item, selected, onOpen, onAction, interactions, capabilities }: CardProps<FileItem>) {
   const { icon: Icon, className } = getFileIcon(item.name, false)
   const isSelected = selected.has(itemKey(item))
 
@@ -138,7 +144,7 @@ function FileCard({ item, selected, onOpen, onAction, interactions }: CardProps<
       <div className="flex aspect-square items-center justify-center overflow-hidden bg-surface-container">
         {isImage(item) ? (
           <img
-            src={`/api/v1/files/${item.id}/thumb?s=400`}
+            src={item.thumbnail_url || `/api/v1/files/${item.id}/thumb?s=400`}
             alt={item.name}
             draggable={false}
             className="h-full w-full object-cover"
@@ -160,7 +166,9 @@ function FileCard({ item, selected, onOpen, onAction, interactions }: CardProps<
         <Icon size={18} className={cn('shrink-0', className)} />
         <span className="min-w-0 flex-1 truncate text-sm text-content-primary">{item.name}</span>
         {item.is_starred && <Star size={13} className="shrink-0 fill-warning text-warning" />}
-        <ItemActionsMenu item={item} onAction={onAction} />
+        <div className="absolute right-1 top-1 opacity-0 group-hover:opacity-100 group-focus:opacity-100 group-focus-within:opacity-100" onClick={(e) => e.stopPropagation()}>
+          <ItemActionsMenu item={item} onAction={onAction} capabilities={capabilities} />
+        </div>
       </div>
     </div>
   )

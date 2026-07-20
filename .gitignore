@@ -26,3 +26,7 @@ api/storage/.uploads/
 Thumbs.db
 *.log
 *.local
+
+# Agents
+.claude
+graphify-out

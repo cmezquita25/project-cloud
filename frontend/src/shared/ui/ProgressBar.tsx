@@ -25,7 +25,7 @@ export function ProgressBar({ value, className, tone = 'primary', size = 'md' }:
       aria-valuenow={indeterminate ? undefined : Math.round(value)}
       aria-valuemin={0}
       aria-valuemax={100}
-      className={cn('w-full overflow-hidden rounded-pill bg-surface-hover', height, className)}
+      className={cn('w-full overflow-hidden rounded-pill bg-border', height, className)}
     >
       <div
         className={cn(

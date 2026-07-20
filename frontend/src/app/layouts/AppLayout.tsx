@@ -64,15 +64,17 @@ export function AppLayout() {
         )}
 
         {/* Contenido */}
-        <main className="min-w-0 flex-1 overflow-y-auto bg-canvas">
-          <div className="mx-auto h-full max-w-[1600px] px-4 py-4 sm:px-6">
-            <Outlet />
-          </div>
-        </main>
-      </div>
+        <div className="flex min-w-0 flex-1 flex-col bg-canvas">
+          <main className="min-w-0 flex-1 overflow-y-auto">
+            <div className="mx-auto h-full max-w-[1600px] px-4 py-4 sm:px-6">
+              <Outlet />
+            </div>
+          </main>
 
-      {/* Pie de página global */}
-      <Footer />
+          {/* Pie de página global */}
+          <Footer />
+        </div>
+      </div>
 
       {/* Tarjeta de progreso de subidas (global) */}
       <UploadDock />

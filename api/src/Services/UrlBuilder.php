@@ -16,7 +16,7 @@ final class UrlBuilder
 {
     public static function base(): string
     {
-        $url = trim((string) ((new SettingsRepository())->get('app_url') ?: Config::get('storage.public_url', '')));
+        $url = trim((string) (new SettingsRepository())->get('app_url', ''));
 
         if ($url === '') {
             $host = (string) ($_SERVER['HTTP_HOST'] ?? '');

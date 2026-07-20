@@ -26,6 +26,7 @@ final class SettingsController
         }
         $config['organization_name'] = $settings->get('organization_name');
         $config['organization_slogan'] = $settings->get('organization_slogan');
+        $config['support_email'] = $settings->get('support_email');
         return Response::success($config);
     }
 

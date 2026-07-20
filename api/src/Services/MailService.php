@@ -68,6 +68,26 @@ final class MailService
     }
 
     /**
+     * Envía un correo HTML usando la configuración guardada, con archivos adjuntos.
+     * @param array{path:string, name:string, mime:string}[] $attachments
+     */
+    public function sendWithAttachments(string $toEmail, string $toName, string $subject, string $bodyHtml, array $attachments, bool $throw = false): bool
+    {
+        if (!$this->isEnabled()) {
+            if ($throw) throw new RuntimeException('El correo SMTP no está configurado o está deshabilitado.');
+            return false;
+        }
+        try {
+            $this->deliver($this->resolveConfig([]), $toEmail, $toName, $subject, $bodyHtml, $attachments);
+            return true;
+        } catch (\Throwable $e) {
+            error_log('[MailService] envío fallido: ' . $e->getMessage());
+            if ($throw) throw $e;
+            return false;
+        }
+    }
+
+    /**
      * Prueba la conexión SMTP (punto 6). Acepta un override para validar valores
      * aún no guardados desde el formulario. Lanza RuntimeException si falla.
      *
@@ -148,22 +168,24 @@ final class MailService
 
     /**
      * @param array{host:string,port:int,user:string,pass:string,encryption:string,from_email:string,from_name:string} $cfg
+     * @param array{path:string, name:string, mime:string}[] $attachments
      */
-    private function deliver(array $cfg, string $toEmail, string $toName, string $subject, string $bodyHtml): void
+    private function deliver(array $cfg, string $toEmail, string $toName, string $subject, string $bodyHtml, array $attachments = []): void
     {
         if (self::phpMailerAvailable()) {
-            $this->deliverViaPhpMailer($cfg, $toEmail, $toName, $subject, $bodyHtml);
+            $this->deliverViaPhpMailer($cfg, $toEmail, $toName, $subject, $bodyHtml, $attachments);
             return;
         }
-        $this->deliverViaBuiltin($cfg, $toEmail, $toName, $subject, $bodyHtml);
+        $this->deliverViaBuiltin($cfg, $toEmail, $toName, $subject, $bodyHtml, $attachments);
     }
 
     /**
      * Transporte principal: PHPMailer vendorizado.
      *
      * @param array{host:string,port:int,user:string,pass:string,encryption:string,from_email:string,from_name:string} $cfg
+     * @param array{path:string, name:string, mime:string}[] $attachments
      */
-    private function deliverViaPhpMailer(array $cfg, string $toEmail, string $toName, string $subject, string $bodyHtml): void
+    private function deliverViaPhpMailer(array $cfg, string $toEmail, string $toName, string $subject, string $bodyHtml, array $attachments = []): void
     {
         $mail = $this->makePhpMailer($cfg);
         $mail->addAddress($toEmail, $toName);
@@ -179,8 +201,12 @@ final class MailService
                 $logo['cid'],
                 'logo',
                 PHPMailer::ENCODING_BASE64,
-                $logo['mime'],
+                $logo['mime']
             );
+        }
+
+        foreach ($attachments as $att) {
+            $mail->addAttachment($att['path'], $att['name'], PHPMailer::ENCODING_BASE64, $att['mime']);
         }
 
         $mail->send();

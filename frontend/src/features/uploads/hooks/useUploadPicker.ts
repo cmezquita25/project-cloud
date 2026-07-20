@@ -5,7 +5,7 @@ import type { FolderRef } from '@features/drive-explorer/types'
 /**
  * Abre un selector de archivos (o de carpeta) y encola la subida al destino.
  */
-export function useUploadPicker(folderId: FolderRef) {
+export function useUploadPicker(folderId: FolderRef, mode: 'drive' | 'assets' = 'drive') {
   const { enqueue } = useUploads()
 
   const open = useCallback(
@@ -20,13 +20,13 @@ export function useUploadPicker(folderId: FolderRef) {
       input.style.display = 'none'
       input.addEventListener('change', () => {
         const files = input.files ? Array.from(input.files) : []
-        if (files.length > 0) enqueue(files, folderId)
+        if (files.length > 0) enqueue(files, folderId, mode)
         input.remove()
       })
       document.body.appendChild(input)
       input.click()
     },
-    [enqueue, folderId]
+    [enqueue, folderId, mode]
   )
 
   return {

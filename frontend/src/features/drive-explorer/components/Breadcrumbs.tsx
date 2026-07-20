@@ -6,10 +6,11 @@ import type { Breadcrumb, FolderRef } from '../types'
 interface BreadcrumbsProps {
   crumbs: Breadcrumb[]
   onNavigate: (id: FolderRef) => void
+  rootLabel?: string
 }
 
 /** Migas de pan con navegación. Colapsa rutas largas conservando extremos. */
-export function Breadcrumbs({ crumbs, onNavigate }: BreadcrumbsProps) {
+export function Breadcrumbs({ crumbs, onNavigate, rootLabel = 'Mi unidad' }: BreadcrumbsProps) {
   // Colapsa si hay más de 4 niveles: raíz … penúltimo / último.
   const collapsed = crumbs.length > 4
   const visible = collapsed ? [crumbs[crumbs.length - 2]!, crumbs[crumbs.length - 1]!] : crumbs
@@ -19,7 +20,7 @@ export function Breadcrumbs({ crumbs, onNavigate }: BreadcrumbsProps) {
       type="button"
       onClick={() => !active && onNavigate(id)}
       className={cn(
-        'max-w-[12rem] truncate rounded-lg px-2 py-1 text-lg font-normal transition-colors',
+        'rounded-lg px-2 py-1 text-lg font-normal transition-colors whitespace-nowrap',
         active
           ? 'font-medium text-content-primary'
           : 'text-content-secondary hover:bg-surface-hover'
@@ -30,8 +31,8 @@ export function Breadcrumbs({ crumbs, onNavigate }: BreadcrumbsProps) {
   )
 
   return (
-    <nav className="flex items-center gap-0.5 overflow-hidden" aria-label="Ruta">
-      <Crumb label="Mi unidad" id="root" active={crumbs.length === 0} />
+    <nav className="flex flex-wrap items-center gap-0.5 overflow-hidden" aria-label="Ruta">
+      <Crumb label={rootLabel} id="root" active={crumbs.length === 0} />
       {collapsed && (
         <>
           <ChevronRight size={18} className="shrink-0 text-content-tertiary" />

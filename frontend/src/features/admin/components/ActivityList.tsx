@@ -2,6 +2,7 @@ import { LogIn, UploadCloud, Trash2, UserPlus, UserCog, UserX, KeyRound, Activit
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@shared/lib/cn'
 import { formatRelative } from '@shared/lib/formatDate'
+import { Pagination } from '@shared/ui/Pagination'
 import type { ActivityItem } from '../types'
 
 const ACTIONS: Record<string, { label: string; icon: LucideIcon; className: string }> = {
@@ -24,15 +25,25 @@ function detailText(item: ActivityItem): string {
 }
 
 /** Registro de actividad reciente. */
-export function ActivityList({ items }: { items: ActivityItem[] }) {
+export function ActivityList({ 
+  items, page, limit, total, onPageChange, onLimitChange 
+}: { 
+  items: ActivityItem[], 
+  page: number, 
+  limit: number, 
+  total: number, 
+  onPageChange: (page: number) => void, 
+  onLimitChange: (limit: number) => void 
+}) {
   if (items.length === 0) {
     return <p className="py-8 text-center text-sm text-content-tertiary">Sin actividad todavía.</p>
   }
 
   return (
-    <ul className="divide-y divide-border overflow-hidden rounded-drive border border-border bg-surface">
-      {items.map((item) => {
-        const meta = ACTIONS[item.action] ?? { label: item.action, icon: Activity, className: 'text-content-tertiary' }
+    <div className="flex flex-col">
+      <ul className="divide-y divide-border overflow-hidden rounded-drive border border-border bg-surface">
+        {items.map((item) => {
+          const meta = ACTIONS[item.action] ?? { label: item.action, icon: Activity, className: 'text-content-tertiary' }
         const Icon = meta.icon
         const detail = detailText(item)
         return (
@@ -53,6 +64,14 @@ export function ActivityList({ items }: { items: ActivityItem[] }) {
           </li>
         )
       })}
-    </ul>
+      </ul>
+      <Pagination
+        page={page}
+        limit={limit}
+        total={total}
+        onPageChange={onPageChange}
+        onLimitChange={onLimitChange}
+      />
+    </div>
   )
 }

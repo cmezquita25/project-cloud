@@ -3,18 +3,20 @@ import { Folder, ChevronRight, ChevronLeft, HardDrive } from 'lucide-react'
 import { Dialog, Button, Spinner } from '@shared/ui'
 import { cn } from '@shared/lib/cn'
 import { driveApi } from '../../services/driveApi'
+import { assetsApi } from '@features/assets/services/assetsApi'
 import type { Breadcrumb, DriveItem, FolderItem, FolderRef } from '../../types'
 
 interface MoveDialogProps {
   open: boolean
   mode: 'move' | 'copy'
+  sourceMode?: 'drive' | 'assets'
   items: DriveItem[]
   onClose: () => void
   onConfirm: (target: FolderRef) => Promise<void>
 }
 
 /** Selector de carpeta destino para mover o copiar. */
-export function MoveDialog({ open, mode, items, onClose, onConfirm }: MoveDialogProps) {
+export function MoveDialog({ open, mode, sourceMode = 'drive', items, onClose, onConfirm }: MoveDialogProps) {
   const [current, setCurrent] = useState<FolderRef>('root')
   const [folders, setFolders] = useState<FolderItem[]>([])
   const [crumbs, setCrumbs] = useState<Breadcrumb[]>([])
@@ -30,20 +32,31 @@ export function MoveDialog({ open, mode, items, onClose, onConfirm }: MoveDialog
       setCurrent('root')
       setError(null)
     }
-  }, [open])
+  }, [open, sourceMode])
 
   useEffect(() => {
     if (!open) return
     setLoading(true)
-    driveApi
-      .contents(current)
-      .then((data) => {
-        setFolders(data.folders)
-        setCrumbs(data.breadcrumbs)
-      })
-      .catch(() => setFolders([]))
-      .finally(() => setLoading(false))
-  }, [current, open])
+    
+    if (sourceMode === 'assets') {
+      const path = current === 'root' ? '' : String(current)
+      assetsApi.list(path).then((data) => {
+        setFolders(data.folders.map(f => ({
+          type: 'folder', id: f.path, parent_id: null, name: f.name, path: f.path, is_starred: false, created_at: null, updated_at: null
+        })))
+        setCrumbs(data.breadcrumbs.map(b => ({ id: b.path, name: b.name })))
+      }).catch(() => setFolders([])).finally(() => setLoading(false))
+    } else {
+      driveApi
+        .contents(current)
+        .then((data) => {
+          setFolders(data.folders)
+          setCrumbs(data.breadcrumbs)
+        })
+        .catch(() => setFolders([]))
+        .finally(() => setLoading(false))
+    }
+  }, [current, open, sourceMode])
 
   const confirm = async () => {
     setSubmitting(true)
@@ -69,6 +82,7 @@ export function MoveDialog({ open, mode, items, onClose, onConfirm }: MoveDialog
       size="md"
     >
       <div className="rounded-drive border border-border">
+
         {/* Cabecera de navegación */}
         <div className="flex items-center gap-1 border-b border-border px-2 py-2">
           {current !== 'root' && (
@@ -82,7 +96,7 @@ export function MoveDialog({ open, mode, items, onClose, onConfirm }: MoveDialog
           )}
           <HardDrive size={16} className="text-content-tertiary" />
           <span className="truncate text-sm font-medium text-content-primary">
-            {crumbs.length === 0 ? 'Mi unidad' : crumbs[crumbs.length - 1]!.name}
+            {crumbs.length === 0 ? (sourceMode === 'assets' ? 'Unidad compartida' : 'Mi unidad') : crumbs[crumbs.length - 1]!.name}
           </span>
         </div>
 

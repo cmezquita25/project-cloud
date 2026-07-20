@@ -8,6 +8,7 @@ interface PlatformSettings {
   logo_mobile: boolean
   organization_name: string | null
   organization_slogan: string | null
+  support_email: string | null
 }
 
 const PlatformSettingsContext = createContext<PlatformSettings | null>(null)

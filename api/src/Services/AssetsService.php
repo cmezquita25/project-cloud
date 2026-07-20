@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace ProjectCloud\Services;
 
 use ProjectCloud\Core\Config;
+use ProjectCloud\Core\Database;
 use ProjectCloud\Core\HttpException;
 use ProjectCloud\Repositories\SettingsRepository;
 
@@ -25,18 +26,21 @@ final class AssetsService
     private readonly string $publicBase;
     private readonly FileSystemService $fs;
     private readonly SettingsRepository $settings;
+    private readonly \PDO $pdo;
 
     public function __construct(
         ?string $root = null,
         ?string $publicBase = null,
         ?FileSystemService $fs = null,
         ?SettingsRepository $settings = null,
+        ?\PDO $pdo = null
     ) {
         $storage = rtrim((string) Config::get('storage.path', ''), "/\\");
         $this->root = rtrim($root ?? (dirname($storage) . DIRECTORY_SEPARATOR . 'assets'), "/\\");
         $this->publicBase = rtrim($publicBase ?? $this->derivePublicBase(), '/');
         $this->fs = $fs ?? new FileSystemService();
         $this->settings = $settings ?? new SettingsRepository();
+        $this->pdo = $pdo ?? Database::pdo();
     }
 
     /** URL pública de /assets derivada de la de /storage (sin hardcodear el dominio). */
@@ -110,45 +114,185 @@ final class AssetsService
         return $abs;
     }
 
-    public function list(string $relative): array
+    private function matchType(string $type, bool $isDir, string $ext, string $mime): bool {
+        if ($type === '') return true;
+        if ($type === 'folder') return $isDir;
+        if ($isDir) return false;
+        if ($type === 'document') return in_array($ext, ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'rtf', 'csv']);
+        if ($type === 'image') return str_starts_with($mime, 'image/');
+        if ($type === 'video') return str_starts_with($mime, 'video/');
+        if ($type === 'audio') return str_starts_with($mime, 'audio/');
+        if ($type === 'archive') return in_array($ext, ['zip', 'rar', '7z', 'tar', 'gz']);
+        return true;
+    }
+    
+    private function matchDate(string $date, int $mtime): bool {
+        if ($date === '') return true;
+        $now = time();
+        if ($date === 'today') return $mtime >= strtotime('today');
+        if ($date === '7days') return $mtime >= ($now - 7 * 86400);
+        if ($date === '30days') return $mtime >= ($now - 30 * 86400);
+        return true;
+    }
+
+    public function list(string $relative, string $sort = 'name', string $order = 'asc', int $limit = 0, int $offset = 0, ?string $query = null, string $type = '', string $date = ''): array
     {
         $abs = $this->safe($relative);
         if (!is_dir($abs)) {
             throw HttpException::notFound('Carpeta no encontrada en assets.');
         }
 
-        $folders = [];
-        $files = [];
-        foreach (scandir($abs) ?: [] as $entry) {
-            if ($entry === '.' || $entry === '..' || $entry[0] === '.') {
-                continue; // omite ocultos (.htaccess, etc.)
+        $allFolders = [];
+        $allFiles = [];
+
+        if ((is_string($query) && $query !== '') || $type !== '' || $date !== '') {
+            $iterator = new \RecursiveIteratorIterator(
+                new \RecursiveDirectoryIterator($abs, \RecursiveDirectoryIterator::SKIP_DOTS),
+                \RecursiveIteratorIterator::SELF_FIRST
+            );
+            $q = mb_strtolower((string) $query);
+            foreach ($iterator as $file) {
+                $name = $file->getFilename();
+                if ($name[0] === '.') continue;
+                
+                if ($q !== '' && !str_contains(mb_strtolower($name), $q)) continue;
+                
+                $isDir = $file->isDir();
+                $ext = strtolower($file->getExtension());
+                $path = $file->getPathname();
+                
+                if ($type !== '' || $date !== '') {
+                    $mime = '';
+                    if (!$isDir && in_array($type, ['image', 'video', 'audio'])) {
+                        $mime = @mime_content_type($path) ?: '';
+                    }
+                    if (!$this->matchType($type, $isDir, $ext, $mime)) continue;
+                    if (!$this->matchDate($date, $file->getMTime())) continue;
+                }
+
+                $subPath = $iterator->getSubPathname();
+                $childRel = ltrim($relative . '/' . str_replace('\\', '/', $subPath), '/');
+                if ($isDir) {
+                    $allFolders[] = ['type' => 'folder', 'name' => $name, 'path' => $childRel, 'abs' => $path];
+                } else {
+                    $allFiles[] = ['type' => 'file', 'name' => $name, 'path' => $childRel, 'abs' => $path, 'extension' => $ext !== '' ? $ext : null];
+                }
             }
-            $childRel = ltrim($relative . '/' . $entry, '/');
-            $path = $abs . DIRECTORY_SEPARATOR . $entry;
-            if (is_dir($path)) {
-                $folders[] = ['type' => 'folder', 'name' => $entry, 'path' => $childRel];
-            } else {
-                $ext = strtolower(pathinfo($entry, PATHINFO_EXTENSION));
-                $files[] = [
-                    'type'       => 'file',
-                    'name'       => $entry,
-                    'path'       => $childRel,
-                    'size_bytes' => (int) @filesize($path),
-                    'mime_type'  => $this->detectMime($path),
-                    'extension'  => $ext !== '' ? $ext : null,
-                    'url'        => $this->publicUrl($childRel),
-                ];
+        } else {
+            foreach (scandir($abs) ?: [] as $entry) {
+                if ($entry === '.' || $entry === '..' || $entry[0] === '.') {
+                    continue; // omite ocultos (.htaccess, etc.)
+                }
+                $childRel = ltrim($relative . '/' . $entry, '/');
+                $path = $abs . DIRECTORY_SEPARATOR . $entry;
+                if (is_dir($path)) {
+                    $allFolders[] = ['type' => 'folder', 'name' => $entry, 'path' => $childRel, 'abs' => $path];
+                } else {
+                    $ext = strtolower(pathinfo($entry, PATHINFO_EXTENSION));
+                    $allFiles[] = ['type' => 'file', 'name' => $entry, 'path' => $childRel, 'abs' => $path, 'extension' => $ext !== '' ? $ext : null];
+                }
             }
         }
 
-        usort($folders, static fn ($a, $b) => strcasecmp((string) $a['name'], (string) $b['name']));
-        usort($files, static fn ($a, $b) => strcasecmp((string) $a['name'], (string) $b['name']));
+        $cmp = static function ($a, $b) use ($sort, $order) {
+            $r = 0;
+            switch ($sort) {
+                case 'updated_at':
+                case 'created_at':
+                    $r = filemtime($a['abs']) - filemtime($b['abs']);
+                    break;
+                case 'size_bytes':
+                    $sA = isset($a['extension']) ? filesize($a['abs']) : 0;
+                    $sB = isset($b['extension']) ? filesize($b['abs']) : 0;
+                    $r = $sA - $sB;
+                    break;
+                case 'name':
+                case 'owner':
+                default:
+                    $r = strcasecmp((string)$a['name'], (string)$b['name']);
+                    break;
+            }
+            if ($r === 0) {
+                $r = strcasecmp((string)$a['name'], (string)$b['name']);
+            }
+            return strtolower($order) === 'desc' ? -$r : $r;
+        };
+
+        usort($allFolders, $cmp);
+        usort($allFiles, $cmp);
+
+        $totalFolders = count($allFolders);
+        $totalFiles = count($allFiles);
+        $hasMore = false;
+        
+        $folders = [];
+        $files = [];
+
+        if ($limit > 0) {
+            $remainingLimit = $limit;
+            if ($offset < $totalFolders) {
+                $folders = array_slice($allFolders, $offset, $remainingLimit);
+                $remainingLimit -= count($folders);
+                $filesOffset = 0;
+            } else {
+                $filesOffset = $offset - $totalFolders;
+            }
+            
+            if ($remainingLimit > 0 && $filesOffset < $totalFiles) {
+                $files = array_slice($allFiles, $filesOffset, $remainingLimit);
+            }
+            
+            $hasMore = ($offset + $limit) < ($totalFolders + $totalFiles);
+        } else {
+            $folders = $allFolders;
+            $files = $allFiles;
+        }
+
+        // Obtener dueños desde la base de datos
+        $paths = [];
+        foreach ($folders as $f) $paths[] = $f['path'];
+        foreach ($files as $f) $paths[] = $f['path'];
+        
+        $owners = [];
+        if (!empty($paths)) {
+            $in = str_repeat('?,', count($paths) - 1) . '?';
+            $stmt = $this->pdo->prepare("SELECT a.path, u.display_name AS owner FROM assets_metadata a JOIN users u ON a.user_id = u.id WHERE a.path IN ($in)");
+            $stmt->execute($paths);
+            foreach ($stmt->fetchAll() as $row) {
+                $owners[$row['path']] = $row['owner'];
+            }
+        }
+
+        $enrichedFiles = [];
+        foreach ($files as $f) {
+            $enrichedFiles[] = [
+                'type'       => 'file',
+                'name'       => $f['name'],
+                'path'       => $f['path'],
+                'size_bytes' => (int) @filesize($f['abs']),
+                'mime_type'  => $this->detectMime($f['abs']),
+                'extension'  => $f['extension'],
+                'url'        => $this->publicUrl($f['path']),
+                'owner'      => $owners[$f['path']] ?? null,
+            ];
+        }
+        
+        $enrichedFolders = [];
+        foreach ($folders as $f) {
+             $enrichedFolders[] = [
+                 'type' => 'folder',
+                 'name' => $f['name'],
+                 'path' => $f['path'],
+                 'owner' => $owners[$f['path']] ?? null,
+             ];
+        }
 
         return [
             'path'        => $relative,
             'breadcrumbs' => $this->breadcrumbs($relative),
-            'folders'     => $folders,
-            'files'       => $files,
+            'folders'     => $enrichedFolders,
+            'files'       => $enrichedFiles,
+            'has_more'    => $hasMore,
         ];
     }
 
@@ -166,7 +310,7 @@ final class AssetsService
 
     // --- Interacción (usuarios autorizados) ---
 
-    public function createFolder(string $parentRelative, string $rawName): array
+    public function createFolder(string $parentRelative, string $rawName, int $userId): array
     {
         $name = $this->fs->sanitizeName($rawName);
         $rel = ltrim($parentRelative . '/' . $name, '/');
@@ -175,6 +319,10 @@ final class AssetsService
             throw new HttpException(409, 'NAME_EXISTS', 'Ya existe un elemento con ese nombre.');
         }
         $this->fs->ensureDir($abs);
+        
+        $stmt = $this->pdo->prepare("INSERT INTO assets_metadata (path, user_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE user_id = VALUES(user_id)");
+        $stmt->execute([$rel, $userId]);
+
         return ['type' => 'folder', 'name' => $name, 'path' => $rel];
     }
 
@@ -183,7 +331,7 @@ final class AssetsService
      *
      * @param array{name:string,tmp_name:string,size:int,error:int} $file
      */
-    public function storeUpload(string $parentRelative, array $file): array
+    public function storeUpload(string $parentRelative, array $file, int $userId): array
     {
         if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
             throw HttpException::badRequest('No se recibió el archivo (¿supera el límite del servidor?).', 'UPLOAD_ERROR');
@@ -205,6 +353,9 @@ final class AssetsService
             throw new HttpException(500, 'FS_ERROR', 'No se pudo guardar el archivo.');
         }
         @chmod($abs, 0644);
+
+        $stmt = $this->pdo->prepare("INSERT INTO assets_metadata (path, user_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE user_id = VALUES(user_id)");
+        $stmt->execute([$rel, $userId]);
 
         $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
         return [
@@ -259,6 +410,17 @@ final class AssetsService
         if (!@rename($srcAbs, $destAbs)) {
             throw new HttpException(500, 'FS_ERROR', 'No se pudo mover el elemento.');
         }
+
+        // Actualizar metadatos (si es carpeta, habría que hacer LIKE 'path/%' pero el scope de assets_metadata aquí es simplificado)
+        $stmt = $this->pdo->prepare("UPDATE assets_metadata SET path = ? WHERE path = ?");
+        $stmt->execute([$destRel, $src]);
+        
+        if (is_dir($destAbs)) {
+            // Actualizar paths de los hijos
+            $stmt = $this->pdo->prepare("UPDATE assets_metadata SET path = CONCAT(?, SUBSTRING(path, ?)) WHERE path LIKE ?");
+            $stmt->execute([$destRel, strlen($src) + 1, $src . '/%']);
+        }
+
         return ['type' => is_dir($destAbs) ? 'folder' : 'file', 'name' => $name, 'path' => $destRel];
     }
 
@@ -273,6 +435,9 @@ final class AssetsService
             throw HttpException::notFound('Elemento no encontrado en assets.');
         }
         $this->fs->delete($abs);
+
+        $stmt = $this->pdo->prepare("DELETE FROM assets_metadata WHERE path = ? OR path LIKE ?");
+        $stmt->execute([$relative, $relative . '/%']);
     }
 
     private function detectMime(string $absPath): ?string

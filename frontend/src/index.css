@@ -37,6 +37,10 @@
     --color-primary-subtle: 232 240 254; /* #e8f0fe */
     --color-primary-on: 255 255 255;
 
+    /* Gradientes */
+    --color-gradient-start: 26 115 232; /* primary */
+    --color-gradient-end: 147 51 234; /* purple-600 */
+
     /* Funcionales */
     --color-success: 24 128 56; /* #188038 */
     --color-warning: 249 171 0; /* #f9ab00 */
@@ -75,6 +79,10 @@
     --color-primary-active: 174 203 250; /* #aecbfa */
     --color-primary-subtle: 30 58 95; /* azul profundo para selección */
     --color-primary-on: 15 23 42; /* texto oscuro sobre azul claro */
+
+    /* Gradientes */
+    --color-gradient-start: 138 180 248; /* primary dark */
+    --color-gradient-end: 192 132 252; /* purple-400 */
 
     /* Funcionales */
     --color-success: 129 201 149; /* #81c995 */

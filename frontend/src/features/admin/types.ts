@@ -12,6 +12,13 @@ export interface AdminUser {
   created_at: string | null
 }
 
+export interface UsersPage {
+  items: AdminUser[]
+  total: number
+  page: number
+  limit: number
+}
+
 export interface AdminStats {
   users: number
   active: number

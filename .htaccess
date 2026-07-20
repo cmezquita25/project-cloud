@@ -96,15 +96,15 @@ DirectoryIndex index.html
     # 6c. Los archivos de /storage se sirven directos (URLs públicas del drive).
     RewriteRule ^storage/ - [L]
 
-    # 6c-bis. La carpeta /assets (imágenes internas de otros proyectos, ya
-    #         existentes en el hosting) se sirve SIEMPRE como archivo estático.
-    #         Así, si un archivo no existe, devuelve un 404 real en lugar del
-    #         index.html del SPA. Los assets de la app viven en /app-assets.
-    RewriteRule ^assets/ - [L]
+    # 6c-bis. Si es un archivo estático dentro de /assets, servirlo si existe.
+    # Si NO existe, forzar un 404 en lugar de cargar el SPA (evita bucles o falsos 200).
+    # IMPORTANTE: No aplicar a la carpeta raíz /assets/ para que el SPA pueda manejar la ruta.
+    RewriteCond %{REQUEST_URI} ^/assets/.+
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ - [R=404,L]
 
     # 6d. Si el recurso existe físicamente (assets, favicon...), servirlo tal cual.
-    RewriteCond %{REQUEST_FILENAME} -f [OR]
-    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteCond %{REQUEST_FILENAME} -f
     RewriteRule ^ - [L]
 
     # 6e. SPA fallback: cualquier otra ruta -> index.html (React Router).

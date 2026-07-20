@@ -4,6 +4,7 @@ import type {
   ActivityPage,
   AdminStats,
   AdminUser,
+  UsersPage,
   CreateUserPayload,
   CreateUserResult,
   EmailTemplate,
@@ -16,7 +17,7 @@ import type {
 export const adminApi = {
   stats: () => api.get<AdminStats>('/admin/stats'),
   serverInfo: () => api.get<Record<string, string>>('/admin/server-info'),
-  users: () => api.get<{ users: AdminUser[] }>('/admin/users').then((r) => r.users),
+  users: (page = 1, limit = 10) => api.get<UsersPage>(`/admin/users?page=${page}&limit=${limit}`),
   createUser: (payload: CreateUserPayload) => api.post<CreateUserResult>('/admin/users', payload),
   updateUser: (id: number, fields: UpdateUserPayload) =>
     api.patch<AdminUser>(`/admin/users/${id}`, fields),

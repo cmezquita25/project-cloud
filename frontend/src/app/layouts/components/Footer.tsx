@@ -1,5 +1,7 @@
 import { APP_NAME, getVersionLabel } from '@shared/config/version'
 import { usePlatformSettings } from '@shared/hooks/usePlatformSettings'
+import { ReportBugDialog } from '@features/support/components/ReportBugDialog'
+import { useState } from 'react'
 
 const LEGAL_LINKS = ['Legal', 'Privacidad', 'Docs']
 
@@ -12,6 +14,7 @@ export function Footer() {
   const settings = usePlatformSettings()
   const owner = settings?.organization_name?.trim() || APP_NAME
   const year = new Date().getFullYear()
+  const [reportOpen, setReportOpen] = useState(false)
 
   return (
     <footer className="shrink-0 border-t border-border bg-surface px-4 py-2.5 text-xs text-content-tertiary sm:px-6">
@@ -21,7 +24,7 @@ export function Footer() {
           <span aria-hidden className="hidden sm:inline">·</span>
           <span>{getVersionLabel()}</span>
           <span aria-hidden className="hidden sm:inline">·</span>
-          <span>Powered by Carlos Mezquita Alvarado</span>
+          <span>Desarrollado por Carlos Mezquita Alvarado</span>
         </p>
 
         <nav className="flex shrink-0 items-center gap-4">
@@ -30,8 +33,16 @@ export function Footer() {
               {label}
             </span>
           ))}
+          <button 
+            onClick={() => setReportOpen(true)}
+            className="text-primary hover:underline transition-colors focus-visible:outline-focus"
+          >
+            Reportar un problema
+          </button>
         </nav>
       </div>
+
+      {reportOpen && <ReportBugDialog isOpen={reportOpen} onClose={() => setReportOpen(false)} />}
     </footer>
   )
 }

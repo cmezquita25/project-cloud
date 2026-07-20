@@ -62,6 +62,21 @@ class UserRepository
         return $this->pdo->query('SELECT * FROM users ORDER BY created_at DESC')->fetchAll();
     }
 
+    /**
+     * @return array{items:array<int,array<string,mixed>>,total:int}
+     */
+    public function paginate(int $limit, int $offset): array
+    {
+        $total = (int) $this->pdo->query('SELECT COUNT(*) FROM users')->fetchColumn();
+
+        $stmt = $this->pdo->prepare('SELECT * FROM users ORDER BY created_at DESC LIMIT ? OFFSET ?');
+        $stmt->bindValue(1, $limit, PDO::PARAM_INT);
+        $stmt->bindValue(2, $offset, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return ['items' => $stmt->fetchAll(), 'total' => $total];
+    }
+
     public function existsByUsernameOrEmail(string $username, string $email, int $excludeId = 0): bool
     {
         $stmt = $this->pdo->prepare(

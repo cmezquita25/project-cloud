@@ -46,6 +46,10 @@ export default {
           on: rgb('--color-primary-on'), // texto sobre primary
         },
 
+        /* --- Gradientes --- */
+        'gradient-start': rgb('--color-gradient-start'),
+        'gradient-end': rgb('--color-gradient-end'),
+
         /* --- Colores funcionales Google --- */
         success: rgb('--color-success'), // verde  #188038
         warning: rgb('--color-warning'), // amarillo #fbbc04

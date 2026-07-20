@@ -9,7 +9,6 @@ import { StorageIndicator } from '@features/storage-quota/components/StorageIndi
 import { useAuth } from '@features/auth/AuthProvider'
 import { useAssetsAccess } from '@features/assets/hooks/useAssetsAccess'
 import { useUploadPicker } from '@features/uploads/hooks/useUploadPicker'
-import type { FolderRef } from '@features/drive-explorer/types'
 import { NAV_GROUPS, type NavItem } from '../navigation'
 
 function SidebarItem({ item, onNavigate }: { item: NavItem, onNavigate?: () => void }) {
@@ -97,9 +96,18 @@ interface SidebarProps {
 export function Sidebar({ onNavigate }: SidebarProps) {
   const { user, isAdmin } = useAuth()
   const { access } = useAssetsAccess()
+  const location = useLocation()
   const params = useParams()
-  const folderId: FolderRef = params.folderId ? Number(params.folderId) : 'root'
-  const { pickFiles, pickFolder } = useUploadPicker(folderId)
+  
+  const isAssets = location.pathname.startsWith('/assets')
+  const assetsMatch = location.pathname.match(/^\/assets(?:\/(.+))?$/)
+  const currentAssetPath = assetsMatch?.[1] || 'root'
+  const currentDriveFolder = params.folderId ? Number(params.folderId) : 'root'
+  
+  const uploadMode = isAssets ? 'assets' : 'drive'
+  const uploadFolderId = isAssets ? currentAssetPath : currentDriveFolder
+
+  const { pickFiles, pickFolder } = useUploadPicker(uploadFolderId, uploadMode)
   const newMenu = useDisclosure()
   const newAnchor = useRef<HTMLDivElement>(null)
 
@@ -142,7 +150,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
       id: 'folder',
       label: 'Nueva carpeta',
       icon: FolderPlus,
-      onSelect: () => window.dispatchEvent(new CustomEvent('pc:new-folder')),
+      onSelect: () => window.dispatchEvent(new CustomEvent('pc:new-folder', { detail: { mode: uploadMode, folderId: uploadFolderId } })),
     },
     { id: 'files', label: 'Subir archivos', icon: FileUp, onSelect: pickFiles, divider: true },
     { id: 'dir', label: 'Subir carpeta', icon: FolderUp, onSelect: pickFolder },
@@ -173,13 +181,12 @@ export function Sidebar({ onNavigate }: SidebarProps) {
         </form>
       </div>
 
-      <div className="px-3 py-2 md:py-4">
+      <div className="flex justify-center px-3 py-2 md:py-4">
         <div ref={newAnchor} className="relative inline-block">
           <Button
             leftIcon={Plus}
             size="lg"
-            variant="secondary"
-            className="shadow-elevation-1"
+            variant="primary"
             onClick={newMenu.toggle}
           >
             Nuevo

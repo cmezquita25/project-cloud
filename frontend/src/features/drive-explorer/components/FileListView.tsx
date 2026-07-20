@@ -6,6 +6,7 @@ import { formatBytes } from '@shared/lib/formatBytes'
 import { formatRelative } from '@shared/lib/formatDate'
 import { ItemActionsMenu } from './ItemActionsMenu'
 import type { DriveItem, FolderItem, ItemAction, ItemInteractions } from '../types'
+import type { ExplorerCapabilities } from '../adapters/types'
 
 interface FileListViewProps {
   items: DriveItem[]
@@ -18,6 +19,7 @@ interface FileListViewProps {
   ownerName?: string | null
   /** Muestra la columna "Ubicación" (Recientes/Destacados/Búsqueda). */
   showLocation?: boolean
+  capabilities?: ExplorerCapabilities
 }
 
 const itemKey = (i: DriveItem) => `${i.type}-${i.id}`
@@ -32,23 +34,23 @@ export function FileListView({
   interactions,
   ownerName,
   showLocation = false,
+  capabilities,
 }: FileListViewProps) {
-  const owner = ownerName && ownerName.trim() !== '' ? ownerName : 'Sin definir'
   return (
     <div className="overflow-hidden rounded-drive border border-border bg-surface">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-border text-left text-xs font-medium text-content-tertiary">
-            <th className="w-10 py-2 pl-3" />
-            <th className="w-full py-2 font-medium">Nombre</th>
-            <th className="hidden w-32 whitespace-nowrap py-2 font-medium md:table-cell">Tipo</th>
+            <th className="w-12 py-3 pl-4 pr-2" />
+            <th className="w-full px-4 py-3 font-medium">Nombre</th>
+            <th className="hidden w-32 whitespace-nowrap px-4 py-3 font-medium md:table-cell">Tipo</th>
             {showLocation && (
-              <th className="hidden w-44 whitespace-nowrap py-2 font-medium lg:table-cell">Ubicación</th>
+              <th className="hidden w-44 whitespace-nowrap px-4 py-3 font-medium lg:table-cell">Ubicación</th>
             )}
-            <th className="hidden w-48 whitespace-nowrap py-2 font-medium lg:table-cell">Propietario</th>
-            <th className="hidden w-40 whitespace-nowrap py-2 font-medium sm:table-cell">Modificado</th>
-            <th className="hidden w-28 whitespace-nowrap py-2 font-medium md:table-cell">Tamaño</th>
-            <th className="w-12 py-2 pr-2" />
+            <th className="hidden w-48 whitespace-nowrap px-4 py-3 font-medium lg:table-cell">Propietario</th>
+            <th className="hidden w-40 whitespace-nowrap px-4 py-3 font-medium sm:table-cell">Modificado</th>
+            <th className="hidden w-28 whitespace-nowrap px-4 py-3 font-medium md:table-cell">Tamaño</th>
+            <th className="w-12 py-3 pl-2 pr-4" />
           </tr>
         </thead>
         <tbody>
@@ -67,6 +69,9 @@ export function FileListView({
                     onDrop: (e: React.DragEvent) => interactions.onDropOnFolder?.(item as FolderItem, e),
                   }
                 : {}
+
+            const itemOwner = item.owner ?? ownerName
+            const owner = itemOwner && itemOwner.trim() !== '' ? itemOwner : 'Sin definir'
 
             return (
               <tr
@@ -88,7 +93,7 @@ export function FileListView({
                       : 'hover:bg-surface-hover'
                 )}
               >
-                <td className="py-2 pl-3">
+                <td className="py-3 pl-4 pr-2">
                   <span className={cn('block', isSelected ? '' : 'opacity-0 group-hover:opacity-100')}>
                     <Checkbox
                       checked={isSelected}
@@ -97,36 +102,36 @@ export function FileListView({
                     />
                   </span>
                 </td>
-                <td className="w-full max-w-0 py-2 pr-4">
+                <td className="w-full max-w-0 px-4 py-3">
                   <div className="flex min-w-0 items-center gap-3">
                     <Icon size={20} className={cn('shrink-0', className)} />
-                    <span className="truncate text-content-primary" title={item.name}>{item.name}</span>
+                    <span className="truncate font-medium text-content-primary" title={item.name}>{item.name}</span>
                     {item.is_starred && (
                       <Star size={14} className="shrink-0 fill-warning text-warning" />
                     )}
                   </div>
                 </td>
-                <td className="hidden whitespace-nowrap py-2 text-content-secondary md:table-cell">
+                <td className="hidden whitespace-nowrap px-4 py-3 text-content-secondary md:table-cell">
                   {getFileKindLabel(item.name, item.type === 'folder')}
                 </td>
                 {showLocation && (
-                  <td className="hidden py-2 text-content-secondary lg:table-cell">
+                  <td className="hidden px-4 py-3 text-content-secondary lg:table-cell">
                     <span className="block max-w-[180px] truncate" title={item.location ?? 'Mi unidad'}>
                       {item.location ?? 'Mi unidad'}
                     </span>
                   </td>
                 )}
-                <td className="hidden py-2 text-content-secondary lg:table-cell">
+                <td className="hidden px-4 py-3 text-content-secondary lg:table-cell">
                   <span className="block max-w-[200px] truncate" title={owner}>{owner}</span>
                 </td>
-                <td className="hidden whitespace-nowrap py-2 text-content-secondary sm:table-cell">
+                <td className="hidden whitespace-nowrap px-4 py-3 text-content-secondary sm:table-cell">
                   {item.updated_at ? formatRelative(item.updated_at) : '—'}
                 </td>
-                <td className="hidden whitespace-nowrap py-2 text-content-secondary md:table-cell">
+                <td className="hidden whitespace-nowrap px-4 py-3 text-content-secondary md:table-cell">
                   {item.type === 'file' ? formatBytes(item.size_bytes) : '—'}
                 </td>
-                <td className="py-2 pr-2 text-right">
-                  <ItemActionsMenu item={item} onAction={onAction} />
+                <td className="py-3 pl-2 pr-4 text-right">
+                  <ItemActionsMenu item={item} onAction={onAction} capabilities={capabilities} />
                 </td>
               </tr>
             )

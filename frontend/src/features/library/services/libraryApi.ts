@@ -17,6 +17,11 @@ export const libraryApi = {
   recent: (signal?: AbortSignal) =>
     api.get<{ files: FileItem[] }>('/recent', { signal }),
   starred: (signal?: AbortSignal) => api.get<StarredResult>('/starred', { signal }),
-  search: (query: string, signal?: AbortSignal) =>
-    api.get<SearchResult>(`/search?q=${encodeURIComponent(query)}`, { signal }),
+  search: (query: string, filters?: { type?: string; date?: string }, signal?: AbortSignal) => {
+    const p = new URLSearchParams()
+    if (query) p.set('q', query)
+    if (filters?.type) p.set('type', filters.type)
+    if (filters?.date) p.set('date', filters.date)
+    return api.get<SearchResult>(`/search?${p.toString()}`, { signal })
+  },
 }

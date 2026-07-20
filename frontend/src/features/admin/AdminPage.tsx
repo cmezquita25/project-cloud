@@ -52,7 +52,15 @@ export function AdminPage() {
   const [stats, setStats] = useState<AdminStats | null>(null)
   const [serverInfo, setServerInfo] = useState<Record<string, string> | null>(null)
   const [users, setUsers] = useState<AdminUser[]>([])
+  const [userTotal, setUserTotal] = useState(0)
+  const [userPage, setUserPage] = useState(1)
+  const [userLimit, setUserLimit] = useState(10)
+
   const [activity, setActivity] = useState<ActivityItem[]>([])
+  const [activityTotal, setActivityTotal] = useState(0)
+  const [activityPage, setActivityPage] = useState(1)
+  const [activityLimit, setActivityLimit] = useState(30)
+
   const [loading, setLoading] = useState(true)
 
   const [formOpen, setFormOpen] = useState(false)
@@ -70,16 +78,19 @@ export function AdminPage() {
 
   const load = useCallback(() => {
     setLoading(true)
-    Promise.all([adminApi.stats(), adminApi.users(), adminApi.activity(1, 40), adminApi.serverInfo()])
-      .then(([s, u, a, info]) => {
+    Promise.all([adminApi.stats(), adminApi.users(userPage, userLimit), adminApi.activity(activityPage, activityLimit), adminApi.serverInfo()])
+      .then(([s, uPage, aPage, info]) => {
         setStats(s)
-        setUsers(u)
-        setActivity(a.items)
+        setUsers(uPage.items)
+        setUserTotal(uPage.total)
+        setActivity(aPage.items)
+        setActivityTotal(aPage.total)
         setServerInfo(info)
       })
       .catch((e) => toast.error(e.message))
       .finally(() => setLoading(false))
-  }, [toast])
+  }, [toast, userPage, userLimit, activityPage, activityLimit])
+
 
   useEffect(load, [load])
 
@@ -146,7 +157,14 @@ export function AdminPage() {
   return (
     <div className="flex h-full flex-col">
       <div className="mb-4 flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-normal text-content-primary">{TAB_TITLE[tab]}</h1>
+        <div>
+          <h1 className="text-2xl font-normal text-content-primary">{TAB_TITLE[tab]}</h1>
+          {tab === 'users' && (
+            <p className="mt-1 text-sm text-content-secondary">
+              Gestiona los accesos, roles y el almacenamiento de los miembros de tu organización.
+            </p>
+          )}
+        </div>
         {tab === 'users' && (
           <Button size="sm" leftIcon={UserPlus} onClick={() => { setEditUser(null); setFormOpen(true) }}>
             <span className="hidden sm:inline">Nuevo usuario</span>
@@ -205,9 +223,21 @@ export function AdminPage() {
             onResetPassword={setPwdUser}
             onToggleStatus={toggleStatus}
             onDelete={setDeleteUser}
+            page={userPage}
+            limit={userLimit}
+            total={userTotal}
+            onPageChange={setUserPage}
+            onLimitChange={setUserLimit}
           />
         ) : (
-          <ActivityList items={activity} />
+          <ActivityList 
+            items={activity} 
+            page={activityPage}
+            limit={activityLimit}
+            total={activityTotal}
+            onPageChange={setActivityPage}
+            onLimitChange={setActivityLimit}
+          />
         )}
       </div>
 

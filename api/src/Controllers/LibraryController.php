@@ -48,8 +48,10 @@ final class LibraryController
         $userId = (int) $request->userId();
         $username = (string) $request->user()['username'];
         $query = trim((string) $request->input('q', ''));
+        $type = (string) $request->input('type', '');
+        $date = (string) $request->input('date', '');
 
-        if (mb_strlen($query) < 1) {
+        if (mb_strlen($query) < 1 && $type === '' && $date === '') {
             return Response::success([
                 'query'   => '',
                 'folders' => [],
@@ -59,8 +61,8 @@ final class LibraryController
 
         return Response::success([
             'query'   => $query,
-            'folders' => ItemPresenter::folders((new FolderRepository())->search($userId, $query)),
-            'files'   => ItemPresenter::files((new FileRepository())->search($userId, $query), $username),
+            'folders' => ItemPresenter::folders((new FolderRepository())->search($userId, $query, $type, $date)),
+            'files'   => ItemPresenter::files((new FileRepository())->search($userId, $query, $type, $date), $username),
         ]);
     }
 }

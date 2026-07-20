@@ -4,6 +4,7 @@ import { Avatar, IconButton, Menu, ProgressBar, type MenuItem } from '@shared/ui
 import { useDisclosure } from '@shared/hooks/useDisclosure'
 import { cn } from '@shared/lib/cn'
 import { formatBytes, usagePercent } from '@shared/lib/formatBytes'
+import { Pagination } from '@shared/ui/Pagination'
 import type { AdminUser } from '../types'
 
 interface UsersTableProps {
@@ -13,6 +14,11 @@ interface UsersTableProps {
   onResetPassword: (u: AdminUser) => void
   onToggleStatus: (u: AdminUser) => void
   onDelete: (u: AdminUser) => void
+  page: number
+  limit: number
+  total: number
+  onPageChange: (page: number) => void
+  onLimitChange: (limit: number) => void
 }
 
 function RoleBadge({ role }: { role: string }) {
@@ -69,7 +75,9 @@ export function UsersTable(props: UsersTableProps) {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs font-medium text-content-tertiary">
-              <th className="px-4 py-2 font-medium">Usuario</th>
+              <th className="w-12 px-4 py-2 font-medium"></th>
+              <th className="py-2 font-medium">Nombre de usuario</th>
+              <th className="py-2 font-medium">Usuario</th>
               <th className="py-2 font-medium">Rol</th>
               <th className="py-2 font-medium">Estado</th>
               <th className="py-2 font-medium">Subida máx.</th>
@@ -81,12 +89,15 @@ export function UsersTable(props: UsersTableProps) {
             {users.map((u) => (
               <tr key={u.id} className="border-b border-border/60 last:border-0 hover:bg-surface-hover">
                 <td className="px-4 py-2">
-                  <div className="flex items-center gap-3">
-                    <Avatar name={u.display_name} size={36} src={u.avatar_url} />
-                    <div className="min-w-0">
-                      <p className="truncate font-medium text-content-primary">{u.display_name}</p>
-                      <p className="truncate text-xs text-content-tertiary">{u.email}</p>
-                    </div>
+                  <Avatar name={u.display_name} size={36} src={u.avatar_url} />
+                </td>
+                <td className="py-2 font-medium text-content-primary">
+                  @{u.username}
+                </td>
+                <td className="py-2">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-content-primary">{u.display_name}</p>
+                    <p className="truncate text-xs text-content-tertiary">{u.email}</p>
                   </div>
                 </td>
                 <td className="py-2"><RoleBadge role={u.role} /></td>
@@ -113,6 +124,13 @@ export function UsersTable(props: UsersTableProps) {
             ))}
           </tbody>
         </table>
+        <Pagination
+          page={props.page}
+          limit={props.limit}
+          total={props.total}
+          onPageChange={props.onPageChange}
+          onLimitChange={props.onLimitChange}
+        />
       </div>
 
       {/* Móvil */}
@@ -124,6 +142,7 @@ export function UsersTable(props: UsersTableProps) {
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium text-content-primary">{u.display_name}</p>
                 <p className="truncate text-xs text-content-tertiary">{u.email}</p>
+                <p className="truncate text-xs text-primary font-medium">@{u.username}</p>
               </div>
               <UserMenu user={u} {...props} currentUserId={currentUserId} />
             </div>
@@ -144,6 +163,13 @@ export function UsersTable(props: UsersTableProps) {
             </div>
           </div>
         ))}
+        <Pagination
+          page={props.page}
+          limit={props.limit}
+          total={props.total}
+          onPageChange={props.onPageChange}
+          onLimitChange={props.onLimitChange}
+        />
       </div>
     </>
   )

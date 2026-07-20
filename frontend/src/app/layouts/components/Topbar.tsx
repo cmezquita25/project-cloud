@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Menu as MenuIcon, Search, X, LogOut, User, Shield } from 'lucide-react'
 import { IconButton, Avatar, Menu, type MenuItem } from '@shared/ui'
@@ -29,9 +29,6 @@ export function Topbar({ onMenuClick }: TopbarProps) {
   const [searchParams] = useSearchParams()
   const [term, setTerm] = useState('')
 
-  // Clave de caché estable del logo: se calcula una vez por montaje (no en cada
-  // render), así el logo NO se recarga al alternar el tema (evita el parpadeo).
-  const logoCacheKey = useMemo(() => Date.now(), [])
   const orgName = settings?.organization_name || 'Project Cloud'
 
   // Mantiene el campo sincronizado con la URL (?q=) al entrar/volver a /search.
@@ -95,7 +92,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
       <div className="flex items-center gap-2 pl-1 pr-2 sm:pr-6">
         {settings && (settings.logo_white || settings.logo_dark || settings.logo_mobile) ? (
           <img
-            src={`/api/v1/settings/logo/${(isMobile && settings.logo_mobile) ? 'mobile' : (theme === 'dark' && settings.logo_white ? 'white' : (theme === 'light' && settings.logo_dark ? 'dark' : 'white'))}?t=${logoCacheKey}`}
+            src={`/api/v1/settings/logo/${(isMobile && settings.logo_mobile) ? 'mobile' : (theme === 'dark' && settings.logo_white ? 'white' : (theme === 'light' && settings.logo_dark ? 'dark' : 'white'))}`}
             alt="Logo"
             className="h-8 max-w-[120px] object-contain transition-opacity duration-300"
           />

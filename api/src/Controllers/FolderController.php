@@ -40,13 +40,48 @@ final class FolderController
             $breadcrumbs = $folders->breadcrumbs($userId, $folderId);
         }
 
+        $limit = (int) $request->input('limit', 0);
+        $offset = (int) $request->input('offset', 0);
+        $sort = (string) $request->input('sort', 'name');
+        $order = (string) $request->input('order', 'asc');
+        $type = (string) $request->input('type', '');
+        $date = (string) $request->input('date', '');
+
+        $foldersList = [];
+        $filesList = [];
+        $hasMore = false;
+
+        if ($limit > 0) {
+            $totalFolders = $folders->countChildren($userId, $folderId, $type, $date);
+            $totalFiles = $files->countInFolder($userId, $folderId, $type, $date);
+            
+            $remainingLimit = $limit;
+            
+            if ($offset < $totalFolders) {
+                $foldersList = $folders->children($userId, $folderId, $sort, $order, $remainingLimit, $offset, $type, $date);
+                $remainingLimit -= count($foldersList);
+                $filesOffset = 0;
+            } else {
+                $filesOffset = $offset - $totalFolders;
+            }
+            
+            if ($remainingLimit > 0 && $filesOffset < $totalFiles) {
+                $filesList = $files->inFolder($userId, $folderId, $sort, $order, $remainingLimit, $filesOffset, $type, $date);
+            }
+            
+            $hasMore = ($offset + $limit) < ($totalFolders + $totalFiles);
+        } else {
+            $foldersList = $folders->children($userId, $folderId, $sort, $order, null, 0, $type, $date);
+            $filesList = $files->inFolder($userId, $folderId, $sort, $order, null, 0, $type, $date);
+        }
+
         $subfolders = array_map(
             fn (array $f) => $this->folderPublic($f),
-            $folders->children($userId, $folderId)
+            $foldersList
         );
         $folderFiles = array_map(
             fn (array $f) => $this->filePublic($f, $username),
-            $files->inFolder($userId, $folderId)
+            $filesList
         );
 
         return Response::success([
@@ -54,6 +89,7 @@ final class FolderController
             'breadcrumbs' => $breadcrumbs,
             'folders'     => $subfolders,
             'files'       => $folderFiles,
+            'has_more'    => $hasMore,
         ]);
     }
 

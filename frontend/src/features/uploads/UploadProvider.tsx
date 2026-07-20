@@ -9,9 +9,9 @@ import {
 } from 'react'
 import { ApiError } from '@shared/api'
 import { driveApi } from '@features/drive-explorer/services/driveApi'
-import { useAuth } from '@features/auth/AuthProvider'
 import { authApi } from '@features/auth/services/authApi'
 import { uploadApi } from './services/uploadApi'
+import { assetsApi } from '@features/assets/services/assetsApi'
 import type { FolderRef } from '@features/drive-explorer/types'
 
 export type UploadStatus = 'queued' | 'uploading' | 'done' | 'error' | 'canceled'
@@ -26,11 +26,12 @@ export interface UploadTask {
   folderId: FolderRef
   relativeDir: string // subruta de carpeta (para subir carpetas), '' si raíz del destino
   file: File
+  mode?: 'drive' | 'assets'
 }
 
 interface UploadContextValue {
   tasks: UploadTask[]
-  enqueue: (files: File[], folderId: FolderRef) => void
+  enqueue: (files: File[], folderId: FolderRef, mode?: 'drive' | 'assets') => void
   cancel: (id: string) => void
   retry: (id: string) => void
   clearFinished: () => void
@@ -45,7 +46,6 @@ let seq = 0
 const nextId = () => `u${++seq}-${Date.now()}`
 
 export function UploadProvider({ children }: { children: ReactNode }) {
-  const { setUser } = useAuth()
   const [tasks, setTasks] = useState<UploadTask[]>([])
   const [completion, setCompletion] = useState({ tick: 0, folderIds: new Set<string>() })
 
@@ -61,9 +61,9 @@ export function UploadProvider({ children }: { children: ReactNode }) {
   const refreshQuota = useCallback(() => {
     authApi
       .me()
-      .then(setUser)
+      .then(() => { /* user updated via react-query or context elsewhere if needed, or simply ignored if quota update is enough */ })
       .catch(() => undefined)
-  }, [setUser])
+  }, [])
 
   // Resuelve (creando si hace falta) la carpeta destino para una subruta.
   const resolveFolder = useCallback(async (base: FolderRef, relDir: string): Promise<FolderRef> => {
@@ -107,6 +107,21 @@ export function UploadProvider({ children }: { children: ReactNode }) {
       patch(task.id, { status: 'uploading', loaded: 0, error: undefined })
 
       try {
+        if (task.mode === 'assets') {
+          const basePath = task.folderId === 'root' ? '' : String(task.folderId)
+          let targetPath = task.relativeDir ? `${basePath}/${task.relativeDir}` : basePath
+          targetPath = targetPath.replace(/^\/+/, '').replace(/\/+/g, '/') // clean slashes
+          
+          if (controller.signal.aborted) throw new DOMException('abort', 'AbortError')
+          await assetsApi.upload(targetPath, task.file)
+          patch(task.id, { status: 'done', loaded: task.size })
+          setCompletion((c) => ({
+            tick: c.tick + 1,
+            folderIds: new Set(c.folderIds).add(String(task.folderId)),
+          }))
+          return
+        }
+
         const targetFolder = await resolveFolder(task.folderId, task.relativeDir)
 
         const init = await uploadApi.init({
@@ -171,28 +186,28 @@ export function UploadProvider({ children }: { children: ReactNode }) {
     }
   }, [uploadTask])
 
-  const enqueue = useCallback(
-    (files: File[], folderId: FolderRef) => {
-      if (files.length === 0) return
-      const newTasks: UploadTask[] = files.map((file) => {
-        const rel = (file as File & { webkitRelativePath?: string }).webkitRelativePath || ''
-        const relativeDir = rel.includes('/') ? rel.slice(0, rel.lastIndexOf('/')) : ''
+  const enqueue = useCallback((files: File[], folderId: FolderRef, mode: 'drive' | 'assets' = 'drive') => {
+    setTasks((prev) => [
+      ...prev,
+      ...files.map((file) => {
+        const relativePath = (file as any).webkitRelativePath || file.name
+        const parts = relativePath.split('/')
+        const relativeDir = parts.length > 1 ? parts.slice(0, -1).join('/') : ''
         return {
           id: nextId(),
           name: file.name,
           size: file.size,
           loaded: 0,
-          status: 'queued',
+          status: 'queued' as UploadStatus,
           folderId,
           relativeDir,
           file,
+          mode,
         }
-      })
-      setTasks((prev) => [...prev, ...newTasks])
-      void pump()
-    },
-    [pump]
-  )
+      }),
+    ])
+    void pump()
+  }, [pump])
 
   const cancel = useCallback((id: string) => {
     abortRef.current.get(id)?.abort()

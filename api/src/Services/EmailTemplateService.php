@@ -18,9 +18,10 @@ final class EmailTemplateService
     public const WELCOME = 'welcome';
     public const PASSWORD_RESET = 'password_reset';
     public const QUOTA_WARNING = 'quota_warning';
+    public const SUPPORT_REPORT = 'support_report';
 
     /** @var list<string> */
-    public const KEYS = [self::WELCOME, self::PASSWORD_RESET, self::QUOTA_WARNING];
+    public const KEYS = [self::WELCOME, self::PASSWORD_RESET, self::QUOTA_WARNING, self::SUPPORT_REPORT];
 
     private PDO $pdo;
 
@@ -130,6 +131,12 @@ final class EmailTemplateService
                 'used'      => '4.6 GB',
                 'quota'     => '5 GB',
             ],
+            self::SUPPORT_REPORT => $common + [
+                'sender_name'    => 'Juan Pérez',
+                'sender_email'   => 'juan@ejemplo.com',
+                'report_type'    => 'Reporte de Error',
+                'report_message' => 'El sistema muestra un error 404 al abrir mis archivos.',
+            ],
             default => $common,
         };
     }
@@ -173,6 +180,11 @@ final class EmailTemplateService
             'label'       => 'Aviso de cuota (90%)',
             'description' => 'Se envía cuando el almacenamiento del usuario supera el 90% de su cuota.',
             'variables'   => ['user_name', 'percent', 'used', 'quota', 'org_name'],
+        ],
+        self::SUPPORT_REPORT => [
+            'label'       => 'Reporte de Bug o Soporte',
+            'description' => 'Se envía al administrador (correo de soporte) cuando un usuario manda un reporte desde el footer.',
+            'variables'   => ['sender_name', 'sender_email', 'report_type', 'report_message', 'org_name'],
         ],
     ];
 
@@ -219,6 +231,15 @@ final class EmailTemplateService
                     . 'Has usado el <strong>{{percent}}%</strong> de tu almacenamiento ({{used}} de {{quota}}).</p>'
                     . '<p style="margin:0;color:#5f6368;line-height:1.6;">'
                     . 'Te recomendamos liberar espacio eliminando archivos que ya no necesites o vaciando la papelera.</p>',
+            ],
+            self::SUPPORT_REPORT => [
+                'subject'   => '[{{report_type}}] {{org_name}} - {{sender_name}}',
+                'body_html' =>
+                    '<h2 style="margin:0 0 16px;font-size:20px;color:#202124;">Nuevo reporte de soporte</h2>'
+                    . '<p style="margin:0 0 8px;color:#5f6368;"><strong>De:</strong> {{sender_name}} ({{sender_email}})</p>'
+                    . '<p style="margin:0 0 16px;color:#5f6368;"><strong>Tipo:</strong> {{report_type}}</p>'
+                    . '<p style="margin:0 0 8px;color:#5f6368;"><strong>Mensaje:</strong></p>'
+                    . '<div style="background:#f4f4f4;padding:15px;border-radius:5px;white-space:pre-wrap;color:#333;">{{report_message}}</div>',
             ],
         ];
     }

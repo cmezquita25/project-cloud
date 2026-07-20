@@ -1,4 +1,4 @@
-import { X, Link as LinkIcon, Check } from 'lucide-react'
+import { X, Link as LinkIcon, Check, Info, FileStack } from 'lucide-react'
 import { useState } from 'react'
 import { IconButton, Button } from '@shared/ui'
 import { cn } from '@shared/lib/cn'
@@ -8,7 +8,7 @@ import { formatDateTime } from '@shared/lib/formatDate'
 import type { DriveItem } from '../types'
 
 interface DetailsPanelProps {
-  item: DriveItem
+  items: DriveItem[]
   onClose: () => void
 }
 
@@ -22,13 +22,11 @@ function Row({ label, value }: { label: string; value: string }) {
 }
 
 /** Panel lateral de detalles con metadatos y URL pública. */
-export function DetailsPanel({ item, onClose }: DetailsPanelProps) {
-  const { icon: Icon, className } = getFileIcon(item.name, item.type === 'folder')
+export function DetailsPanel({ items, onClose }: DetailsPanelProps) {
   const [copied, setCopied] = useState(false)
 
-  const copyUrl = async () => {
-    if (item.type !== 'file') return
-    await navigator.clipboard.writeText(item.url)
+  const copyUrl = async (url: string) => {
+    await navigator.clipboard.writeText(url)
     setCopied(true)
     window.setTimeout(() => setCopied(false), 1500)
   }
@@ -40,6 +38,35 @@ export function DetailsPanel({ item, onClose }: DetailsPanelProps) {
         <IconButton icon={X} label="Cerrar" size="sm" onClick={onClose} />
       </div>
 
+      <div className="flex-1 overflow-y-auto">
+        {items.length === 0 ? (
+          <div className="flex h-full flex-col items-center justify-center p-6 text-center text-content-tertiary">
+            <Info size={48} className="mb-4 opacity-50" strokeWidth={1.5} />
+            <p className="text-sm font-medium">Selecciona un elemento para ver sus detalles</p>
+          </div>
+        ) : items.length > 1 ? (
+          <div className="flex h-full flex-col items-center p-6">
+            <div className="mb-4 flex h-24 w-24 items-center justify-center rounded-drive bg-surface-container">
+              <FileStack size={48} className="text-content-secondary opacity-80" strokeWidth={1.5} />
+            </div>
+            <p className="text-base font-medium text-content-primary">{items.length} elementos seleccionados</p>
+            <div className="mt-8 w-full border-t border-border pt-4">
+               <Row label="Tamaño total" value={formatBytes(items.reduce((acc, i) => acc + (i.type === 'file' ? i.size_bytes : 0), 0))} />
+            </div>
+          </div>
+        ) : (
+          items[0] ? <SingleItemDetails item={items[0]} copied={copied} onCopyUrl={() => copyUrl((items[0] as any).url)} /> : null
+        )}
+      </div>
+    </aside>
+  )
+}
+
+function SingleItemDetails({ item, copied, onCopyUrl }: { item: DriveItem, copied: boolean, onCopyUrl: () => void }) {
+  const { icon: Icon, className } = getFileIcon(item.name, item.type === 'folder')
+
+  return (
+    <>
       <div className="flex flex-col items-center gap-3 border-b border-border px-4 py-6">
         <div className="flex h-24 w-24 items-center justify-center rounded-drive bg-surface-container">
           <Icon size={48} className={cn('opacity-80', className)} strokeWidth={1.5} />
@@ -47,7 +74,7 @@ export function DetailsPanel({ item, onClose }: DetailsPanelProps) {
         <p className="break-all text-center text-sm font-medium text-content-primary">{item.name}</p>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-2">
+      <div className="px-4 py-2">
         <Row label="Tipo" value={item.type === 'folder' ? 'Carpeta' : item.mime_type ?? 'Archivo'} />
         {item.type === 'file' && <Row label="Tamaño" value={formatBytes(item.size_bytes)} />}
         {item.created_at && <Row label="Creado" value={formatDateTime(item.created_at)} />}
@@ -67,13 +94,13 @@ export function DetailsPanel({ item, onClose }: DetailsPanelProps) {
               fullWidth
               className="mt-2"
               leftIcon={copied ? Check : LinkIcon}
-              onClick={copyUrl}
+              onClick={onCopyUrl}
             >
               {copied ? 'Copiado' : 'Copiar URL'}
             </Button>
           </div>
         )}
       </div>
-    </aside>
+    </>
   )
 }

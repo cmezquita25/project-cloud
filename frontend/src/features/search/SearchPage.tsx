@@ -5,11 +5,14 @@ import { ApiError } from '@shared/api'
 import { EmptyState } from '@shared/ui'
 import { libraryApi } from '@features/library/services/libraryApi'
 import { ItemCollection } from '@features/library/components/ItemCollection'
+import { SearchFilterBar } from './components/SearchFilterBar'
 import type { DriveItem } from '@features/drive-explorer/types'
 
 export function SearchPage() {
-  const [params] = useSearchParams()
+  const [params, setParams] = useSearchParams()
   const query = params.get('q')?.trim() ?? ''
+  const typeFilter = params.get('type') ?? ''
+  const dateFilter = params.get('date') ?? ''
 
   const [items, setItems] = useState<DriveItem[]>([])
   const [loading, setLoading] = useState(false)
@@ -25,7 +28,7 @@ export function SearchPage() {
       setLoading(true)
       setError(null)
       libraryApi
-        .search(query, signal)
+        .search(query, { type: typeFilter, date: dateFilter }, signal)
         .then((r) => {
           setItems([...r.folders, ...r.files])
           setLoading(false)
@@ -36,7 +39,7 @@ export function SearchPage() {
           setLoading(false)
         })
     },
-    [query]
+    [query, typeFilter, dateFilter]
   )
 
   useEffect(() => {
@@ -49,9 +52,23 @@ export function SearchPage() {
     <div className="flex h-full flex-col">
       <h1 className="mb-1 text-2xl font-normal text-content-primary">Resultados de búsqueda</h1>
       {query !== '' && (
-        <p className="mb-4 text-sm text-content-tertiary">
+        <p className="text-sm text-content-tertiary">
           Para «<span className="text-content-secondary">{query}</span>»
         </p>
+      )}
+
+      {query !== '' && (
+        <div className="mb-4">
+          <SearchFilterBar 
+            type={typeFilter} 
+            date={dateFilter} 
+            onChange={(key, val) => {
+              if (val) params.set(key, val)
+              else params.delete(key)
+              setParams(params)
+            }} 
+          />
+        </div>
       )}
 
       <div className="min-h-0 flex-1">

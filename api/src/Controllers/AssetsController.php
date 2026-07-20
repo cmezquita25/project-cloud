@@ -36,7 +36,16 @@ final class AssetsController
     {
         $service = $this->guard($request);
         $path = (string) $request->input('path', '');
-        return Response::success($service->list($path));
+        
+        $limit = (int) $request->input('limit', 0);
+        $offset = (int) $request->input('offset', 0);
+        $sort = (string) $request->input('sort', 'name');
+        $order = (string) $request->input('order', 'asc');
+        $q = (string) $request->input('q', '');
+        $type = (string) $request->input('type', '');
+        $date = (string) $request->input('date', '');
+        
+        return Response::success($service->list($path, $sort, $order, $limit, $offset, $q, $type, $date));
     }
 
     /** GET /assets/thumb?path=... — miniatura de una imagen de assets (pública). */
@@ -56,6 +65,7 @@ final class AssetsController
         $folder = $service->createFolder(
             (string) ($request->json()['path'] ?? ''),
             (string) $data['name'],
+            (int) $request->userId()
         );
         ActivityLogger::log($request, 'assets.folder_create', 'asset', null, ['path' => $folder['path']]);
         return Response::created($folder);
@@ -75,7 +85,7 @@ final class AssetsController
             'tmp_name' => (string) ($file['tmp_name'] ?? ''),
             'size'     => (int) ($file['size'] ?? 0),
             'error'    => (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE),
-        ]);
+        ], (int) $request->userId());
         ActivityLogger::log($request, 'assets.upload', 'asset', null, ['path' => $stored['path']]);
         return Response::created($stored);
     }

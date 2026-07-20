@@ -15,6 +15,7 @@ import { GeneralSettings } from '@features/admin/settings/pages/GeneralSettings'
 import { AppearanceSettings } from '@features/admin/settings/pages/AppearanceSettings'
 import { EmailSettings } from '@features/admin/settings/pages/EmailSettings'
 import { EmailTemplatesSettings } from '@features/admin/settings/pages/EmailTemplatesSettings'
+import { EmailTemplateEditor } from '@features/admin/settings/pages/EmailTemplateEditor'
 import { AccessSettings } from '@features/admin/settings/pages/AccessSettings'
 import { StoragePage } from '@features/storage-quota/StoragePage'
 import { ProfilePage } from '@features/profile/ProfilePage'
@@ -34,22 +35,14 @@ const router = createBrowserRouter([
       // Instalador (sin sesión, pantalla propia).
       { path: '/install', element: <InstallWizard /> },
 
-      // Login: si ya hay sesión, redirige a la app.
-      {
-        element: <RedirectIfAuth />,
-        children: [
-          {
-            element: <AuthLayout />,
-            children: [{ path: '/login', element: <LoginPage /> }],
-          },
-        ],
-      },
-
-      // Restablecimiento de contraseña: público y accesible siempre (el enlace
-      // llega por correo), sin RedirectIfAuth.
+      // Rutas públicas de autenticación bajo el mismo AuthLayout
       {
         element: <AuthLayout />,
         children: [
+          {
+            element: <RedirectIfAuth />,
+            children: [{ path: '/login', element: <LoginPage /> }],
+          },
           { path: '/forgot-password', element: <ForgotPasswordPage /> },
           { path: '/reset-password', element: <ResetPasswordPage /> },
         ],
@@ -71,7 +64,7 @@ const router = createBrowserRouter([
               { path: 'search', element: <SearchPage /> },
               { path: 'quota', element: <StoragePage /> },
               { path: 'profile', element: <ProfilePage /> },
-              { path: 'assets', element: <AssetsPage /> },
+              { path: 'assets/*', element: <AssetsPage /> },
               // Solo administradores. Cada sección de administración es su
               // propia ruta (accesible desde el sidebar), todas sobre AdminPage.
               {
@@ -89,6 +82,7 @@ const router = createBrowserRouter([
                       { path: 'appearance', element: <AppearanceSettings /> },
                       { path: 'email', element: <EmailSettings /> },
                       { path: 'email-templates', element: <EmailTemplatesSettings /> },
+                      { path: 'email-templates/:key', element: <EmailTemplateEditor /> },
                       { path: 'access', element: <AccessSettings /> },
                     ],
                   },

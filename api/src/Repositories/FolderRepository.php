@@ -31,20 +31,81 @@ class FolderRepository
     }
 
     /** @return array<int,array<string,mixed>> Subcarpetas directas (vivas). */
-    public function children(int $userId, ?int $parentId): array
+    public function children(int $userId, ?int $parentId, string $sort = 'name', string $order = 'asc', ?int $limit = null, int $offset = 0, ?string $type = null, ?string $date = null): array
     {
-        if ($parentId === null) {
-            $stmt = $this->pdo->prepare(
-                'SELECT * FROM folders WHERE user_id = ? AND parent_id IS NULL AND deleted_at IS NULL ORDER BY name'
-            );
-            $stmt->execute([$userId]);
-        } else {
-            $stmt = $this->pdo->prepare(
-                'SELECT * FROM folders WHERE user_id = ? AND parent_id = ? AND deleted_at IS NULL ORDER BY name'
-            );
-            $stmt->execute([$userId, $parentId]);
+        if ($type !== null && $type !== '' && $type !== 'folder') {
+            return [];
         }
+
+        $allowedSorts = ['name', 'updated_at', 'created_at'];
+        if (!in_array($sort, $allowedSorts, true)) {
+            $sort = 'name';
+        }
+        $order = strtolower($order) === 'desc' ? 'DESC' : 'ASC';
+
+        $sql = 'SELECT * FROM folders WHERE user_id = :user_id AND deleted_at IS NULL';
+        $params = [':user_id' => $userId];
+
+        if ($parentId === null) {
+            $sql .= ' AND parent_id IS NULL';
+        } else {
+            $sql .= ' AND parent_id = :parent_id';
+            $params[':parent_id'] = $parentId;
+        }
+
+        if ($date === 'today') {
+            $sql .= ' AND updated_at >= DATE(UTC_TIMESTAMP())';
+        } elseif ($date === '7days') {
+            $sql .= ' AND updated_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 7 DAY)';
+        } elseif ($date === '30days') {
+            $sql .= ' AND updated_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY)';
+        }
+
+        $sql .= " ORDER BY $sort $order";
+
+        if ($limit !== null) {
+            $sql .= ' LIMIT :limit OFFSET :offset';
+        }
+
+        $stmt = $this->pdo->prepare($sql);
+        foreach ($params as $k => $v) {
+            $stmt->bindValue($k, $v);
+        }
+        if ($limit !== null) {
+            $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+            $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+        }
+
+        $stmt->execute();
         return $stmt->fetchAll();
+    }
+
+    public function countChildren(int $userId, ?int $parentId, ?string $type = null, ?string $date = null): int
+    {
+        if ($type !== null && $type !== '' && $type !== 'folder') {
+            return 0;
+        }
+
+        $sql = 'SELECT COUNT(*) FROM folders WHERE user_id = :user_id AND deleted_at IS NULL AND ' . ($parentId === null ? 'parent_id IS NULL' : 'parent_id = :parent_id');
+        $params = [':user_id' => $userId];
+        if ($parentId !== null) {
+            $params[':parent_id'] = $parentId;
+        }
+
+        if ($date === 'today') {
+            $sql .= ' AND updated_at >= DATE(UTC_TIMESTAMP())';
+        } elseif ($date === '7days') {
+            $sql .= ' AND updated_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 7 DAY)';
+        } elseif ($date === '30days') {
+            $sql .= ' AND updated_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY)';
+        }
+
+        $stmt = $this->pdo->prepare($sql);
+        foreach ($params as $k => $v) {
+            $stmt->bindValue($k, $v);
+        }
+        $stmt->execute();
+        return (int) $stmt->fetchColumn();
     }
 
     /** ¿Existe ya una carpeta con ese nombre bajo el mismo padre? */
@@ -201,17 +262,37 @@ class FolderRepository
     }
 
     /** @return array<int,array<string,mixed>> Búsqueda de carpetas por nombre (vivas). */
-    public function search(int $userId, string $term, int $limit = 100): array
+    public function search(int $userId, string $term, string $type = '', string $date = '', int $limit = 100): array
     {
+        if ($type !== '' && $type !== 'folder') return []; // Only return folders if type is empty or 'folder'
+
         $limit = max(1, min(200, $limit));
+        $where = ["fo.user_id = ?", "fo.deleted_at IS NULL"];
+        $params = [$userId];
+
+        if ($term !== '') {
+            $where[] = "fo.name LIKE ? ESCAPE '\\\\'";
+            $params[] = '%' . FileRepository::escapeLike($term) . '%';
+        }
+
+        if ($date === 'today') {
+            $where[] = "fo.updated_at >= DATE(UTC_TIMESTAMP())";
+        } elseif ($date === '7days') {
+            $where[] = "fo.updated_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 7 DAY)";
+        } elseif ($date === '30days') {
+            $where[] = "fo.updated_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY)";
+        }
+
+        $whereClause = implode(' AND ', $where);
+
         $stmt = $this->pdo->prepare(
             "SELECT fo.*, pp.name AS location_name
                FROM folders fo
                LEFT JOIN folders pp ON pp.id = fo.parent_id
-              WHERE fo.user_id = ? AND fo.deleted_at IS NULL AND fo.name LIKE ? ESCAPE '\\\\'
+              WHERE $whereClause
               ORDER BY fo.name LIMIT $limit"
         );
-        $stmt->execute([$userId, '%' . FileRepository::escapeLike($term) . '%']);
+        $stmt->execute($params);
         return $stmt->fetchAll();
     }
 

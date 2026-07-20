@@ -1,7 +1,7 @@
 export interface FolderItem {
   type: 'folder'
-  id: number
-  parent_id: number | null
+  id: string | number
+  parent_id: string | number | null
   name: string
   path: string
   is_starred: boolean
@@ -10,12 +10,13 @@ export interface FolderItem {
   deleted_at?: string | null
   created_at: string | null
   updated_at: string | null
+  owner?: string | null
 }
 
 export interface FileItem {
   type: 'file'
-  id: number
-  folder_id: number | null
+  id: string | number
+  folder_id: string | number | null
   name: string
   path: string
   size_bytes: number
@@ -23,17 +24,19 @@ export interface FileItem {
   extension: string | null
   is_starred: boolean
   url: string
+  thumbnail_url?: string
   /** Nombre de la carpeta padre (Recientes/Destacados/Búsqueda). null = raíz. */
   location?: string | null
   deleted_at?: string | null
   created_at: string | null
   updated_at: string | null
+  owner?: string | null
 }
 
 export type DriveItem = FolderItem | FileItem
 
 export interface Breadcrumb {
-  id: number
+  id: string | number
   name: string
 }
 
@@ -42,10 +45,11 @@ export interface FolderContents {
   breadcrumbs: Breadcrumb[]
   folders: FolderItem[]
   files: FileItem[]
+  has_more?: boolean
 }
 
 /** id de carpeta para la API: null/'root' = raíz de la unidad. */
-export type FolderRef = number | 'root' | null
+export type FolderRef = string | number | 'root' | null
 
 export type ItemAction =
   | 'open'
