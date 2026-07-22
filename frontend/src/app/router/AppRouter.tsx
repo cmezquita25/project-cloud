@@ -17,6 +17,7 @@ import { EmailSettings } from '@features/admin/settings/pages/EmailSettings'
 import { EmailTemplatesSettings } from '@features/admin/settings/pages/EmailTemplatesSettings'
 import { EmailTemplateEditor } from '@features/admin/settings/pages/EmailTemplateEditor'
 import { AccessSettings } from '@features/admin/settings/pages/AccessSettings'
+import { DatabaseSettings } from '@features/admin/settings/pages/DatabaseSettings'
 import { StoragePage } from '@features/storage-quota/StoragePage'
 import { ProfilePage } from '@features/profile/ProfilePage'
 import { AssetsPage } from '@features/assets/AssetsPage'
@@ -84,6 +85,7 @@ const router = createBrowserRouter([
                       { path: 'email-templates', element: <EmailTemplatesSettings /> },
                       { path: 'email-templates/:key', element: <EmailTemplateEditor /> },
                       { path: 'access', element: <AccessSettings /> },
+                      { path: 'database', element: <DatabaseSettings /> },
                     ],
                   },
                 ],

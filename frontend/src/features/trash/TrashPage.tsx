@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { motion } from 'framer-motion'
 import { Trash2, RotateCcw, Trash, MoreVertical, X } from 'lucide-react'
 import { ApiError } from '@shared/api'
 import { Button, EmptyState, Spinner, IconButton, Dialog, useToast, Menu, type MenuItem } from '@shared/ui'
@@ -15,11 +17,22 @@ const key = (i: DriveItem) => `${i.type}-${i.id}`
 
 export function TrashPage() {
   const toast = useToast()
-  const [items, setItems] = useState<DriveItem[]>([])
-  const [retentionDays, setRetentionDays] = useState(30)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const queryClient = useQueryClient()
   const [busy, setBusy] = useState<string | null>(null)
+
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ['library', 'trash'],
+    queryFn: ({ signal }) => trashApi.list(signal),
+  })
+
+  const items = useMemo(() => {
+    if (!data) return []
+    return [...data.folders, ...data.files]
+  }, [data])
+  const retentionDays = data?.retention_days ?? 30
+  
+  const errorMessage = error instanceof ApiError ? error.message : (error ? 'No se pudo cargar la papelera' : null)
+
 
   // Selección (clic + lazo).
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -42,28 +55,16 @@ export function TrashPage() {
     onSelect: (keys) => setSelected(new Set([...marqueeBase.current, ...keys])),
   })
 
-  const load = useCallback((signal?: AbortSignal) => {
-    setLoading(true)
-    setError(null)
-    trashApi
-      .list(signal)
-      .then((r) => {
-        setItems([...r.folders, ...r.files])
-        setRetentionDays(r.retention_days)
-        setLoading(false)
-      })
-      .catch((e: unknown) => {
-        if (e instanceof DOMException && e.name === 'AbortError') return
-        setError(e instanceof ApiError ? e.message : 'No se pudo cargar la papelera')
-        setLoading(false)
-      })
-  }, [])
-
-  useEffect(() => {
-    const c = new AbortController()
-    load(c.signal)
-    return () => c.abort()
-  }, [load])
+  const removeOptimistic = (targetKeys: Set<string>) => {
+    queryClient.setQueryData(['library', 'trash'], (old: any) => {
+      if (!old) return old
+      return {
+        ...old,
+        folders: old.folders.filter((i: any) => !targetKeys.has(key(i))),
+        files: old.files.filter((i: any) => !targetKeys.has(key(i))),
+      }
+    })
+  }
 
   const onRowClick = (item: DriveItem, e: React.MouseEvent) => {
     if (e.ctrlKey || e.metaKey) {
@@ -82,7 +83,7 @@ export function TrashPage() {
     setBusy(key(item))
     try {
       await (item.type === 'folder' ? trashApi.restoreFolder(item.id) : trashApi.restoreFile(item.id))
-      setItems((prev) => prev.filter((i) => key(i) !== key(item)))
+      removeOptimistic(new Set([key(item)]))
       toast.success('Restaurado')
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : 'No se pudo restaurar')
@@ -100,12 +101,12 @@ export function TrashPage() {
         await (item.type === 'folder' ? trashApi.restoreFolder(item.id) : trashApi.restoreFile(item.id))
       }
       const done = new Set(targets.map(key))
-      setItems((prev) => prev.filter((i) => !done.has(key(i))))
+      removeOptimistic(done)
       clearSelection()
       toast.success(targets.length === 1 ? 'Restaurado' : `${targets.length} elementos restaurados`)
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : 'No se pudo restaurar')
-      load()
+      refetch()
     } finally {
       setSubmitting(false)
     }
@@ -120,7 +121,7 @@ export function TrashPage() {
         await (item.type === 'folder' ? trashApi.purgeFolder(item.id) : trashApi.purgeFile(item.id))
       }
       const done = new Set(targets.map(key))
-      setItems((prev) => prev.filter((i) => !done.has(key(i))))
+      removeOptimistic(done)
       setSelected((prev) => {
         const next = new Set(prev)
         done.forEach((k) => next.delete(k))
@@ -130,7 +131,7 @@ export function TrashPage() {
       setPurgeTargets([])
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : 'No se pudo eliminar')
-      load()
+      refetch()
     } finally {
       setSubmitting(false)
     }
@@ -140,7 +141,7 @@ export function TrashPage() {
     setSubmitting(true)
     try {
       await trashApi.empty()
-      setItems([])
+      removeOptimistic(new Set(items.map(key)))
       clearSelection()
       toast.success('Papelera vaciada')
       setConfirmEmpty(false)
@@ -151,10 +152,15 @@ export function TrashPage() {
     }
   }
 
-  const isEmpty = !loading && !error && items.length === 0
+  const isEmpty = !isLoading && !errorMessage && items.length === 0
 
   return (
-    <div className="flex h-full flex-col">
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+      className="flex h-full flex-col"
+    >
       {/* Cabecera con altura fija: sin salto al seleccionar. */}
       <div className="mb-2 flex h-9 items-center justify-between gap-3">
         {selected.size > 0 ? (
@@ -185,13 +191,13 @@ export function TrashPage() {
       )}
 
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
-        {loading ? (
+        {isLoading ? (
           <div className="flex h-64 items-center justify-center text-content-tertiary">
             <Spinner size={32} />
           </div>
-        ) : error ? (
+        ) : errorMessage ? (
           <div className="rounded-drive border border-danger/40 bg-danger-subtle p-4 text-sm text-danger">
-            {error}
+            {errorMessage}
           </div>
         ) : isEmpty ? (
           <EmptyState
@@ -272,7 +278,7 @@ export function TrashPage() {
           </>
         }
       />
-    </div>
+    </motion.div>
   )
 }
 
@@ -296,7 +302,10 @@ function TrashRow({ item, busy, selected, onClick, onRestore, onPurge }: TrashRo
   ]
 
   return (
-    <tr
+    <motion.tr
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.2 }}
       data-sel-key={key(item)}
       onClick={onClick}
       className={cn(
@@ -342,6 +351,6 @@ function TrashRow({ item, busy, selected, onClick, onRestore, onPurge }: TrashRo
           </div>
         </div>
       </td>
-    </tr>
+    </motion.tr>
   )
 }

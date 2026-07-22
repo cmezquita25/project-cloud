@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useParams, Link } from 'react-router-dom'
 import { Eye, RotateCcw, ArrowLeft, AlignLeft } from 'lucide-react'
 import { Button, Input, Spinner, useToast } from '@shared/ui'
@@ -34,25 +35,30 @@ export function EmailTemplateEditor() {
   const [template, setTemplate] = useState<EmailTemplate | null>(null)
   const [draft, setDraft] = useState<Draft>({ subject: '', body_html: '' })
   const [previewHtml, setPreviewHtml] = useState('')
-  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [previewing, setPreviewing] = useState(false)
   const bodyRef = useRef<HTMLTextAreaElement>(null)
 
+  const queryClient = useQueryClient()
+  const { data: templates, isLoading } = useQuery({
+    queryKey: ['admin', 'email-templates'],
+    queryFn: () => adminApi.getEmailTemplates()
+  })
+
+  const [seeded, setSeeded] = useState(false)
+
   useEffect(() => {
-    let alive = true
-    adminApi.getEmailTemplates().then(list => {
-      if (!alive) return
-      const found = list.find(t => t.key === key)
+    if (templates && !seeded) {
+      const found = templates.find(t => t.key === key)
       if (found) {
         setTemplate(found)
         setDraft({ subject: found.subject, body_html: formatHTML(found.body_html) })
+        setSeeded(true)
       } else {
         toast.error('Plantilla no encontrada')
       }
-    }).finally(() => alive && setLoading(false))
-    return () => { alive = false }
-  }, [key, toast])
+    }
+  }, [key, templates, seeded, toast])
 
   const refreshPreview = async () => {
     if (!key) return
@@ -107,6 +113,7 @@ export function EmailTemplateEditor() {
     setSaving(true)
     try {
       await adminApi.updateEmailTemplate(key, draft)
+      queryClient.invalidateQueries({ queryKey: ['admin', 'email-templates'] })
       toast.success('Plantilla guardada')
       void refreshPreview()
     } catch (e) {
@@ -120,6 +127,7 @@ export function EmailTemplateEditor() {
     if (!key) return
     try {
       const res = await adminApi.resetEmailTemplate(key)
+      queryClient.invalidateQueries({ queryKey: ['admin', 'email-templates'] })
       setDraft({ subject: res.subject, body_html: res.body_html })
       toast.success('Plantilla restaurada al valor por defecto')
       void refreshPreview()
@@ -128,7 +136,7 @@ export function EmailTemplateEditor() {
     }
   }
 
-  if (loading) return <div className="flex justify-center p-12"><Spinner size={28} /></div>
+  if (isLoading) return <div className="flex justify-center p-12"><Spinner size={28} /></div>
   if (!template) return <div className="p-8 text-center text-content-secondary">No se encontró la plantilla solicitada.</div>
 
   return (

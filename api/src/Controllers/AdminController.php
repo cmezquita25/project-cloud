@@ -225,6 +225,80 @@ final class AdminController
         return Response::success($stats);
     }
 
+    /** GET /admin/charts/storage-history */
+    public function storageHistory(Request $request): Response
+    {
+        $period = $request->param('period', '7d');
+        $days = match($period) {
+            'today' => 1,
+            '30d' => 30,
+            default => 7,
+        };
+        
+        $pdo = \ProjectCloud\Core\Database::pdo();
+        
+        $stmt = $pdo->prepare("
+            SELECT `date`, `total_bytes`
+            FROM `storage_history`
+            WHERE `date` >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+            ORDER BY `date` ASC
+        ");
+        $stmt->execute([$days]);
+        $history = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        // Convert types
+        $history = array_map(function ($row) {
+            return [
+                'date' => $row['date'],
+                'total_bytes' => (int) $row['total_bytes']
+            ];
+        }, $history);
+
+        return Response::success(['history' => $history]);
+    }
+
+    /** GET /admin/charts/storage-distribution */
+    public function storageDistribution(Request $request): Response
+    {
+        $period = $request->param('period', '7d');
+        $days = match($period) {
+            'today' => 1,
+            '30d' => 30,
+            default => 7,
+        };
+
+        $pdo = \ProjectCloud\Core\Database::pdo();
+        
+        // Distribution by mime_type (type)
+        $stmtMime = $pdo->prepare("
+            SELECT 
+                COALESCE(NULLIF(SUBSTRING_INDEX(mime_type, '/', 1), ''), 'unknown') as type,
+                SUM(size_bytes) as total_bytes
+            FROM files
+            WHERE deleted_at IS NULL AND created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+            GROUP BY type
+            ORDER BY total_bytes DESC
+        ");
+        $stmtMime->execute([$days]);
+        $byType = $stmtMime->fetchAll(\PDO::FETCH_ASSOC);
+
+        // Distribution by user
+        $stmtUser = $pdo->prepare("
+            SELECT u.username, u.display_name, COALESCE(SUM(f.size_bytes), 0) as total_bytes
+            FROM users u
+            LEFT JOIN files f ON f.user_id = u.id AND f.deleted_at IS NULL AND f.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+            GROUP BY u.id
+            ORDER BY total_bytes DESC
+        ");
+        $stmtUser->execute([$days]);
+        $byUser = $stmtUser->fetchAll(\PDO::FETCH_ASSOC);
+
+        return Response::success([
+            'by_type' => array_map(fn($row) => ['type' => $row['type'], 'total_bytes' => (int) $row['total_bytes']], $byType),
+            'by_user' => array_map(fn($row) => ['username' => $row['username'], 'display_name' => $row['display_name'], 'total_bytes' => (int) $row['total_bytes']], $byUser)
+        ]);
+    }
+
     /** GET /admin/server-info */
     public function serverInfo(Request $request): Response
     {
@@ -248,15 +322,18 @@ final class AdminController
         $updatedUser = null;
 
         if (array_key_exists('server_capacity_bytes', $body)) {
-            $capacity = max(0, (int) $body['server_capacity_bytes']);
+            $capacity = (int) $body['server_capacity_bytes'];
+            if ($capacity <= 0) {
+                throw new HttpException(422, 'INVALID_CAPACITY', 'La capacidad del servidor debe ser mayor a 0.');
+            }
+            $stats = $users->stats();
+            if ($capacity < $stats['used']) {
+                throw new HttpException(422, 'CAPACITY_TOO_LOW', 'La capacidad no puede ser menor al almacenamiento actualmente en uso (' . $stats['used'] . ' bytes).');
+            }
+
             $settings->set('server_capacity_bytes', (string) $capacity);
-            // El admin gestiona todo el conjunto: su cuota sigue a la capacidad,
-            // para que la barra de almacenamiento (sidebar/perfil) la refleje.
-            $users->update($adminId, ['quota_bytes' => $capacity]);
-            $updatedUser = $users->findById($adminId);
             ActivityLogger::log($request, 'settings.update', 'setting', null, ['server_capacity_bytes' => $capacity]);
         }
-
         if (array_key_exists('organization_name', $body)) {
             $orgName = trim((string) $body['organization_name']);
             if ($orgName === '') {
@@ -289,6 +366,29 @@ final class AdminController
                 $settings->set('support_email', $supportEmail);
             }
             ActivityLogger::log($request, 'settings.update', 'setting', null, ['support_email' => $supportEmail]);
+        }
+
+        if (array_key_exists('primary_color', $body)) {
+            $primaryColor = trim((string) $body['primary_color']);
+            if ($primaryColor === '') {
+                $settings->delete('primary_color');
+            } else {
+                $settings->set('primary_color', $primaryColor);
+            }
+            ActivityLogger::log($request, 'settings.update', 'setting', null, ['primary_color' => $primaryColor]);
+        }
+        
+        $btnKeys = ['btn_gradient_start', 'btn_gradient_end', 'btn_text_color'];
+        foreach ($btnKeys as $bKey) {
+            if (array_key_exists($bKey, $body)) {
+                $val = trim((string) $body[$bKey]);
+                if ($val === '') {
+                    $settings->delete($bKey);
+                } else {
+                    $settings->set($bKey, $val);
+                }
+                ActivityLogger::log($request, 'settings.update', 'setting', null, [$bKey => $val]);
+            }
         }
 
         return Response::success([

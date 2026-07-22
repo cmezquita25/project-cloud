@@ -22,8 +22,14 @@ export function AuthLayout() {
   const hasLogo = !!(settings && (settings.logo_white || settings.logo_dark))
 
   return (
-    <div className="relative flex min-h-full items-center justify-center bg-surface-container p-4">
-      <div className="w-full max-w-md">
+    <div className="relative flex min-h-full items-center justify-center overflow-hidden bg-canvas p-4">
+      {/* Background Decorative Gradients (Optimizado para GPU) */}
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden opacity-30 dark:opacity-20">
+        <div className="absolute top-[-10%] left-[-10%] h-[500px] w-[500px] rounded-full bg-primary/20 mix-blend-multiply blur-2xl" />
+        <div className="absolute bottom-[-10%] right-[-10%] h-[600px] w-[600px] rounded-full bg-primary/10 mix-blend-multiply blur-2xl" />
+      </div>
+
+      <div className="relative z-10 w-full max-w-md">
         {/* Identidad: logo + eslogan de la organización */}
         <motion.div 
           initial={{ opacity: 0, y: -20 }}
@@ -62,7 +68,7 @@ export function AuthLayout() {
           }
           animate={{ opacity: 1, y: 0, rotateX: 0, rotateY: 0 }}
           transition={{ duration: 0.6, type: 'spring', bounce: 0.2 }}
-          className="rounded-2xl border border-border bg-surface p-8 shadow-elevation-1"
+          className="rounded-2xl border border-white/20 bg-surface/90 p-8 shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] backdrop-blur-md dark:border-white/10 dark:bg-surface/80"
           style={{ perspective: 1000, backfaceVisibility: 'hidden' }}
         >
           <Outlet />

@@ -45,6 +45,7 @@ class UserRepository
             'UPDATE users SET used_bytes = GREATEST(0, CAST(used_bytes AS SIGNED) + ?) WHERE id = ?'
         );
         $stmt->execute([$delta, $id]);
+        $this->updateStorageHistory();
     }
 
     /** Fija el uso exacto (tras recalcular desde disco/BD). */
@@ -52,6 +53,16 @@ class UserRepository
     {
         $stmt = $this->pdo->prepare('UPDATE users SET used_bytes = ? WHERE id = ?');
         $stmt->execute([max(0, $used), $id]);
+        $this->updateStorageHistory();
+    }
+
+    private function updateStorageHistory(): void
+    {
+        $this->pdo->exec("
+            INSERT INTO storage_history (`date`, `total_bytes`)
+            SELECT CURDATE(), COALESCE(SUM(used_bytes), 0) FROM users
+            ON DUPLICATE KEY UPDATE `total_bytes` = VALUES(`total_bytes`)
+        ");
     }
 
     // --- Administración ---
@@ -147,7 +158,7 @@ class UserRepository
                     SUM(role = 'admin') AS admins,
                     COALESCE(SUM(used_bytes), 0) AS used,
                     COALESCE(SUM(quota_bytes), 0) AS quota,
-                    COALESCE(SUM(CASE WHEN role = 'user' THEN quota_bytes ELSE 0 END), 0) AS allocated_users
+                    COALESCE(SUM(quota_bytes), 0) AS allocated_users
                FROM users"
         )->fetch();
         return [

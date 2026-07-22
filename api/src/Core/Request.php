@@ -109,6 +109,13 @@ final class Request
         if ($auth !== null && preg_match('/^Bearer\s+(.+)$/i', $auth, $m) === 1) {
             return trim($m[1]);
         }
+        
+        // Soporte para JWT en query string (para enlaces directos de descarga)
+        $queryToken = $this->query['token'] ?? null;
+        if (is_string($queryToken) && $queryToken !== '') {
+            return $queryToken;
+        }
+
         return null;
     }
 

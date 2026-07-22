@@ -75,9 +75,9 @@ export function UsersTable(props: UsersTableProps) {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs font-medium text-content-tertiary">
-              <th className="w-12 px-4 py-2 font-medium"></th>
-              <th className="py-2 font-medium">Nombre de usuario</th>
+              <th className="w-[1%] whitespace-nowrap pl-4 pr-6 py-2 font-medium">Avatar</th>
               <th className="py-2 font-medium">Usuario</th>
+              <th className="py-2 font-medium">Nombre completo</th>
               <th className="py-2 font-medium">Rol</th>
               <th className="py-2 font-medium">Estado</th>
               <th className="py-2 font-medium">Subida máx.</th>
@@ -88,11 +88,11 @@ export function UsersTable(props: UsersTableProps) {
           <tbody>
             {users.map((u) => (
               <tr key={u.id} className="border-b border-border/60 last:border-0 hover:bg-surface-hover">
-                <td className="px-4 py-2">
+                <td className="w-[1%] whitespace-nowrap pl-4 pr-6 py-2">
                   <Avatar name={u.display_name} size={36} src={u.avatar_url} />
                 </td>
                 <td className="py-2 font-medium text-content-primary">
-                  @{u.username}
+                  {u.username}
                 </td>
                 <td className="py-2">
                   <div className="min-w-0">
@@ -142,7 +142,7 @@ export function UsersTable(props: UsersTableProps) {
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium text-content-primary">{u.display_name}</p>
                 <p className="truncate text-xs text-content-tertiary">{u.email}</p>
-                <p className="truncate text-xs text-primary font-medium">@{u.username}</p>
+                <p className="truncate text-xs text-primary font-medium">{u.username}</p>
               </div>
               <UserMenu user={u} {...props} currentUserId={currentUserId} />
             </div>

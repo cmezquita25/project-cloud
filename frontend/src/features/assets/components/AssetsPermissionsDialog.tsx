@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ShieldCheck } from 'lucide-react'
 import { Dialog, Button, Checkbox, Spinner, useToast } from '@shared/ui'
 import { ApiError } from '@shared/api'
-import { assetsApi, type AssetPermissionUser } from '../services/assetsApi'
+import { assetsApi } from '../services/assetsApi'
 
 interface Props {
   open: boolean
@@ -12,24 +13,23 @@ interface Props {
 /** Gestiona qué usuarios pueden ver/interactuar con la unidad compartida "assets". */
 export function AssetsPermissionsDialog({ open, onClose }: Props) {
   const toast = useToast()
-  const [users, setUsers] = useState<AssetPermissionUser[]>([])
+  const queryClient = useQueryClient()
   const [selected, setSelected] = useState<Set<number>>(new Set())
-  const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
 
+  const { data, isLoading } = useQuery({
+    queryKey: ['admin', 'assets-permissions'],
+    queryFn: () => assetsApi.permissions(),
+    enabled: open
+  })
+  
+  const users = data?.users ?? []
+
   useEffect(() => {
-    if (!open) return
-    setLoading(true)
-    assetsApi
-      .permissions()
-      .then((r) => {
-        setUsers(r.users)
-        // Preselecciona los no-admin ya permitidos (los admin siempre tienen acceso).
-        setSelected(new Set(r.users.filter((u) => u.role !== 'admin' && u.allowed).map((u) => u.id)))
-      })
-      .catch((e) => toast.error(e instanceof ApiError ? e.message : 'No se pudieron cargar los permisos'))
-      .finally(() => setLoading(false))
-  }, [open, toast])
+    if (open && data) {
+      setSelected(new Set(data.users.filter((u) => u.role !== 'admin' && u.allowed).map((u) => u.id)))
+    }
+  }, [open, data])
 
   const toggle = (id: number) =>
     setSelected((prev) => {
@@ -42,6 +42,8 @@ export function AssetsPermissionsDialog({ open, onClose }: Props) {
     setSaving(true)
     try {
       await assetsApi.setPermissions([...selected])
+      queryClient.invalidateQueries({ queryKey: ['admin', 'assets-permissions'] })
+      queryClient.invalidateQueries({ queryKey: ['assets', 'access'] })
       toast.success('Permisos actualizados')
       onClose()
     } catch (e) {
@@ -63,13 +65,13 @@ export function AssetsPermissionsDialog({ open, onClose }: Props) {
           <Button variant="ghost" onClick={onClose} disabled={saving}>
             Cancelar
           </Button>
-          <Button onClick={save} loading={saving} disabled={loading}>
+          <Button onClick={save} loading={saving} disabled={isLoading}>
             Guardar
           </Button>
         </>
       }
     >
-      {loading ? (
+      {isLoading ? (
         <div className="flex h-32 items-center justify-center text-content-tertiary">
           <Spinner size={28} />
         </div>

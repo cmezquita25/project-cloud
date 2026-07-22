@@ -328,8 +328,14 @@ final class Installer
         }
         $this->writeSetting($pdo, 'server_capacity_bytes', (string) $capacity);
 
-        // El admin puede usar toda la capacidad; el límite por archivo no la excede.
-        $maxUpload = (int) min(10 * 1024 ** 3, $capacity);
+        // El admin es un usuario independiente, su cuota inicial se basa en el default o lo asignado, sin exceder el servidor.
+        $adminQuota = (int) ($data['admin_quota_bytes'] ?? 5 * 1024 ** 3);
+        if ($adminQuota > $capacity) {
+            $adminQuota = $capacity;
+        }
+
+        // El límite por archivo no excede la cuota del admin
+        $maxUpload = (int) min(2 * 1024 ** 3, $adminQuota);
 
         $stmt = $pdo->prepare(
             'INSERT INTO users (username, email, password_hash, display_name, role, quota_bytes, max_upload_bytes)
@@ -340,7 +346,7 @@ final class Installer
             $data['email'],
             Password::hash($data['password']),
             $data['display_name'],
-            $capacity,
+            $adminQuota,
             $maxUpload,
         ]);
         $id = (int) $pdo->lastInsertId();

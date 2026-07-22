@@ -1,4 +1,5 @@
 import { Star } from 'lucide-react'
+import { motion } from 'framer-motion'
 import { cn } from '@shared/lib/cn'
 import { Checkbox } from '@shared/ui'
 import { getFileIcon, getFileKindLabel } from '@shared/lib/fileIcons'
@@ -53,7 +54,11 @@ export function FileListView({
             <th className="w-12 py-3 pl-2 pr-4" />
           </tr>
         </thead>
-        <tbody>
+        <motion.tbody
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2 }}
+        >
           {items.map((item) => {
             const { icon: Icon, className } = getFileIcon(item.name, item.type === 'folder')
             const key = itemKey(item)
@@ -136,7 +141,7 @@ export function FileListView({
               </tr>
             )
           })}
-        </tbody>
+        </motion.tbody>
       </table>
     </div>
   )

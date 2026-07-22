@@ -49,6 +49,7 @@ export default {
         /* --- Gradientes --- */
         'gradient-start': rgb('--color-gradient-start'),
         'gradient-end': rgb('--color-gradient-end'),
+        'btn-text': rgb('--color-btn-text'),
 
         /* --- Colores funcionales Google --- */
         success: rgb('--color-success'), // verde  #188038

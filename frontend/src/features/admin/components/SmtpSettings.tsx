@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Mail, Send, PlugZap } from 'lucide-react'
 import { Button, Input, Checkbox, Spinner, useToast } from '@shared/ui'
 import { ApiError } from '@shared/api'
@@ -30,28 +31,24 @@ const ENCRYPTIONS: { value: SmtpEncryption; label: string; port: number }[] = [
  */
 export function SmtpSettings() {
   const toast = useToast()
+  const queryClient = useQueryClient()
+  
+  const { data: smtpData, isLoading } = useQuery({
+    queryKey: ['admin', 'smtp'],
+    queryFn: () => adminApi.getSmtp()
+  })
+
   const [form, setForm] = useState<SmtpSettingsData>(EMPTY)
-  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
   const [testEmail, setTestEmail] = useState('')
 
   useEffect(() => {
-    let alive = true
-    adminApi
-      .getSmtp()
-      .then((s) => {
-        if (alive) {
-          setForm(s)
-          setTestEmail(s.from_email || '')
-        }
-      })
-      .catch(() => toast.error('No se pudo cargar la configuración SMTP'))
-      .finally(() => alive && setLoading(false))
-    return () => {
-      alive = false
+    if (smtpData) {
+      setForm(smtpData)
+      setTestEmail(smtpData.from_email || '')
     }
-  }, [toast])
+  }, [smtpData])
 
   const set =
     <K extends keyof SmtpSettingsData>(key: K) =>
@@ -82,6 +79,7 @@ export function SmtpSettings() {
     setSaving(true)
     try {
       const updated = await adminApi.updateSmtp(payload())
+      queryClient.setQueryData(['admin', 'smtp'], updated)
       setForm(updated)
       toast.success('Configuración SMTP guardada')
     } catch (e) {
@@ -107,7 +105,7 @@ export function SmtpSettings() {
     }
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex h-40 items-center justify-center text-content-tertiary">
         <Spinner size={28} />

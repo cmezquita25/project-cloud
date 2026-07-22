@@ -130,7 +130,8 @@ INSERT INTO `settings` (`key`, `value`) VALUES
     ('allow_registration', '0'),
     ('default_quota_bytes', '5368709120'),
     ('support_email', ''),
-    ('schema_version', '2')
+    ('primary_color', '#3b82f6'),
+    ('schema_version', '3')
 ON DUPLICATE KEY UPDATE `key` = `key`;
 
 -- --------------------------------------------------------------------------
@@ -176,6 +177,15 @@ CREATE TABLE IF NOT EXISTS `assets_metadata` (
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`path`(255)),
   CONSTRAINT `fk_assets_metadata_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------------------------
+--  storage_history — histórico diario del uso de almacenamiento general
+-- --------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `storage_history` (
+    `date` DATE NOT NULL,
+    `total_bytes` BIGINT UNSIGNED NOT NULL,
+    PRIMARY KEY (`date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SET FOREIGN_KEY_CHECKS = 1;

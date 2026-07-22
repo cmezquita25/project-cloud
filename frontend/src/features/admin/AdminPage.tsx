@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useLocation } from 'react-router-dom'
 import { Users, HardDrive, Shield, UserPlus, Pencil, Server } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -12,7 +13,8 @@ import { UserFormDialog } from './components/UserFormDialog'
 import { PasswordResetDialog } from './components/PasswordResetDialog'
 import { ActivityList } from './components/ActivityList'
 import { ServerLimits } from './components/ServerLimits'
-import type { ActivityItem, AdminStats, AdminUser } from './types'
+import { AdminCharts } from './components/AdminCharts'
+import type { AdminUser } from './types'
 
 type Tab = 'overview' | 'users' | 'activity'
 
@@ -49,19 +51,39 @@ export function AdminPage() {
   const location = useLocation()
   const tab = tabFromPath(location.pathname)
 
-  const [stats, setStats] = useState<AdminStats | null>(null)
-  const [serverInfo, setServerInfo] = useState<Record<string, string> | null>(null)
-  const [users, setUsers] = useState<AdminUser[]>([])
-  const [userTotal, setUserTotal] = useState(0)
+  const queryClient = useQueryClient()
+
   const [userPage, setUserPage] = useState(1)
   const [userLimit, setUserLimit] = useState(10)
 
-  const [activity, setActivity] = useState<ActivityItem[]>([])
-  const [activityTotal, setActivityTotal] = useState(0)
   const [activityPage, setActivityPage] = useState(1)
   const [activityLimit, setActivityLimit] = useState(30)
 
-  const [loading, setLoading] = useState(true)
+  const { data: stats, isLoading: statsLoading } = useQuery({
+    queryKey: ['admin', 'stats'],
+    queryFn: () => adminApi.stats()
+  })
+
+  const { data: serverInfo, isLoading: serverInfoLoading } = useQuery({
+    queryKey: ['admin', 'serverInfo'],
+    queryFn: () => adminApi.serverInfo()
+  })
+
+  const { data: usersData, isLoading: usersLoading } = useQuery({
+    queryKey: ['admin', 'users', userPage, userLimit],
+    queryFn: () => adminApi.users(userPage, userLimit)
+  })
+  const users = usersData?.items ?? []
+  const userTotal = usersData?.total ?? 0
+
+  const { data: activityData, isLoading: activityLoading } = useQuery({
+    queryKey: ['admin', 'activity', activityPage, activityLimit],
+    queryFn: () => adminApi.activity(activityPage, activityLimit)
+  })
+  const activity = activityData?.items ?? []
+  const activityTotal = activityData?.total ?? 0
+
+  const loading = statsLoading || serverInfoLoading || usersLoading || activityLoading
 
   const [formOpen, setFormOpen] = useState(false)
   const [editUser, setEditUser] = useState<AdminUser | null>(null)
@@ -76,28 +98,14 @@ export function AdminPage() {
   const [capUnit, setCapUnit] = useState<'MB' | 'GB'>('GB')
   const [savingCap, setSavingCap] = useState(false)
 
-  const load = useCallback(() => {
-    setLoading(true)
-    Promise.all([adminApi.stats(), adminApi.users(userPage, userLimit), adminApi.activity(activityPage, activityLimit), adminApi.serverInfo()])
-      .then(([s, uPage, aPage, info]) => {
-        setStats(s)
-        setUsers(uPage.items)
-        setUserTotal(uPage.total)
-        setActivity(aPage.items)
-        setActivityTotal(aPage.total)
-        setServerInfo(info)
-      })
-      .catch((e) => toast.error(e.message))
-      .finally(() => setLoading(false))
-  }, [toast, userPage, userLimit, activityPage, activityLimit])
-
-
-  useEffect(load, [load])
+  const invalidateAdmin = () => {
+    queryClient.invalidateQueries({ queryKey: ['admin'] })
+  }
 
   const toggleStatus = async (u: AdminUser) => {
     try {
       await adminApi.updateUser(u.id, { status: u.status === 'active' ? 'suspended' : 'active' })
-      load()
+      invalidateAdmin()
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Error')
     }
@@ -131,7 +139,7 @@ export function AdminPage() {
       else await authApi.me().then(setUser)
       toast.success('Capacidad actualizada')
       setCapOpen(false)
-      load()
+      invalidateAdmin()
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Error')
     } finally {
@@ -146,7 +154,7 @@ export function AdminPage() {
       await adminApi.deleteUser(deleteUser.id)
       toast.success('Usuario eliminado')
       setDeleteUser(null)
-      load()
+      invalidateAdmin()
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Error')
     } finally {
@@ -214,6 +222,8 @@ export function AdminPage() {
                 <ServerLimits serverInfo={serverInfo} />
               </div>
             )}
+            
+            <AdminCharts />
           </div>
         ) : tab === 'users' ? (
           <UsersTable
@@ -241,7 +251,7 @@ export function AdminPage() {
         )}
       </div>
 
-      <UserFormDialog open={formOpen} user={editUser} onClose={() => setFormOpen(false)} onSaved={load} />
+      <UserFormDialog open={formOpen} user={editUser} onClose={() => setFormOpen(false)} onSaved={invalidateAdmin} />
       <PasswordResetDialog open={pwdUser !== null} user={pwdUser} onClose={() => setPwdUser(null)} onDone={() => toast.success('Contraseña restablecida')} />
       <Dialog
         open={deleteUser !== null}

@@ -21,6 +21,8 @@ interface RequestOptions {
   signal?: AbortSignal
   /** No intentar auto-refresh (para endpoints de auth). */
   skipAuthRefresh?: boolean
+  /** Headers adicionales para la petición. */
+  headers?: Record<string, string>
 }
 
 /** Callback invocado cuando la sesión expira irrecuperablemente. */
@@ -89,6 +91,10 @@ async function raw(method: Method, path: string, body: unknown, options: Request
   const access = session.getAccess()
   if (access) headers['Authorization'] = `Bearer ${access}`
 
+  if (options.headers) {
+    Object.assign(headers, options.headers)
+  }
+
   return fetch(`${BASE_URL}${path}`, {
     method,
     headers,
@@ -103,6 +109,24 @@ async function request<T>(
   body?: unknown,
   options: RequestOptions = {}
 ): Promise<T> {
+  const cacheKey = `api_cache_${path}`
+  let cachedData: T | null = null
+
+  if (method === 'GET') {
+    const cachedStr = sessionStorage.getItem(cacheKey)
+    if (cachedStr) {
+      try {
+        const parsed = JSON.parse(cachedStr)
+        if (parsed.etag && parsed.data !== undefined) {
+          cachedData = parsed.data
+          options.headers = { ...options.headers, 'If-None-Match': parsed.etag }
+        }
+      } catch {
+        sessionStorage.removeItem(cacheKey)
+      }
+    }
+  }
+
   let res: Response
   try {
     res = await raw(method, path, body, options)
@@ -126,6 +150,10 @@ async function request<T>(
     return undefined as T
   }
 
+  if (res.status === 304 && cachedData !== null) {
+    return cachedData
+  }
+
   let envelope: ApiEnvelope<T>
   try {
     envelope = (await res.json()) as ApiEnvelope<T>
@@ -142,7 +170,16 @@ async function request<T>(
     )
   }
 
-  return envelope.data as T
+  const data = envelope.data as T
+
+  if (method === 'GET' && res.status === 200) {
+    const etag = res.headers.get('ETag')
+    if (etag) {
+      sessionStorage.setItem(cacheKey, JSON.stringify({ etag, data }))
+    }
+  }
+
+  return data
 }
 
 export const api = {

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   FolderPlus,
   UploadCloud,
@@ -559,10 +560,30 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
                 </div>
               }
             />
-          ) : view === 'list' ? (
-            <FileListView items={items} selected={selected} onOpen={openItem} onSelectToggle={toggleSelect} onAction={onAction} interactions={interactions} ownerName={adapter.mode === 'assets' ? '-' : user?.display_name} capabilities={adapter.capabilities} />
           ) : (
-            <FileGridView items={items} selected={selected} onOpen={openItem} onSelectToggle={toggleSelect} onAction={onAction} interactions={interactions} capabilities={adapter.capabilities} />
+            <AnimatePresence mode="wait">
+              {view === 'list' ? (
+                <motion.div
+                  key="list"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <FileListView items={items} selected={selected} onOpen={openItem} onSelectToggle={toggleSelect} onAction={onAction} interactions={interactions} ownerName={adapter.mode === 'assets' ? '-' : user?.display_name} capabilities={adapter.capabilities} />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="grid"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <FileGridView items={items} selected={selected} onOpen={openItem} onSelectToggle={toggleSelect} onAction={onAction} interactions={interactions} capabilities={adapter.capabilities} />
+                </motion.div>
+              )}
+            </AnimatePresence>
           )}
 
           {hasMore && (
@@ -577,11 +598,19 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
 
       {marqueeOverlay}
 
-      {showDetails && (
-        <div className="ml-4 hidden w-80 shrink-0 overflow-hidden rounded-drive border border-border lg:block">
-          <DetailsPanel items={selectedItems} onClose={() => setShowDetails(false)} />
-        </div>
-      )}
+      <AnimatePresence>
+        {showDetails && (
+          <motion.div 
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 50 }}
+            transition={{ duration: 0.2 }}
+            className="ml-4 hidden w-80 shrink-0 overflow-hidden rounded-drive border border-border lg:block"
+          >
+            <DetailsPanel items={selectedItems} onClose={() => setShowDetails(false)} />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <NamePromptDialog
         open={dialog?.kind === 'newFolder'}

@@ -59,9 +59,45 @@ final class Response
         return $this;
     }
 
-    /** Envía cabeceras + cuerpo JSON y termina la respuesta. */
     public function send(): void
     {
+        if ($this->status === 204) {
+            http_response_code($this->status);
+            if (!headers_sent()) {
+                foreach ($this->headers as $name => $value) {
+                    header("$name: $value");
+                }
+            }
+            return;
+        }
+
+        $json = json_encode([
+            'success' => $this->success,
+            'data'    => $this->data,
+            'error'   => $this->error,
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        // Auto-ETag para respuestas GET exitosas
+        if ($this->status === 200 && isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'GET') {
+            $etag = '"' . md5($json) . '"';
+            $this->headers['ETag'] = $etag;
+            
+            if (!isset($this->headers['Cache-Control'])) {
+                $this->headers['Cache-Control'] = 'private, must-revalidate';
+            }
+
+            $ifNoneMatch = $_SERVER['HTTP_IF_NONE_MATCH'] ?? null;
+            if ($ifNoneMatch !== null && trim($ifNoneMatch) === $etag) {
+                http_response_code(304);
+                if (!headers_sent()) {
+                    foreach ($this->headers as $name => $value) {
+                        header("$name: $value");
+                    }
+                }
+                return;
+            }
+        }
+
         http_response_code($this->status);
 
         if (!headers_sent()) {
@@ -72,14 +108,6 @@ final class Response
             }
         }
 
-        if ($this->status === 204) {
-            return;
-        }
-
-        echo json_encode([
-            'success' => $this->success,
-            'data'    => $this->data,
-            'error'   => $this->error,
-        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        echo $json;
     }
 }

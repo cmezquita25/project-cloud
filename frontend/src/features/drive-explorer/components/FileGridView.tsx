@@ -1,4 +1,5 @@
 import { Star } from 'lucide-react'
+import { motion } from 'framer-motion'
 import { cn } from '@shared/lib/cn'
 import { getFileIcon } from '@shared/lib/fileIcons'
 import { ItemActionsMenu } from './ItemActionsMenu'
@@ -40,25 +41,25 @@ export function FileGridView({
   return (
     <div className="space-y-6">
       {folders.length > 0 && (
-        <section>
+        <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
           <h3 className="mb-3 text-sm font-medium text-content-secondary">Carpetas</h3>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {folders.map((item) => (
               <FolderChip key={itemKey(item)} item={item} {...common} />
             ))}
           </div>
-        </section>
+        </motion.section>
       )}
 
       {files.length > 0 && (
-        <section>
+        <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, delay: 0.1 }}>
           <h3 className="mb-3 text-sm font-medium text-content-secondary">Archivos</h3>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
             {files.map((item) => (
               <FileCard key={itemKey(item)} item={item} {...common} />
             ))}
           </div>
-        </section>
+        </motion.section>
       )}
     </div>
   )
@@ -101,24 +102,26 @@ function FolderChip({ item, selected, onOpen, onAction, interactions, capabiliti
     : {}
 
   return (
-    <div
-      data-sel-key={key}
-      {...itemHandlers(item, onOpen, interactions)}
-      {...dnd}
-      className={cn(
-        'group relative flex items-center gap-3 rounded-xl border px-3 py-3 transition-colors cursor-pointer',
-        isDropTarget
-          ? 'border-primary bg-primary-subtle ring-2 ring-primary'
-          : isSelected
-            ? 'border-primary bg-primary-subtle'
-            : 'border-border bg-surface hover:bg-surface-hover'
-      )}
-    >
+    <div className="h-full">
+      <div
+        data-sel-key={key}
+        {...itemHandlers(item, onOpen, interactions)}
+        {...dnd}
+        className={cn(
+          'group relative flex items-center gap-3 rounded-xl border px-3 py-3 transition-colors cursor-pointer h-full',
+          isDropTarget
+            ? 'border-primary bg-primary-subtle ring-2 ring-primary'
+            : isSelected
+              ? 'border-primary bg-primary-subtle'
+              : 'border-border bg-surface hover:bg-surface-hover'
+        )}
+      >
       <Icon size={22} className={cn('shrink-0', className)} />
       <span className="min-w-0 flex-1 truncate text-sm font-medium text-content-primary">{item.name}</span>
       {item.is_starred && <Star size={14} className="shrink-0 fill-warning text-warning" />}
       <div className="flex shrink-0 items-center justify-end p-1 opacity-0 group-hover:opacity-100 group-focus:opacity-100 group-focus-within:opacity-100" onClick={(e) => e.stopPropagation()}>
         <ItemActionsMenu item={item} onAction={onAction} capabilities={capabilities} />
+      </div>
       </div>
     </div>
   )
@@ -130,16 +133,17 @@ function FileCard({ item, selected, onOpen, onAction, interactions, capabilities
   const isSelected = selected.has(itemKey(item))
 
   return (
-    <div
-      data-sel-key={itemKey(item)}
-      {...itemHandlers(item, onOpen, interactions)}
-      className={cn(
-        'group relative flex flex-col overflow-hidden rounded-xl border transition-shadow cursor-pointer',
-        isSelected
-          ? 'border-primary bg-primary-subtle'
-          : 'border-border bg-surface hover:shadow-elevation-1'
-      )}
-    >
+    <div className="h-full">
+      <div
+        data-sel-key={itemKey(item)}
+        {...itemHandlers(item, onOpen, interactions)}
+        className={cn(
+          'group relative flex flex-col overflow-hidden rounded-xl border transition-shadow cursor-pointer h-full',
+          isSelected
+            ? 'border-primary bg-primary-subtle'
+            : 'border-border bg-surface hover:shadow-elevation-1'
+        )}
+      >
       {/* Previsualización cuadrada */}
       <div className="flex aspect-square items-center justify-center overflow-hidden bg-surface-container">
         {isImage(item) ? (
@@ -169,6 +173,7 @@ function FileCard({ item, selected, onOpen, onAction, interactions, capabilities
         <div className="absolute right-1 top-1 opacity-0 group-hover:opacity-100 group-focus:opacity-100 group-focus-within:opacity-100" onClick={(e) => e.stopPropagation()}>
           <ItemActionsMenu item={item} onAction={onAction} capabilities={capabilities} />
         </div>
+      </div>
       </div>
     </div>
   )

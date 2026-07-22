@@ -27,6 +27,10 @@ final class SettingsController
         $config['organization_name'] = $settings->get('organization_name');
         $config['organization_slogan'] = $settings->get('organization_slogan');
         $config['support_email'] = $settings->get('support_email');
+        $config['primary_color'] = $settings->get('primary_color');
+        $config['btn_gradient_start'] = $settings->get('btn_gradient_start');
+        $config['btn_gradient_end'] = $settings->get('btn_gradient_end');
+        $config['btn_text_color'] = $settings->get('btn_text_color');
         return Response::success($config);
     }
 

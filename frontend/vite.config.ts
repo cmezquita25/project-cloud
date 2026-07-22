@@ -37,7 +37,10 @@ export default defineConfig({
       output: {
         manualChunks: {
           react: ['react', 'react-dom', 'react-router-dom'],
+          query: ['@tanstack/react-query'],
           icons: ['lucide-react'],
+          charts: ['apexcharts', 'react-apexcharts'],
+          framer: ['framer-motion'],
         },
       },
     },

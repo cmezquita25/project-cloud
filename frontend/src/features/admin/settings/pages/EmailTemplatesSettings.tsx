@@ -1,30 +1,17 @@
-import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { Edit2 } from 'lucide-react'
-import { Spinner, useToast } from '@shared/ui'
+import { Spinner } from '@shared/ui'
 import { adminApi } from '../../services/adminApi'
-import type { EmailTemplate } from '../../types'
+
 
 export function EmailTemplatesSettings() {
-  const toast = useToast()
-  const [templates, setTemplates] = useState<EmailTemplate[]>([])
-  const [loading, setLoading] = useState(true)
+  const { data: templates = [], isLoading } = useQuery({
+    queryKey: ['admin', 'email-templates'],
+    queryFn: () => adminApi.getEmailTemplates()
+  })
 
-  useEffect(() => {
-    let alive = true
-    adminApi
-      .getEmailTemplates()
-      .then((list) => {
-        if (alive) setTemplates(list)
-      })
-      .catch(() => toast.error('No se pudieron cargar las plantillas'))
-      .finally(() => alive && setLoading(false))
-    return () => {
-      alive = false
-    }
-  }, [toast])
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex h-40 items-center justify-center text-content-tertiary">
         <Spinner size={28} />

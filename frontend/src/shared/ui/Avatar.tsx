@@ -42,7 +42,7 @@ export function Avatar({ name, src, size = 32, className }: AvatarProps) {
         alt={name}
         width={size}
         height={size}
-        className={cn('rounded-full object-cover', className)}
+        className={cn('rounded-full object-cover shrink-0', className)}
         style={{ width: size, height: size }}
       />
     )
@@ -52,7 +52,7 @@ export function Avatar({ name, src, size = 32, className }: AvatarProps) {
     <span
       aria-label={name}
       className={cn(
-        'inline-flex select-none items-center justify-center rounded-full font-medium text-white',
+        'inline-flex shrink-0 select-none items-center justify-center rounded-full font-medium text-white',
         bg,
         className
       )}

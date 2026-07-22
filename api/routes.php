@@ -116,6 +116,8 @@ return static function (Router $router): void {
     // --- Fase 6: Administración (requiere admin) ---
     $admin = [new AuthMiddleware(), new AdminOnly()];
     $router->get('/v1/admin/stats',               [AdminController::class, 'stats'], $admin);
+    $router->get('/v1/admin/charts/storage-history', [AdminController::class, 'storageHistory'], $admin);
+    $router->get('/v1/admin/charts/storage-distribution', [AdminController::class, 'storageDistribution'], $admin);
     $router->get('/v1/admin/server-info',         [AdminController::class, 'serverInfo'], $admin);
     $router->patch('/v1/admin/settings',          [AdminController::class, 'updateSettings'], $admin);
     $router->post('/v1/admin/settings/logo',      [AdminController::class, 'uploadLogo'], $admin);
@@ -138,6 +140,14 @@ return static function (Router $router): void {
     $router->patch('/v1/admin/email-templates/{key}',         [EmailTemplateController::class, 'update'], $admin);
     $router->post('/v1/admin/email-templates/{key}/reset',    [EmailTemplateController::class, 'reset'], $admin);
     $router->post('/v1/admin/email-templates/{key}/preview',  [EmailTemplateController::class, 'preview'], $admin);
+
+    // Migración y Backups (Base de Datos)
+    $router->post('/v1/admin/database/migrate',               [\ProjectCloud\Controllers\DatabaseController::class, 'migrate'], $admin);
+    $router->get('/v1/admin/database/backups',                [\ProjectCloud\Controllers\DatabaseController::class, 'listBackups'], $admin);
+    $router->post('/v1/admin/database/backups',               [\ProjectCloud\Controllers\DatabaseController::class, 'createBackup'], $admin);
+    $router->delete('/v1/admin/database/backups/{filename}',  [\ProjectCloud\Controllers\DatabaseController::class, 'deleteBackup'], $admin);
+    $router->post('/v1/admin/database/backups/{filename}/restore', [\ProjectCloud\Controllers\DatabaseController::class, 'restoreBackup'], $admin);
+    $router->get('/v1/admin/database/backups/{filename}/download', [\ProjectCloud\Controllers\DatabaseController::class, 'downloadBackup'], $admin);
 
     // Soporte y Reportes
     $router->post('/v1/support/report', [\ProjectCloud\Controllers\SupportController::class, 'report'], $auth);

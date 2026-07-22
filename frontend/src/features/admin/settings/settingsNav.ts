@@ -1,4 +1,4 @@
-import { Building2, Palette, Mail, FileText, ShieldCheck, type LucideIcon } from 'lucide-react'
+import { Building2, Palette, Mail, FileText, ShieldCheck, Database, type LucideIcon } from 'lucide-react'
 
 export interface SettingsNavItem {
   to: string
@@ -14,4 +14,5 @@ export const SETTINGS_NAV: SettingsNavItem[] = [
   { to: '/admin/settings/email', label: 'Configuración del SMTP', icon: Mail },
   { to: '/admin/settings/email-templates', label: 'Plantillas de correo', icon: FileText },
   { to: '/admin/settings/access', label: 'Acceso y permisos', icon: ShieldCheck },
+  { to: '/admin/settings/database', label: 'Base de datos', icon: Database },
 ]

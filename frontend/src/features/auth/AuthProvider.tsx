@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react'
 import { session, setOnSessionExpired } from '@shared/api'
+import { useQueryClient } from '@tanstack/react-query'
 import { authApi } from './services/authApi'
 import type { LoginCredentials, User } from './types'
 
@@ -68,11 +69,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStatus('authenticated')
   }, [])
 
+  const queryClient = useQueryClient()
+
   const logout = useCallback(async () => {
     await authApi.logout()
     setUserState(null)
     setStatus('unauthenticated')
-  }, [])
+    queryClient.clear()
+    window.sessionStorage.clear()
+  }, [queryClient])
 
   const setUser = useCallback((u: User) => setUserState(u), [])
 

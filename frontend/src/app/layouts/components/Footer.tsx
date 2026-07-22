@@ -2,6 +2,7 @@ import { APP_NAME, getVersionLabel } from '@shared/config/version'
 import { usePlatformSettings } from '@shared/hooks/usePlatformSettings'
 import { ReportBugDialog } from '@features/support/components/ReportBugDialog'
 import { useState } from 'react'
+import { motion } from 'framer-motion'
 
 const LEGAL_LINKS = ['Legal', 'Privacidad', 'Docs']
 
@@ -17,7 +18,12 @@ export function Footer() {
   const [reportOpen, setReportOpen] = useState(false)
 
   return (
-    <footer className="shrink-0 border-t border-border bg-surface px-4 py-2.5 text-xs text-content-tertiary sm:px-6">
+    <motion.footer 
+      initial={{ y: '100%', opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.3 }}
+      className="shrink-0 border-t border-border bg-surface px-4 py-2.5 text-xs text-content-tertiary sm:px-6"
+    >
       <div className="mx-auto flex max-w-[1600px] flex-col items-center gap-1.5 sm:flex-row sm:justify-between sm:gap-4">
         <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 text-center sm:justify-start sm:text-left">
           <span>© {year} {owner}. Todos los derechos reservados.</span>
@@ -43,6 +49,6 @@ export function Footer() {
       </div>
 
       {reportOpen && <ReportBugDialog isOpen={reportOpen} onClose={() => setReportOpen(false)} />}
-    </footer>
+    </motion.footer>
   )
 }
