@@ -35,18 +35,18 @@ graph TD
     classDef auth fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#e65100
 
     subgraph "Navegador Web (Cliente)"
-        A1[React + TypeScript]:::client
-        A2[Vite + TailwindCSS]:::client
-        A3[TanStack Query]:::client
+        A1["React + TypeScript"]:::client
+        A2["Vite + TailwindCSS"]:::client
+        A3["TanStack Query"]:::client
         A1 --- A2
         A1 --- A3
     end
 
     subgraph "Servidor (Backend PHP Vanilla)"
-        B1[Controladores REST]:::backend
-        B2[Middleware JWT Auth]:::auth
-        B3[Core Services & Repositories]:::backend
-        B4[Motor ETag (Caché Hash)]:::backend
+        B1["Controladores REST"]:::backend
+        B2["Middleware JWT Auth"]:::auth
+        B3["Core Services & Repositories"]:::backend
+        B4["Motor ETag (Caché Hash)"]:::backend
         
         B1 --> B2
         B1 --> B3
@@ -54,13 +54,24 @@ graph TD
     end
 
     subgraph "Almacenamiento"
-        C1[(MySQL 8.0+)]:::database
-        C2[File System Storage]:::database
+        C1[("MySQL 8.0+")]:::database
+        C2["File System Storage"]:::database
     end
 
-    A3 -->|HTTP/REST requests| B1
+    A3 -->|"HTTP/REST requests"| B1
     B3 --> C1
     B3 --> C2
+```
+
+### 📂 Estructura del Monorepo
+
+```text
+proyecto-cloud/
+├── frontend/        # React + TS + Vite + Tailwind (Screaming Architecture)
+├── api/             # API PHP Vanilla en capas (MVC/DDD)
+├── database/        # schema.sql (migraciones iniciales)
+├── docs/            # Documentación adicional
+└── README.md        # Documentación principal
 ```
 
 ### 💻 Frontend (Screaming Architecture)
