@@ -103,9 +103,9 @@ export default {
       zIndex: {
         sidebar: '30',
         topbar: '40',
-        dropdown: '50',
         overlay: '60',
         modal: '70',
+        dropdown: '75',
         toast: '80',
       },
       keyframes: {

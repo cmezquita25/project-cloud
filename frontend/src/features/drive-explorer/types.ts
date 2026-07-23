@@ -1,3 +1,9 @@
+export interface Owner {
+  username: string
+  display_name: string
+  avatar_url: string | null
+}
+
 export interface FolderItem {
   type: 'folder'
   id: string | number
@@ -10,7 +16,9 @@ export interface FolderItem {
   deleted_at?: string | null
   created_at: string | null
   updated_at: string | null
-  owner?: string | null
+  owner?: string | null // deprecated
+  owners?: Owner[]
+  blocked_actions?: string[]
 }
 
 export interface FileItem {
@@ -30,7 +38,9 @@ export interface FileItem {
   deleted_at?: string | null
   created_at: string | null
   updated_at: string | null
-  owner?: string | null
+  owner?: string | null // deprecated
+  owners?: Owner[]
+  blocked_actions?: string[]
 }
 
 export type DriveItem = FolderItem | FileItem
@@ -62,6 +72,8 @@ export type ItemAction =
   | 'star'
   | 'details'
   | 'delete'
+  | 'restore'
+  | 'block'
 
 export type ViewMode = 'list' | 'grid'
 

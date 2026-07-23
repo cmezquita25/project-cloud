@@ -10,7 +10,7 @@ export function useAssetsAccess() {
     retry: false,
   })
 
-  const fallback: AssetsAccess = { allowed: false, is_admin: false, can_write: false }
+  const fallback: AssetsAccess = { allowed: false, is_admin: false, can_write: false, active: false, folder_name: '' }
 
   return {
     access: isError ? fallback : (data ?? null),

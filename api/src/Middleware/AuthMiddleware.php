@@ -34,10 +34,11 @@ final class AuthMiddleware implements Middleware
         }
 
         $request->setUser([
-            'id'       => $userId,
-            'role'     => (string) ($claims['role'] ?? 'user'),
-            'username' => (string) ($claims['username'] ?? ''),
-            'email'    => (string) ($claims['email'] ?? ''),
+            'id'           => $userId,
+            'role'         => (string) ($claims['role'] ?? 'user'),
+            'username'     => (string) ($claims['username'] ?? ''),
+            'email'        => (string) ($claims['email'] ?? ''),
+            'display_name' => (string) ($claims['display_name'] ?? ''),
         ]);
     }
 }

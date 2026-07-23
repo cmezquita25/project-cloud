@@ -43,6 +43,7 @@ interface MenuProps {
    */
   position?: { x: number; y: number } | null
   children?: ReactNode
+  className?: string
 }
 
 function ItemRow({ item, onClose }: { item: MenuItem; onClose: () => void }) {
@@ -140,7 +141,7 @@ function useFloatingStyle(
  *    ancla, posicionado de forma absoluta dentro de un contenedor `relative`).
  *  - Móvil (< 768px): bottom sheet deslizable desde abajo.
  */
-export function Menu({ open, onClose, items, title, align = 'left', anchorRef, position, children }: MenuProps) {
+export function Menu({ open, onClose, items, title, align = 'left', anchorRef, position, children, className }: MenuProps) {
   const isMobile = useIsMobile()
   const style = useFloatingStyle(anchorRef, position, open && !isMobile, align)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -169,8 +170,10 @@ export function Menu({ open, onClose, items, title, align = 'left', anchorRef, p
     </>
   )
 
-  const panelClass =
-    'min-w-[220px] max-w-[calc(100vw-1rem)] animate-scale-in overflow-y-auto rounded-xl border border-border bg-surface p-1.5 shadow-menu'
+  const panelClass = cn(
+    'min-w-[220px] max-w-[calc(100vw-1rem)] animate-scale-in overflow-y-auto rounded-xl border border-border bg-surface p-1.5 shadow-menu',
+    className
+  )
 
   // Sin ancla ni posición: comportamiento clásico (absoluto dentro de un contenedor relativo).
   if (!anchorRef && !position) {

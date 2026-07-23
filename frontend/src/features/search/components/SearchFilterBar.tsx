@@ -1,5 +1,6 @@
-import { FileText, Calendar, ChevronDown } from 'lucide-react'
+import { FileText, Calendar } from 'lucide-react'
 import { cn } from '@shared/lib/cn'
+import { Select } from '@shared/ui'
 
 interface SearchFilterBarProps {
   type: string
@@ -10,44 +11,40 @@ interface SearchFilterBarProps {
 export function SearchFilterBar({ type, date, onChange }: SearchFilterBarProps) {
   return (
     <div className="flex flex-wrap items-center gap-2 mt-4">
-      <div className="relative">
-        <select
-          value={type}
-          onChange={(e) => onChange('type', e.target.value)}
-          className={cn(
-            "appearance-none pl-9 pr-8 py-1.5 rounded-pill border text-sm font-medium transition-colors cursor-pointer outline-none focus:ring-2 focus:ring-focus",
-            type ? "border-primary bg-primary-subtle text-primary" : "border-border bg-surface hover:bg-surface-hover text-content-secondary"
-          )}
-        >
-          <option value="">Tipo</option>
-          <option value="document">Documentos</option>
-          <option value="image">Imágenes</option>
-          <option value="video">Videos</option>
-          <option value="audio">Audio</option>
-          <option value="archive">Comprimidos</option>
-          <option value="folder">Carpetas</option>
-        </select>
-        <FileText size={14} className={cn("absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none", type ? "text-primary" : "text-content-tertiary")} />
-        <ChevronDown size={14} className={cn("absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none", type ? "text-primary" : "text-content-tertiary")} />
-      </div>
+      <Select
+        value={type}
+        onChange={(val) => onChange('type', String(val))}
+        placeholder="Tipo"
+        icon={<FileText size={14} className={type ? "text-primary" : "text-content-tertiary"} />}
+        className={cn(
+          "rounded-pill border font-medium",
+          type ? "border-primary bg-primary-subtle text-primary" : "border-border bg-surface text-content-secondary"
+        )}
+        options={[
+          { value: 'document', label: 'Documentos' },
+          { value: 'image', label: 'Imágenes' },
+          { value: 'video', label: 'Videos' },
+          { value: 'audio', label: 'Audio' },
+          { value: 'archive', label: 'Comprimidos' },
+          { value: 'folder', label: 'Carpetas' },
+        ]}
+      />
 
-      <div className="relative">
-        <select
-          value={date}
-          onChange={(e) => onChange('date', e.target.value)}
-          className={cn(
-            "appearance-none pl-9 pr-8 py-1.5 rounded-pill border text-sm font-medium transition-colors cursor-pointer outline-none focus:ring-2 focus:ring-focus",
-            date ? "border-primary bg-primary-subtle text-primary" : "border-border bg-surface hover:bg-surface-hover text-content-secondary"
-          )}
-        >
-          <option value="">Modificado</option>
-          <option value="today">Hoy</option>
-          <option value="7days">Últimos 7 días</option>
-          <option value="30days">Últimos 30 días</option>
-        </select>
-        <Calendar size={14} className={cn("absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none", date ? "text-primary" : "text-content-tertiary")} />
-        <ChevronDown size={14} className={cn("absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none", date ? "text-primary" : "text-content-tertiary")} />
-      </div>
+      <Select
+        value={date}
+        onChange={(val) => onChange('date', String(val))}
+        placeholder="Modificado"
+        icon={<Calendar size={14} className={date ? "text-primary" : "text-content-tertiary"} />}
+        className={cn(
+          "rounded-pill border font-medium",
+          date ? "border-primary bg-primary-subtle text-primary" : "border-border bg-surface text-content-secondary"
+        )}
+        options={[
+          { value: 'today', label: 'Hoy' },
+          { value: '7days', label: 'Últimos 7 días' },
+          { value: '30days', label: 'Últimos 30 días' },
+        ]}
+      />
     </div>
   )
 }

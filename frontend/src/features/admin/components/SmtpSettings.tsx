@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Mail, Send, PlugZap } from 'lucide-react'
-import { Button, Input, Checkbox, Spinner, useToast } from '@shared/ui'
+import { Button, Input, Checkbox, Spinner, useToast, Select } from '@shared/ui'
 import { ApiError } from '@shared/api'
 import { adminApi } from '../services/adminApi'
 import type { SmtpEncryption, SmtpSettings as SmtpSettingsData } from '../types'
@@ -149,17 +149,12 @@ export function SmtpSettings() {
 
         <div>
           <label className="mb-1.5 block text-sm font-medium text-content-secondary">Cifrado</label>
-          <select
+          <Select
             value={form.encryption}
-            onChange={(e) => onEncryptionChange(e.target.value as SmtpEncryption)}
+            onChange={(val) => onEncryptionChange(val as SmtpEncryption)}
             className="h-10 w-full rounded-drive border border-border bg-surface px-3 text-sm text-content-primary outline-none focus:border-primary focus:ring-2 focus:ring-focus"
-          >
-            {ENCRYPTIONS.map((e) => (
-              <option key={e.value} value={e.value}>
-                {e.label}
-              </option>
-            ))}
-          </select>
+            options={ENCRYPTIONS}
+          />
         </div>
 
         <Input

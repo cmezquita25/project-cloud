@@ -1,7 +1,7 @@
 import { Star } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { cn } from '@shared/lib/cn'
-import { Checkbox } from '@shared/ui'
+import { Checkbox, AvatarGroup } from '@shared/ui'
 import { getFileIcon, getFileKindLabel } from '@shared/lib/fileIcons'
 import { formatBytes } from '@shared/lib/formatBytes'
 import { formatRelative } from '@shared/lib/formatDate'
@@ -75,8 +75,9 @@ export function FileListView({
                   }
                 : {}
 
-            const itemOwner = item.owner ?? ownerName
-            const owner = itemOwner && itemOwner.trim() !== '' ? itemOwner : 'Sin definir'
+            const owner = item.owner ?? ownerName
+            const fallbackOwnerStr = owner && owner.trim() !== '' ? owner : 'Sin definir'
+            const hasOwnersArray = Array.isArray(item.owners) && item.owners.length > 0
 
             return (
               <tr
@@ -127,7 +128,11 @@ export function FileListView({
                   </td>
                 )}
                 <td className="hidden px-4 py-3 text-content-secondary lg:table-cell">
-                  <span className="block max-w-[200px] truncate" title={owner}>{owner}</span>
+                  {hasOwnersArray ? (
+                    <AvatarGroup owners={item.owners} max={3} />
+                  ) : (
+                    <span className="block max-w-[200px] truncate" title={fallbackOwnerStr}>{fallbackOwnerStr}</span>
+                  )}
                 </td>
                 <td className="hidden whitespace-nowrap px-4 py-3 text-content-secondary sm:table-cell">
                   {item.updated_at ? formatRelative(item.updated_at) : '—'}

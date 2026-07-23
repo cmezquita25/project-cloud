@@ -10,6 +10,8 @@ import {
   StarOff,
   Info,
   Trash2,
+  Lock,
+  Undo2,
 } from 'lucide-react'
 import type { MenuItem } from '@shared/ui'
 import type { DriveItem, ItemAction } from '../types'
@@ -19,6 +21,29 @@ import type { ExplorerCapabilities } from '../adapters/types'
 export function buildItemMenu(item: DriveItem, act: (a: ItemAction) => void, caps: ExplorerCapabilities): MenuItem[] {
   const isFile = item.type === 'file'
   const items: MenuItem[] = []
+
+  const isTrash = item.path.startsWith('.trash/')
+  
+  if (isTrash) {
+    items.push({
+      id: 'restore',
+      label: 'Restaurar',
+      icon: Undo2,
+      onSelect: () => act('restore'),
+    })
+    
+    if (caps.canDelete) {
+      items.push({
+        id: 'delete',
+        label: 'Eliminar definitivamente',
+        icon: Trash2,
+        onSelect: () => act('delete'),
+        danger: true,
+        divider: true,
+      })
+    }
+    return items
+  }
 
   items.push({
     id: 'open',
@@ -61,6 +86,16 @@ export function buildItemMenu(item: DriveItem, act: (a: ItemAction) => void, cap
   }
 
   items.push({ id: 'details', label: 'Detalles', icon: Info, onSelect: () => act('details') })
+
+  if (caps.canBlockActions) {
+    items.push({
+      id: 'block',
+      label: 'Bloquear acciones',
+      icon: Lock,
+      onSelect: () => act('block'),
+      divider: true,
+    })
+  }
 
   if (caps.canDelete) {
     items.push({

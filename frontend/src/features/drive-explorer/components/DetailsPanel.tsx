@@ -1,6 +1,6 @@
 import { X, Link as LinkIcon, Check, Info, FileStack } from 'lucide-react'
 import { useState } from 'react'
-import { IconButton, Button } from '@shared/ui'
+import { IconButton, Button, Avatar, AvatarGroup } from '@shared/ui'
 import { cn } from '@shared/lib/cn'
 import { getFileIcon } from '@shared/lib/fileIcons'
 import { formatBytes } from '@shared/lib/formatBytes'
@@ -80,6 +80,25 @@ function SingleItemDetails({ item, copied, onCopyUrl }: { item: DriveItem, copie
         {item.created_at && <Row label="Creado" value={formatDateTime(item.created_at)} />}
         {item.updated_at && <Row label="Modificado" value={formatDateTime(item.updated_at)} />}
         <Row label="Ubicación" value={'/' + (item.path.split('/').slice(0, -1).join('/') || '')} />
+
+        {item.owners && item.owners.length > 0 && (
+          <div className="mt-4 border-t border-border pt-4">
+            <p className="mb-2 text-xs font-medium text-content-tertiary">Creado por</p>
+            <div className="mb-4 flex items-center gap-3">
+              <Avatar src={item.owners[0]?.avatar_url ?? null} name={item.owners[0]?.display_name ?? 'Desconocido'} size={32} />
+              <span className="text-sm text-content-primary">{item.owners[0]?.display_name ?? 'Desconocido'}</span>
+            </div>
+
+            {item.type === 'folder' && item.owners.length > 1 && (
+              <>
+                <p className="mb-2 text-xs font-medium text-content-tertiary">Participantes</p>
+                <div className="mb-4">
+                  <AvatarGroup owners={item.owners} max={99} size={32} overlap={false} />
+                </div>
+              </>
+            )}
+          </div>
+        )}
 
         {item.type === 'file' && (
           <div className="mt-4">

@@ -30,6 +30,8 @@ export interface AssetsAccess {
   allowed: boolean
   is_admin: boolean
   can_write: boolean
+  active?: boolean
+  folder_name?: string
 }
 
 export interface AssetPermissionUser {
@@ -44,9 +46,10 @@ export interface AssetPermissionUser {
 export const assetsApi = {
   access: (signal?: AbortSignal) => api.get<AssetsAccess>('/assets/access', { signal }),
 
-  list: (path: string, opts?: { signal?: AbortSignal, limit?: number, offset?: number, sort?: string, order?: string, q?: string, type?: string, date?: string }) => {
+  list: (path: string, opts?: { signal?: AbortSignal, limit?: number, offset?: number, sort?: string, order?: string, q?: string, type?: string, date?: string, folder_name?: string }) => {
     const params = new URLSearchParams()
     params.set('path', path)
+    if (opts?.folder_name) params.set('_f', opts.folder_name)
     if (opts?.limit !== undefined) params.set('limit', String(opts.limit))
     if (opts?.offset !== undefined) params.set('offset', String(opts.offset))
     if (opts?.sort) params.set('sort', opts.sort)
@@ -64,6 +67,8 @@ export const assetsApi = {
     api.post<{ type: string; name: string; path: string }>('/assets/move', { path, target }),
 
   remove: (path: string) => api.delete<{ ok: true }>(`/assets?path=${encodeURIComponent(path)}`),
+  
+  restore: (path: string) => api.post<{ ok: true }>('/assets/restore', { path }),
 
   /** Subida directa (multipart). El tamaño máximo por archivo lo fija el hosting. */
   async upload(path: string, file: File): Promise<AssetFile> {
@@ -93,4 +98,7 @@ export const assetsApi = {
   permissions: () => api.get<{ users: AssetPermissionUser[] }>('/admin/assets/permissions'),
   setPermissions: (userIds: number[]) =>
     api.put<{ user_ids: number[] }>('/admin/assets/permissions', { user_ids: userIds }),
+  activate: () => api.post<{ ok: boolean }>('/admin/assets/activate'),
+  setFolderName: (folderName: string) => api.put<{ folder_name: string }>('/admin/assets/folder-name', { folder_name: folderName }),
+  setBlockedActions: (path: string, actions: string) => api.put<{ ok: boolean }>('/admin/assets/block-actions', { path, blocked_actions: actions }),
 }

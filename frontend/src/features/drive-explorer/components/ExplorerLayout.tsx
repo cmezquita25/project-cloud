@@ -35,6 +35,7 @@ import { DetailsPanel } from './DetailsPanel'
 import { NamePromptDialog } from './dialogs/NamePromptDialog'
 import { DeleteDialog } from './dialogs/DeleteDialog'
 import { MoveDialog } from './dialogs/MoveDialog'
+import { BlockActionsDialog } from '@features/assets/components/BlockActionsDialog'
 import { buildItemMenu } from './itemMenu'
 import { useMarqueeSelection } from '../hooks/useMarqueeSelection'
 import { dragState, isInternalDrag, PC_DND_MIME } from '../services/dragState'
@@ -47,6 +48,7 @@ type DialogState =
   | { kind: 'rename'; item: DriveItem }
   | { kind: 'move'; mode: 'move' | 'copy'; items: DriveItem[] }
   | { kind: 'delete'; items: DriveItem[] }
+  | { kind: 'block'; item: DriveItem }
   | null
 
 interface ExplorerLayoutProps {
@@ -364,6 +366,15 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
         return setDialog({ kind: 'move', mode: 'copy', items: [item] })
       case 'delete':
         return setDialog({ kind: 'delete', items: [item] })
+      case 'restore':
+        return void adapter.restoreItem?.(item)
+          .then(() => {
+            reload()
+            toast.success('Restaurado')
+          })
+          .catch((e) => toast.error(e.message))
+      case 'block':
+        return setDialog({ kind: 'block', item })
     }
   }
 
@@ -644,6 +655,11 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
         items={dialog?.kind === 'delete' ? dialog.items : []}
         onClose={() => setDialog(null)}
         onConfirm={() => runDelete(dialog?.kind === 'delete' ? dialog.items : [])}
+      />
+      <BlockActionsDialog
+        item={dialog?.kind === 'block' ? dialog.item : null}
+        onClose={() => setDialog(null)}
+        onSuccess={() => reload()}
       />
 
       {ctxMenu && (

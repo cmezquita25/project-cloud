@@ -174,6 +174,7 @@ CREATE TABLE IF NOT EXISTS `email_templates` (
 CREATE TABLE IF NOT EXISTS `assets_metadata` (
   `path` VARCHAR(1024) NOT NULL,
   `user_id` BIGINT UNSIGNED NOT NULL,
+  `blocked_actions` VARCHAR(255) NULL DEFAULT NULL,
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`path`(255)),
   CONSTRAINT `fk_assets_metadata_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE

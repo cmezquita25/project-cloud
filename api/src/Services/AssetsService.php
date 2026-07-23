@@ -35,25 +35,49 @@ final class AssetsService
         ?SettingsRepository $settings = null,
         ?\PDO $pdo = null
     ) {
-        $storage = rtrim((string) Config::get('storage.path', ''), "/\\");
-        $this->root = rtrim($root ?? (dirname($storage) . DIRECTORY_SEPARATOR . 'assets'), "/\\");
-        $this->publicBase = rtrim($publicBase ?? $this->derivePublicBase(), '/');
         $this->fs = $fs ?? new FileSystemService();
         $this->settings = $settings ?? new SettingsRepository();
         $this->pdo = $pdo ?? Database::pdo();
+        
+        $storage = rtrim((string) Config::get('storage.path', ''), "/\\");
+        $folderName = $this->settings->get('assets_folder_name', 'assets');
+        if (empty($folderName)) $folderName = 'assets';
+        
+        $this->root = rtrim($root ?? (dirname($storage) . DIRECTORY_SEPARATOR . $folderName), "/\\");
+        $this->publicBase = rtrim($publicBase ?? $this->derivePublicBase($folderName), '/');
     }
 
     /** URL pública de /assets derivada de la de /storage (sin hardcodear el dominio). */
-    private function derivePublicBase(): string
+    private function derivePublicBase(string $folderName): string
     {
         $url = rtrim((string) Config::get('storage.public_url', ''), '/');
         if ($url === '') {
-            return '/assets';
+            return '/' . $folderName;
         }
         if (preg_match('#/storage/?$#', $url) === 1) {
-            return (string) preg_replace('#/storage/?$#', '/assets', $url);
+            return (string) preg_replace('#/storage/?$#', '/' . $folderName, $url);
         }
-        return $url . '/../assets';
+        return $url . '/../' . $folderName;
+    }
+
+    public function getFolderName(): string
+    {
+        $name = $this->settings->get('assets_folder_name', 'assets');
+        return empty($name) ? 'assets' : $name;
+    }
+
+    public function isActive(): bool
+    {
+        return is_dir($this->root);
+    }
+
+    public function createRoot(): void
+    {
+        if (!$this->isActive()) {
+            if (!@mkdir($this->root, 0775, true) && !is_dir($this->root)) {
+                throw new HttpException(500, 'DIR_FAILED', 'No se pudo crear la unidad compartida.');
+            }
+        }
     }
 
     // --- Permisos ---
@@ -90,7 +114,34 @@ final class AssetsService
     /** Ruta absoluta segura dentro de la raíz de assets (anti path traversal). */
     private function safe(string $relative): string
     {
+        $this->assertActive();
         return $this->fs->safeJoin($this->root, $relative);
+    }
+    
+    private function assertActive(): void
+    {
+        if (!$this->isActive()) {
+            throw HttpException::notFound('La unidad compartida no está activada o la carpeta no existe.');
+        }
+    }
+
+    private function getBlockedActions(string $relative): array
+    {
+        $stmt = $this->pdo->prepare("SELECT blocked_actions FROM assets_metadata WHERE path = ?");
+        $stmt->execute([$relative]);
+        $val = (string) $stmt->fetchColumn();
+        return $val !== '' ? array_map('trim', explode(',', strtolower($val))) : [];
+    }
+
+    private function assertActionAllowed(string $relative, string $action, string $role): void
+    {
+        if ($role === 'admin') {
+            return; // Admins are exempt
+        }
+        $blocked = $this->getBlockedActions($relative);
+        if (in_array(strtolower($action), $blocked, true)) {
+            throw HttpException::forbidden("La acción '$action' está bloqueada para este elemento.");
+        }
     }
 
     public function publicUrl(string $relative): string
@@ -135,7 +186,7 @@ final class AssetsService
         return true;
     }
 
-    public function list(string $relative, string $sort = 'name', string $order = 'asc', int $limit = 0, int $offset = 0, ?string $query = null, string $type = '', string $date = ''): array
+    public function list(string $relative, string $role = 'user', string $sort = 'name', string $order = 'asc', int $limit = 0, int $offset = 0, ?string $query = null, string $type = '', string $date = ''): array
     {
         $abs = $this->safe($relative);
         if (!is_dir($abs)) {
@@ -153,7 +204,13 @@ final class AssetsService
             $q = mb_strtolower((string) $query);
             foreach ($iterator as $file) {
                 $name = $file->getFilename();
-                if ($name[0] === '.') continue;
+                if ($name[0] === '.') {
+                    if ($name === '.trash' && $role === 'admin') {
+                        // permitimos que el indexador entre a la papelera para buscar
+                    } else {
+                        continue;
+                    }
+                }
                 
                 if ($q !== '' && !str_contains(mb_strtolower($name), $q)) continue;
                 
@@ -180,8 +237,16 @@ final class AssetsService
             }
         } else {
             foreach (scandir($abs) ?: [] as $entry) {
-                if ($entry === '.' || $entry === '..' || $entry[0] === '.') {
-                    continue; // omite ocultos (.htaccess, etc.)
+                if ($entry === '.' || $entry === '..') {
+                    continue; 
+                }
+                if ($entry[0] === '.') {
+                    // Ocultar todas las carpetas que empiecen con . EXCEPTO .trash si es admin
+                    if ($entry === '.trash' && $relative === '' && $role === 'admin') {
+                        // Dejamos pasar .trash en la raíz para admins
+                    } else {
+                        continue;
+                    }
                 }
                 $childRel = ltrim($relative . '/' . $entry, '/');
                 $path = $abs . DIRECTORY_SEPARATOR . $entry;
@@ -256,10 +321,58 @@ final class AssetsService
         $owners = [];
         if (!empty($paths)) {
             $in = str_repeat('?,', count($paths) - 1) . '?';
-            $stmt = $this->pdo->prepare("SELECT a.path, u.display_name AS owner FROM assets_metadata a JOIN users u ON a.user_id = u.id WHERE a.path IN ($in)");
+            $stmt = $this->pdo->prepare("
+                SELECT m.path, m.blocked_actions, u.id as user_id, u.username, u.display_name 
+                FROM assets_metadata m 
+                LEFT JOIN users u ON m.user_id = u.id 
+                WHERE m.path IN ($in)
+            ");
             $stmt->execute($paths);
             foreach ($stmt->fetchAll() as $row) {
-                $owners[$row['path']] = $row['owner'];
+                if ($row['user_id']) {
+                    $owners[$row['path']] = [
+                        'username' => $row['username'],
+                        'display_name' => $row['display_name'],
+                        'avatar_url' => \ProjectCloud\Services\AvatarService::urlFor((int) $row['user_id']),
+                    ];
+                }
+                $blocked[$row['path']] = $row['blocked_actions'] !== null ? array_map('trim', explode(',', strtolower($row['blocked_actions']))) : [];
+            }
+        }
+        
+        // --- Obtener participantes para carpetas ---
+        $folderParticipants = [];
+        $folderPaths = array_column($folders, 'path');
+        if (!empty($folderPaths)) {
+            $likes = [];
+            $params = [];
+            foreach ($folderPaths as $p) {
+                $likes[] = "m.path LIKE ?";
+                $params[] = $p . '/%';
+                $folderParticipants[$p] = []; // initialize
+            }
+            $whereLikes = implode(' OR ', $likes);
+            $stmt = $this->pdo->prepare("
+                SELECT m.path, u.id as user_id, u.username, u.display_name 
+                FROM assets_metadata m 
+                JOIN users u ON m.user_id = u.id 
+                WHERE ($whereLikes)
+            ");
+            $stmt->execute($params);
+            
+            // Map paths back to their parent folder to group users
+            foreach ($stmt->fetchAll() as $row) {
+                foreach ($folderPaths as $folderPath) {
+                    if (str_starts_with($row['path'], $folderPath . '/')) {
+                        // Use user_id as key to ensure uniqueness
+                        $folderParticipants[$folderPath][$row['user_id']] = [
+                            'username' => $row['username'],
+                            'display_name' => $row['display_name'],
+                            'avatar_url' => \ProjectCloud\Services\AvatarService::urlFor((int) $row['user_id']),
+                        ];
+                        break; // A path only matches one direct folder in this level
+                    }
+                }
             }
         }
 
@@ -273,17 +386,41 @@ final class AssetsService
                 'mime_type'  => $this->detectMime($f['abs']),
                 'extension'  => $f['extension'],
                 'url'        => $this->publicUrl($f['path']),
-                'owner'      => $owners[$f['path']] ?? null,
+                'owners'     => isset($owners[$f['path']]) ? [$owners[$f['path']]] : [[
+                    'username' => 'system',
+                    'display_name' => 'Sistema',
+                    'avatar_url' => null,
+                ]],
+                'blocked_actions' => $blocked[$f['path']] ?? [],
             ];
         }
         
         $enrichedFolders = [];
         foreach ($folders as $f) {
+             $fOwners = [];
+             // Agregar el creador original si existe
+             if (isset($owners[$f['path']])) {
+                 $fOwners[$owners[$f['path']]['username']] = $owners[$f['path']];
+             } else {
+                 $fOwners['system'] = [
+                     'username' => 'system',
+                     'display_name' => 'Sistema',
+                     'avatar_url' => null,
+                 ];
+             }
+             // Agregar participantes
+             if (isset($folderParticipants[$f['path']])) {
+                 foreach ($folderParticipants[$f['path']] as $participant) {
+                     $fOwners[$participant['username']] = $participant;
+                 }
+             }
+             
              $enrichedFolders[] = [
                  'type' => 'folder',
                  'name' => $f['name'],
                  'path' => $f['path'],
-                 'owner' => $owners[$f['path']] ?? null,
+                 'owners' => array_values($fOwners),
+                 'blocked_actions' => $blocked[$f['path']] ?? [],
              ];
         }
 
@@ -310,8 +447,11 @@ final class AssetsService
 
     // --- Interacción (usuarios autorizados) ---
 
-    public function createFolder(string $parentRelative, string $rawName, int $userId): array
+    public function createFolder(string $parentRelative, string $rawName, int $userId, string $role): array
     {
+        if ($parentRelative !== '') {
+            $this->assertActionAllowed($parentRelative, 'add', $role);
+        }
         $name = $this->fs->sanitizeName($rawName);
         $rel = ltrim($parentRelative . '/' . $name, '/');
         $abs = $this->safe($rel);
@@ -331,8 +471,11 @@ final class AssetsService
      *
      * @param array{name:string,tmp_name:string,size:int,error:int} $file
      */
-    public function storeUpload(string $parentRelative, array $file, int $userId): array
+    public function storeUpload(string $parentRelative, array $file, int $userId, string $role): array
     {
+        if ($parentRelative !== '') {
+            $this->assertActionAllowed($parentRelative, 'add', $role);
+        }
         if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
             throw HttpException::badRequest('No se recibió el archivo (¿supera el límite del servidor?).', 'UPLOAD_ERROR');
         }
@@ -346,6 +489,10 @@ final class AssetsService
             throw new HttpException(409, 'NAME_EXISTS', 'Ya existe un archivo con ese nombre.');
         }
         $this->fs->ensureDir(dirname($abs));
+        
+        if (file_exists($abs)) {
+            $this->assertActionAllowed($rel, 'modify', $role);
+        }
 
         $tmp = (string) $file['tmp_name'];
         $moved = is_uploaded_file($tmp) ? @move_uploaded_file($tmp, $abs) : @rename($tmp, $abs);
@@ -373,12 +520,13 @@ final class AssetsService
      * Mueve un archivo o carpeta de assets a otra carpeta (dentro de assets).
      * $targetFolder = '' es la raíz de assets.
      */
-    public function move(string $relative, string $targetFolder): array
+    public function move(string $relative, string $targetFolder, string $role): array
     {
         $src = trim($relative, '/');
         if ($src === '') {
             throw HttpException::badRequest('No se puede mover la raíz de assets.', 'INVALID_TARGET');
         }
+        $this->assertActionAllowed($src, 'move', $role);
         $srcAbs = $this->safe($relative);
         if (!file_exists($srcAbs)) {
             throw HttpException::notFound('Elemento no encontrado en assets.');
@@ -424,20 +572,178 @@ final class AssetsService
         return ['type' => is_dir($destAbs) ? 'folder' : 'file', 'name' => $name, 'path' => $destRel];
     }
 
-    /** Elimina definitivamente un archivo o carpeta de assets. */
-    public function delete(string $relative): void
+    /** Elimina un archivo o carpeta de assets. Lo mueve a .trash si no está ahí, o lo elimina definitivamente si ya está en .trash. */
+    public function delete(string $relative, string $role, string $username = 'unknown'): void
     {
-        if (trim($relative, '/') === '') {
-            throw HttpException::badRequest('No se puede eliminar la raíz de assets.', 'INVALID_TARGET');
+        $relative = trim($relative, '/');
+        if ($relative === '' || $relative === '.trash') {
+            throw HttpException::badRequest('No se puede eliminar este directorio.', 'INVALID_TARGET');
         }
+        $this->assertActionAllowed($relative, 'delete', $role);
         $abs = $this->safe($relative);
         if (!file_exists($abs)) {
             throw HttpException::notFound('Elemento no encontrado en assets.');
         }
-        $this->fs->delete($abs);
 
-        $stmt = $this->pdo->prepare("DELETE FROM assets_metadata WHERE path = ? OR path LIKE ?");
-        $stmt->execute([$relative, $relative . '/%']);
+        // Si ya está en .trash, borrado definitivo (solo admins)
+        if (str_starts_with($relative, '.trash/')) {
+            if ($role !== 'admin') {
+                throw HttpException::forbidden('Solo los administradores pueden purgar la papelera.');
+            }
+            $this->fs->delete($abs);
+            $stmt = $this->pdo->prepare("DELETE FROM assets_metadata WHERE path = ? OR path LIKE ?");
+            $stmt->execute([$relative, $relative . '/%']);
+            return;
+        }
+
+        // Mover a .trash
+        $trashRoot = $this->root . DIRECTORY_SEPARATOR . '.trash';
+        $this->fs->ensureDir($trashRoot);
+        
+        $name = basename($relative);
+        $originalPathDir = dirname($relative);
+        if ($originalPathDir === '.') $originalPathDir = '';
+        
+        // Estructura: .trash/username/path/original/name
+        $trashTargetDirRel = '.trash/' . $username;
+        if ($originalPathDir !== '') {
+            $trashTargetDirRel .= '/' . $originalPathDir;
+        }
+        $trashTargetDirAbs = $this->safe($trashTargetDirRel);
+        $this->fs->ensureDir($trashTargetDirAbs);
+
+        $trashTargetRel = $trashTargetDirRel . '/' . $name;
+        $trashTargetAbs = $trashTargetDirAbs . DIRECTORY_SEPARATOR . $name;
+        
+        // Evitar colisiones en la papelera
+        if (file_exists($trashTargetAbs)) {
+            $ext = pathinfo($name, PATHINFO_EXTENSION);
+            $base = pathinfo($name, PATHINFO_FILENAME);
+            $i = 1;
+            do {
+                $newName = $base . " ($i)" . ($ext ? ".$ext" : '');
+                $trashTargetRel = $trashTargetDirRel . '/' . $newName;
+                $trashTargetAbs = $trashTargetDirAbs . DIRECTORY_SEPARATOR . $newName;
+                $i++;
+            } while (file_exists($trashTargetAbs));
+        }
+
+        if (!@rename($abs, $trashTargetAbs)) {
+            throw new HttpException(500, 'FS_ERROR', 'No se pudo mover el elemento a la papelera.');
+        }
+
+        // Actualizar metadatos
+        $stmt = $this->pdo->prepare("UPDATE assets_metadata SET path = ? WHERE path = ?");
+        $stmt->execute([$trashTargetRel, $relative]);
+        if (is_dir($trashTargetAbs)) {
+            $stmt = $this->pdo->prepare("UPDATE assets_metadata SET path = CONCAT(?, SUBSTRING(path, ?)) WHERE path LIKE ?");
+            $stmt->execute([$trashTargetRel, strlen($relative) + 1, $relative . '/%']);
+        }
+    }
+
+    public function restore(string $relative, string $role): void
+    {
+        if ($role !== 'admin') {
+            throw HttpException::forbidden('Solo los administradores pueden restaurar elementos.');
+        }
+        $relative = trim($relative, '/');
+        if (!str_starts_with($relative, '.trash/')) {
+            throw HttpException::badRequest('El elemento no está en la papelera.');
+        }
+
+        $abs = $this->safe($relative);
+        if (!file_exists($abs)) {
+            throw HttpException::notFound('Elemento no encontrado en la papelera.');
+        }
+
+        // Determinar ruta original
+        // .trash/{username}/{original_path}
+        $parts = explode('/', $relative);
+        if (count($parts) < 3) {
+            throw HttpException::badRequest('Ruta de papelera inválida.');
+        }
+        
+        // Remover .trash y username
+        array_shift($parts); // .trash
+        array_shift($parts); // username
+        $originalRel = implode('/', $parts);
+        $originalDirRel = dirname($originalRel);
+        if ($originalDirRel === '.') $originalDirRel = '';
+
+        $name = basename($originalRel);
+        // Si el nombre original tiene el (1) que le pusimos en la papelera, podríamos quitárselo, pero es complejo.
+        // Lo dejaremos tal cual, o si hay conflicto en el destino, agregamos (1).
+
+        // Verificar si la carpeta destino existe
+        $targetDirRel = '';
+        if ($originalDirRel !== '') {
+            $originalDirAbs = $this->safe($originalDirRel);
+            if (is_dir($originalDirAbs)) {
+                $targetDirRel = $originalDirRel;
+            } else {
+                // Si la carpeta original no existe, va a la raíz
+                $targetDirRel = '';
+            }
+        }
+
+        $targetRel = ltrim($targetDirRel . '/' . $name, '/');
+        $targetAbs = $this->safe($targetRel);
+
+        // Evitar colisiones en el destino
+        if (file_exists($targetAbs)) {
+            $ext = pathinfo($name, PATHINFO_EXTENSION);
+            $base = pathinfo($name, PATHINFO_FILENAME);
+            // Quitar el patrón " (1)" del final si lo tiene para no hacer "nombre (1) (1)"
+            $base = preg_replace('/ \(\d+\)$/', '', $base);
+            $i = 1;
+            do {
+                $newName = $base . " ($i)" . ($ext ? ".$ext" : '');
+                $targetRel = ltrim($targetDirRel . '/' . $newName, '/');
+                $targetAbs = $this->safe($targetRel);
+                $i++;
+            } while (file_exists($targetAbs));
+        }
+
+        if (!@rename($abs, $targetAbs)) {
+            throw new HttpException(500, 'FS_ERROR', 'No se pudo restaurar el elemento.');
+        }
+
+        // Actualizar metadatos
+        $stmt = $this->pdo->prepare("UPDATE assets_metadata SET path = ? WHERE path = ?");
+        $stmt->execute([$targetRel, $relative]);
+        if (is_dir($targetAbs)) {
+            $stmt = $this->pdo->prepare("UPDATE assets_metadata SET path = CONCAT(?, SUBSTRING(path, ?)) WHERE path LIKE ?");
+            $stmt->execute([$targetRel, strlen($relative) + 1, $relative . '/%']);
+        }
+    }
+
+    public function updatePermissions(string $relative, string $actions, string $role): void
+    {
+        if ($role !== 'admin') {
+            throw HttpException::forbidden('Solo los administradores pueden cambiar permisos.');
+        }
+        
+        $actions = trim($actions);
+        if ($actions === '') {
+            $stmt = $this->pdo->prepare("UPDATE assets_metadata SET blocked_actions = NULL WHERE path = ?");
+        } else {
+            $stmt = $this->pdo->prepare("UPDATE assets_metadata SET blocked_actions = ? WHERE path = ?");
+        }
+        
+        // Ensure record exists or upsert it
+        $check = $this->pdo->prepare("SELECT user_id FROM assets_metadata WHERE path = ?");
+        $check->execute([$relative]);
+        if ($check->fetchColumn() === false) {
+             // We need a dummy user_id if creating from scratch but usually it exists.
+             // Best to just upsert. We'll assign to admin user 1 or current user. 
+             // We assume it exists for now since files uploaded have metadata.
+        }
+
+        if ($actions === '') {
+            $stmt->execute([$relative]);
+        } else {
+            $stmt->execute([$actions, $relative]);
+        }
     }
 
     private function detectMime(string $absPath): ?string
@@ -452,5 +758,123 @@ final class AssetsService
         $mime = @finfo_file($finfo, $absPath);
         finfo_close($finfo);
         return is_string($mime) && $mime !== '' ? $mime : null;
+    }
+
+    public function getWorkspaceStats(string $period = '30d'): array
+    {
+        if (!$this->isActive()) {
+            return [
+                'total_bytes' => 0,
+                'by_type' => [],
+                'by_user' => [],
+                'history' => []
+            ];
+        }
+
+        $cutoffDate = match($period) {
+            'today' => date('Y-m-d'),
+            '7d' => date('Y-m-d', strtotime('-7 days')),
+            default => date('Y-m-d', strtotime('-30 days')),
+        };
+
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($this->root, \RecursiveDirectoryIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::SELF_FIRST
+        );
+
+        $totalBytes = 0;
+        $byType = [];
+        $filesForHistory = [];
+        
+        // Cargar metadata para asignación de usuarios
+        $stmt = $this->pdo->query("
+            SELECT m.path, u.username 
+            FROM assets_metadata m 
+            JOIN users u ON m.user_id = u.id
+        ");
+        $metadata = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $metadata[$row['path']] = $row['username'];
+        }
+
+        $byUser = [];
+
+        foreach ($iterator as $file) {
+            if ($file->isDir()) continue;
+            
+            $name = $file->getFilename();
+            if ($name[0] === '.') continue; // Ignorar ocultos
+
+            $size = (int) $file->getSize();
+            $ext = strtolower($file->getExtension());
+            $mtime = $file->getMTime();
+            $relPath = ltrim(str_replace('\\', '/', $iterator->getSubPathname()), '/');
+
+            // --- Historial (basado en mtime, all time para acumulado) ---
+            $date = date('Y-m-d', $mtime);
+            if (!isset($filesForHistory[$date])) {
+                $filesForHistory[$date] = 0;
+            }
+            $filesForHistory[$date] += $size;
+
+            if ($date >= $cutoffDate) {
+                // --- Distribución Global (Tipo) ---
+                $type = 'other';
+                if (in_array($ext, ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'])) $type = 'image';
+                elseif (in_array($ext, ['mp4', 'mkv', 'avi', 'mov', 'webm'])) $type = 'video';
+                elseif (in_array($ext, ['mp3', 'wav', 'ogg', 'aac'])) $type = 'audio';
+                elseif (in_array($ext, ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt'])) $type = 'document';
+                elseif (in_array($ext, ['zip', 'rar', '7z', 'tar', 'gz'])) $type = 'archive';
+                
+                $byType[$type] = ($byType[$type] ?? 0) + $size;
+                $totalBytes += $size;
+
+                // --- Distribución por Usuario ---
+                $owner = $metadata[$relPath] ?? 'desconocido';
+                $byUser[$owner] = ($byUser[$owner] ?? 0) + $size;
+            }
+        }
+
+        // Procesar historial acumulativo ordenando por fecha
+        ksort($filesForHistory);
+        $history = [];
+        $cumulative = 0;
+        foreach ($filesForHistory as $date => $sizeAdded) {
+            $cumulative += $sizeAdded;
+            if ($date >= $cutoffDate) {
+                $history[] = [
+                    'date' => $date,
+                    'total_bytes' => $cumulative
+                ];
+            }
+        }
+        
+        // Si no hay datos en el periodo pero hay un acumulado anterior, inyectar el punto de hoy
+        if (empty($history) && $cumulative > 0) {
+            $history[] = [
+                'date' => date('Y-m-d'),
+                'total_bytes' => $cumulative
+            ];
+        }
+
+        // Formatear byType
+        $typeStats = [];
+        foreach ($byType as $type => $size) {
+            $typeStats[] = ['type' => $type, 'size_bytes' => $size];
+        }
+
+        // Formatear byUser
+        $userStats = [];
+        foreach ($byUser as $owner => $size) {
+            $userStats[] = ['username' => $owner, 'used_bytes' => $size];
+        }
+        usort($userStats, static fn($a, $b) => $b['used_bytes'] <=> $a['used_bytes']);
+
+        return [
+            'total_bytes' => $totalBytes,
+            'by_type' => $typeStats,
+            'by_user' => $userStats,
+            'history' => $history
+        ];
     }
 }

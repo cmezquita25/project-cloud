@@ -192,54 +192,82 @@ final class EmailTemplateService
     public static function defaults(): array
     {
         $btn = static fn (string $href, string $label): string =>
-            '<a href="' . $href . '" style="display:inline-block;background:#1a73e8;color:#ffffff;'
-            . 'text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;">' . $label . '</a>';
+            '<table border="0" cellpadding="0" cellspacing="0"><tr>'
+            . '<td align="center" bgcolor="#2563eb" style="border-radius:6px;">'
+            . '<a href="' . $href . '" target="_blank" style="display:inline-block;padding:14px 24px;font-family:Helvetica,Arial,sans-serif;font-size:16px;color:#ffffff;text-decoration:none;font-weight:600;border-radius:6px;border:1px solid #2563eb;">'
+            . $label . '</a>'
+            . '</td></tr></table>';
 
         return [
             self::WELCOME => [
                 'subject'   => 'Tu cuenta en {{org_name}} está lista',
                 'body_html' =>
-                    '<h2 style="margin:0 0 16px;font-size:20px;color:#202124;">¡Hola, {{user_name}}!</h2>'
-                    . '<p style="margin:0 0 16px;color:#5f6368;line-height:1.6;">'
-                    . 'Se ha creado tu cuenta en <strong>{{org_name}}</strong>. Estos son tus datos de acceso:</p>'
-                    . '<table style="margin:0 0 16px;font-size:14px;color:#202124;">'
-                    . '<tr><td style="padding:4px 12px 4px 0;color:#5f6368;">Usuario</td><td><strong>{{username}}</strong></td></tr>'
-                    . '<tr><td style="padding:4px 12px 4px 0;color:#5f6368;">Contraseña temporal</td><td><strong>{{temp_password}}</strong></td></tr>'
+                    '<h2 style="margin:0 0 20px;font-size:22px;color:#1e293b;font-weight:600;font-family:Helvetica,Arial,sans-serif;">¡Hola, {{user_name}}!</h2>'
+                    . '<p style="margin:0 0 24px;color:#475569;font-size:16px;line-height:1.6;font-family:Helvetica,Arial,sans-serif;">'
+                    . 'Tu cuenta en <strong>{{org_name}}</strong> ha sido creada exitosamente. A continuación, te proporcionamos tus datos de acceso temporales:</p>'
+                    . '<table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color:#f1f5f9;border-radius:8px;margin-bottom:24px;">'
+                    . '<tr><td style="padding:20px;">'
+                    . '<table border="0" cellpadding="0" cellspacing="0" width="100%">'
+                    . '<tr><td style="padding-bottom:12px;color:#64748b;font-size:14px;font-family:Helvetica,Arial,sans-serif;">Usuario:</td>'
+                    . '<td style="padding-bottom:12px;color:#0f172a;font-size:16px;font-weight:600;font-family:Helvetica,Arial,sans-serif;">{{username}}</td></tr>'
+                    . '<tr><td style="color:#64748b;font-size:14px;font-family:Helvetica,Arial,sans-serif;">Contraseña temporal:</td>'
+                    . '<td style="color:#0f172a;font-size:16px;font-weight:600;font-family:Helvetica,Arial,sans-serif;">{{temp_password}}</td></tr>'
                     . '</table>'
-                    . '<p style="margin:0 0 24px;color:#5f6368;line-height:1.6;">'
-                    . 'Por seguridad, establece tu propia contraseña con el siguiente botón:</p>'
-                    . '<p style="margin:0 0 24px;">' . $btn('{{reset_link}}', 'Establecer mi contraseña') . '</p>'
-                    . '<p style="margin:0;color:#9aa0a6;font-size:13px;line-height:1.6;">'
-                    . 'También puedes iniciar sesión en <a href="{{login_url}}" style="color:#1a73e8;">{{login_url}}</a> con la contraseña temporal.</p>',
+                    . '</td></tr>'
+                    . '</table>'
+                    . '<p style="margin:0 0 24px;color:#475569;font-size:16px;line-height:1.6;font-family:Helvetica,Arial,sans-serif;">'
+                    . 'Por motivos de seguridad, te solicitamos que establezcas una nueva contraseña personalizada utilizando el siguiente enlace:</p>'
+                    . '<div style="margin-bottom:32px;">' . $btn('{{reset_link}}', 'Establecer mi contraseña') . '</div>'
+                    . '<p style="margin:0;color:#94a3b8;font-size:14px;line-height:1.5;font-family:Helvetica,Arial,sans-serif;">'
+                    . 'Alternativamente, puedes iniciar sesión temporalmente en <a href="{{login_url}}" style="color:#2563eb;text-decoration:none;font-weight:500;">{{login_url}}</a>.</p>',
             ],
             self::PASSWORD_RESET => [
                 'subject'   => 'Restablece tu contraseña de {{org_name}}',
                 'body_html' =>
-                    '<h2 style="margin:0 0 16px;font-size:20px;color:#202124;">Hola, {{user_name}}</h2>'
-                    . '<p style="margin:0 0 24px;color:#5f6368;line-height:1.6;">'
-                    . 'Recibimos una solicitud para restablecer tu contraseña. Pulsa el botón para elegir una nueva. '
-                    . 'El enlace caduca en {{expires_minutes}} minutos.</p>'
-                    . '<p style="margin:0 0 24px;">' . $btn('{{reset_link}}', 'Restablecer contraseña') . '</p>'
-                    . '<p style="margin:0;color:#9aa0a6;font-size:13px;line-height:1.6;">'
-                    . 'Si no solicitaste este cambio, puedes ignorar este correo; tu contraseña seguirá igual.</p>',
+                    '<h2 style="margin:0 0 20px;font-size:22px;color:#1e293b;font-weight:600;font-family:Helvetica,Arial,sans-serif;">Hola, {{user_name}}</h2>'
+                    . '<p style="margin:0 0 24px;color:#475569;font-size:16px;line-height:1.6;font-family:Helvetica,Arial,sans-serif;">'
+                    . 'Hemos recibido una solicitud para restablecer la contraseña asociada a tu cuenta. Para elegir una nueva contraseña, haz clic en el botón inferior. '
+                    . 'Ten en cuenta que este enlace expirará en <strong>{{expires_minutes}} minutos</strong>.</p>'
+                    . '<div style="margin-bottom:32px;">' . $btn('{{reset_link}}', 'Restablecer contraseña') . '</div>'
+                    . '<p style="margin:0;color:#94a3b8;font-size:14px;line-height:1.5;font-family:Helvetica,Arial,sans-serif;">'
+                    . 'Si no fuiste tú quien solicitó este cambio, puedes ignorar este mensaje de forma segura. Tu contraseña actual no será modificada.</p>',
             ],
             self::QUOTA_WARNING => [
-                'subject'   => 'Tu almacenamiento en {{org_name}} está casi lleno',
+                'subject'   => 'Alerta de capacidad: Tu almacenamiento está casi lleno',
                 'body_html' =>
-                    '<h2 style="margin:0 0 16px;font-size:20px;color:#202124;">Hola, {{user_name}}</h2>'
-                    . '<p style="margin:0 0 16px;color:#5f6368;line-height:1.6;">'
-                    . 'Has usado el <strong>{{percent}}%</strong> de tu almacenamiento ({{used}} de {{quota}}).</p>'
-                    . '<p style="margin:0;color:#5f6368;line-height:1.6;">'
-                    . 'Te recomendamos liberar espacio eliminando archivos que ya no necesites o vaciando la papelera.</p>',
+                    '<h2 style="margin:0 0 20px;font-size:22px;color:#1e293b;font-weight:600;font-family:Helvetica,Arial,sans-serif;">Aviso de almacenamiento</h2>'
+                    . '<p style="margin:0 0 24px;color:#475569;font-size:16px;line-height:1.6;font-family:Helvetica,Arial,sans-serif;">'
+                    . 'Hola {{user_name}}, te informamos que estás a punto de agotar tu capacidad de almacenamiento en <strong>{{org_name}}</strong>.</p>'
+                    . '<table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color:#fff7ed;border-left:4px solid #f97316;border-radius:0 8px 8px 0;margin-bottom:24px;">'
+                    . '<tr><td style="padding:16px 20px;">'
+                    . '<p style="margin:0;color:#c2410c;font-size:15px;font-weight:600;font-family:Helvetica,Arial,sans-serif;">'
+                    . 'Has ocupado el {{percent}}% de tu cuota ({{used}} de {{quota}}).'
+                    . '</p>'
+                    . '</td></tr>'
+                    . '</table>'
+                    . '<p style="margin:0;color:#475569;font-size:16px;line-height:1.6;font-family:Helvetica,Arial,sans-serif;">'
+                    . 'Para asegurar que puedas continuar guardando nuevos archivos sin interrupciones, te sugerimos revisar tu cuenta, vaciar la papelera o eliminar documentos que ya no requieras.</p>',
             ],
             self::SUPPORT_REPORT => [
-                'subject'   => '[{{report_type}}] {{org_name}} - {{sender_name}}',
+                'subject'   => '[{{report_type}}] Nuevo mensaje de soporte - {{sender_name}}',
                 'body_html' =>
-                    '<h2 style="margin:0 0 16px;font-size:20px;color:#202124;">Nuevo reporte de soporte</h2>'
-                    . '<p style="margin:0 0 8px;color:#5f6368;"><strong>De:</strong> {{sender_name}} ({{sender_email}})</p>'
-                    . '<p style="margin:0 0 16px;color:#5f6368;"><strong>Tipo:</strong> {{report_type}}</p>'
-                    . '<p style="margin:0 0 8px;color:#5f6368;"><strong>Mensaje:</strong></p>'
-                    . '<div style="background:#f4f4f4;padding:15px;border-radius:5px;white-space:pre-wrap;color:#333;">{{report_message}}</div>',
+                    '<h2 style="margin:0 0 20px;font-size:22px;color:#1e293b;font-weight:600;font-family:Helvetica,Arial,sans-serif;">Reporte de Usuario</h2>'
+                    . '<p style="margin:0 0 24px;color:#475569;font-size:16px;line-height:1.6;font-family:Helvetica,Arial,sans-serif;">'
+                    . 'Se ha recibido un nuevo ticket de soporte desde la plataforma.</p>'
+                    . '<table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;margin-bottom:24px;">'
+                    . '<tr><td style="padding:16px 20px;border-bottom:1px solid #e2e8f0;">'
+                    . '<p style="margin:0 0 4px;color:#64748b;font-size:13px;font-weight:600;text-transform:uppercase;font-family:Helvetica,Arial,sans-serif;">Remitente</p>'
+                    . '<p style="margin:0;color:#0f172a;font-size:15px;font-family:Helvetica,Arial,sans-serif;">{{sender_name}} (<a href="mailto:{{sender_email}}" style="color:#2563eb;text-decoration:none;">{{sender_email}}</a>)</p>'
+                    . '</td></tr>'
+                    . '<tr><td style="padding:16px 20px;border-bottom:1px solid #e2e8f0;">'
+                    . '<p style="margin:0 0 4px;color:#64748b;font-size:13px;font-weight:600;text-transform:uppercase;font-family:Helvetica,Arial,sans-serif;">Clasificación</p>'
+                    . '<p style="margin:0;color:#0f172a;font-size:15px;font-family:Helvetica,Arial,sans-serif;">{{report_type}}</p>'
+                    . '</td></tr>'
+                    . '<tr><td style="padding:16px 20px;background-color:#ffffff;border-radius:0 0 8px 8px;">'
+                    . '<p style="margin:0 0 8px;color:#64748b;font-size:13px;font-weight:600;text-transform:uppercase;font-family:Helvetica,Arial,sans-serif;">Mensaje</p>'
+                    . '<p style="margin:0;color:#334155;font-size:15px;line-height:1.6;white-space:pre-wrap;font-family:Helvetica,Arial,sans-serif;">{{report_message}}</p>'
+                    . '</td></tr>'
+                    . '</table>',
             ],
         ];
     }

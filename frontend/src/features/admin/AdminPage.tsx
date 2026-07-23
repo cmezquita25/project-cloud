@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useLocation } from 'react-router-dom'
 import { Users, HardDrive, Shield, UserPlus, Pencil, Server } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { Button, Dialog, Input, Spinner, useToast } from '@shared/ui'
+import { Button, Dialog, Input, Spinner, useToast, Select } from '@shared/ui'
 import { formatBytes } from '@shared/lib/formatBytes'
 import { useAuth } from '@features/auth/AuthProvider'
 import { adminApi } from './services/adminApi'
@@ -14,6 +14,7 @@ import { PasswordResetDialog } from './components/PasswordResetDialog'
 import { ActivityList } from './components/ActivityList'
 import { ServerLimits } from './components/ServerLimits'
 import { AdminCharts } from './components/AdminCharts'
+import { useAssetsAccess } from '@features/assets/hooks/useAssetsAccess'
 import type { AdminUser } from './types'
 
 type Tab = 'overview' | 'users' | 'activity'
@@ -58,6 +59,8 @@ export function AdminPage() {
 
   const [activityPage, setActivityPage] = useState(1)
   const [activityLimit, setActivityLimit] = useState(30)
+
+  const { access } = useAssetsAccess()
 
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['admin', 'stats'],
@@ -186,44 +189,64 @@ export function AdminPage() {
             <Spinner size={32} />
           </div>
         ) : tab === 'overview' && stats ? (
-          <div className="space-y-3">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <StatCard icon={Users} label="Usuarios" value={String(stats.users)} />
-              <StatCard icon={Shield} label="Administradores" value={String(stats.admins)} />
-              <StatCard icon={HardDrive} label="Espacio usado" value={formatBytes(stats.used)} />
-              <StatCard icon={HardDrive} label="Asignado a usuarios" value={formatBytes(stats.allocated_users)} />
-            </div>
-
-            {/* Capacidad real del servidor (editable). */}
-            <div className="flex items-center gap-4 rounded-drive border border-border bg-surface p-4">
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-subtle text-primary">
-                <Server size={22} />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm text-content-tertiary">Capacidad real del servidor</p>
-                <p className="text-2xl font-medium text-content-primary">
-                  {stats.server_capacity_bytes > 0 ? formatBytes(stats.server_capacity_bytes) : 'No definida'}
-                </p>
-                <p className="text-xs text-content-tertiary">
-                  Asignado a usuarios: {formatBytes(stats.allocated_users)}
-                  {stats.server_capacity_bytes > 0 && stats.allocated_users > stats.server_capacity_bytes && (
-                    <span className="text-danger"> — supera la capacidad del servidor</span>
-                  )}
-                </p>
-              </div>
-              <Button size="sm" variant="secondary" leftIcon={Pencil} onClick={openCapacity}>
-                Ajustar
-              </Button>
-            </div>
-
-            {/* Rendimiento y límites del servidor (PHP) — componente dedicado. */}
-            {serverInfo && (
-              <div className="mt-6">
-                <ServerLimits serverInfo={serverInfo} />
-              </div>
-            )}
+          <div className="space-y-12 pb-12">
             
-            <AdminCharts />
+            <section>
+              <h2 className="text-xl font-medium text-content-primary mb-2">Mi Unidad</h2>
+              <p className="text-sm text-content-secondary mb-6">Uso y distribución del almacenamiento privado de los usuarios.</p>
+              <AdminCharts source="private" />
+            </section>
+
+            {access?.active && (
+              <section>
+                <h2 className="text-xl font-medium text-content-primary mb-2">Espacio de Trabajo</h2>
+                <p className="text-sm text-content-secondary mb-6">Uso y distribución de la carpeta compartida.</p>
+                <AdminCharts source="workspace" />
+              </section>
+            )}
+
+            <section>
+              <h2 className="text-xl font-medium text-content-primary mb-6">Visión General</h2>
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+                <div className="lg:col-span-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2">
+                  <StatCard icon={Users} label="Usuarios" value={String(stats.users)} />
+                  <StatCard icon={Shield} label="Administradores" value={String(stats.admins)} />
+                  <StatCard icon={HardDrive} label="Espacio usado" value={formatBytes(stats.used)} />
+                  <StatCard icon={HardDrive} label="Asignado a usuarios" value={formatBytes(stats.allocated_users)} />
+                </div>
+
+                <div className="lg:col-span-4">
+                  <div className="flex h-full flex-col justify-between gap-4 rounded-drive border border-border bg-surface p-5">
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-subtle text-primary">
+                        <Server size={22} />
+                      </span>
+                      <h3 className="font-medium text-content-primary">Capacidad del servidor</h3>
+                    </div>
+                    <div>
+                      <p className="text-3xl font-medium text-content-primary">
+                        {stats.server_capacity_bytes > 0 ? formatBytes(stats.server_capacity_bytes) : 'No definida'}
+                      </p>
+                      <p className="mt-1 text-sm text-content-tertiary">
+                        Asignado: {formatBytes(stats.allocated_users)}
+                        {stats.server_capacity_bytes > 0 && stats.allocated_users > stats.server_capacity_bytes && (
+                          <span className="mt-1 block text-danger">Supera la capacidad del servidor</span>
+                        )}
+                      </p>
+                    </div>
+                    <Button size="sm" variant="secondary" leftIcon={Pencil} onClick={openCapacity} className="w-full">
+                      Ajustar capacidad
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {serverInfo && (
+                <div className="mt-6">
+                  <ServerLimits serverInfo={serverInfo} />
+                </div>
+              )}
+            </section>
           </div>
         ) : tab === 'users' ? (
           <UsersTable
@@ -293,15 +316,15 @@ export function AdminPage() {
               autoFocus
             />
           </div>
-          <select
+          <Select
             value={capUnit}
-            onChange={(e) => setCapUnit(e.target.value as 'MB' | 'GB')}
+            onChange={(val) => setCapUnit(String(val) as 'MB' | 'GB')}
             className="h-11 rounded-drive border border-border-strong bg-surface px-3 text-sm text-content-primary focus:border-transparent focus:outline-none focus:ring-2 focus:ring-focus"
-            aria-label="Unidad"
-          >
-            <option value="MB">MB</option>
-            <option value="GB">GB</option>
-          </select>
+            options={[
+              { value: 'MB', label: 'MB' },
+              { value: 'GB', label: 'GB' }
+            ]}
+          />
         </div>
       </Dialog>
     </div>

@@ -16,7 +16,7 @@ import { AppearanceSettings } from '@features/admin/settings/pages/AppearanceSet
 import { EmailSettings } from '@features/admin/settings/pages/EmailSettings'
 import { EmailTemplatesSettings } from '@features/admin/settings/pages/EmailTemplatesSettings'
 import { EmailTemplateEditor } from '@features/admin/settings/pages/EmailTemplateEditor'
-import { AccessSettings } from '@features/admin/settings/pages/AccessSettings'
+import { WorkspaceSettings } from '@features/admin/settings/pages/WorkspaceSettings'
 import { DatabaseSettings } from '@features/admin/settings/pages/DatabaseSettings'
 import { StoragePage } from '@features/storage-quota/StoragePage'
 import { ProfilePage } from '@features/profile/ProfilePage'
@@ -84,7 +84,7 @@ const router = createBrowserRouter([
                       { path: 'email', element: <EmailSettings /> },
                       { path: 'email-templates', element: <EmailTemplatesSettings /> },
                       { path: 'email-templates/:key', element: <EmailTemplateEditor /> },
-                      { path: 'access', element: <AccessSettings /> },
+                      { path: 'workspace', element: <WorkspaceSettings /> },
                       { path: 'database', element: <DatabaseSettings /> },
                     ],
                   },

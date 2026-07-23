@@ -23,7 +23,7 @@ export function useFolderContents(
     refetch,
     error
   } = useInfiniteQuery({
-    queryKey: ['explorer', adapter.mode, folderId, sortState.field, sortState.dir, q, type, date],
+    queryKey: ['explorer', adapter.cacheKey, folderId, sortState.field, sortState.dir, q, type, date],
     queryFn: ({ pageParam = 0, signal }) => {
       return adapter.loadContents(folderId, sortState, signal, pageParam as number, limit, q, type, date)
     },

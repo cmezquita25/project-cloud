@@ -385,23 +385,45 @@ final class MailService
         return [$mime, $fromEmail];
     }
 
-    /** Envoltura HTML de marca común a todos los correos. */
+    /** Envoltura HTML de marca común a todos los correos usando tablas para máxima compatibilidad (Gmail/Outlook). */
     private function wrapLayout(string $inner, bool $hasLogo): string
     {
         $org = htmlspecialchars($this->orgName(), ENT_QUOTES);
         $brand = $hasLogo
-            ? '<img src="cid:brandlogo" alt="' . $org . '" style="max-height:48px;max-width:220px;">'
-            : '<span style="font-size:20px;font-weight:600;color:#1a73e8;">' . $org . '</span>';
+            ? '<img src="cid:brandlogo" alt="' . $org . '" style="max-height:48px;max-width:220px;display:block;margin:0 auto;border:0;">'
+            : '<span style="font-size:24px;font-weight:700;color:#1e293b;text-decoration:none;font-family:Helvetica,Arial,sans-serif;">' . $org . '</span>';
 
-        return '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">'
-            . '<meta name="viewport" content="width=device-width, initial-scale=1"></head>'
-            . '<body style="margin:0;padding:0;background:#f5f6f8;font-family:Arial,Helvetica,sans-serif;color:#202124;">'
-            . '<div style="max-width:560px;margin:0 auto;padding:24px;">'
-            . '<div style="text-align:center;padding:8px 0 20px;">' . $brand . '</div>'
-            . '<div style="background:#ffffff;border:1px solid #e6e8eb;border-radius:12px;padding:32px;">' . $inner . '</div>'
-            . '<div style="text-align:center;color:#9aa0a6;font-size:12px;padding:16px 0;">'
-            . $org . ' · Este es un correo automático, por favor no respondas.</div>'
-            . '</div></body></html>';
+        return '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">'
+            . '<html xmlns="http://www.w3.org/1999/xhtml" lang="es">'
+            . '<head>'
+            . '<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />'
+            . '<meta name="viewport" content="width=device-width, initial-scale=1.0"/>'
+            . '<title>' . $org . '</title>'
+            . '</head>'
+            . '<body style="margin:0;padding:0;background-color:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,Helvetica,Arial,sans-serif;color:#334155;-webkit-font-smoothing:antialiased;">'
+            . '<table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color:#f8fafc;table-layout:fixed;">'
+            . '<tr><td align="center" style="padding:40px 20px;">'
+            . '<!-- Contenedor Principal -->'
+            . '<table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:600px;background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 6px -1px rgba(0,0,0,0.05),0 2px 4px -1px rgba(0,0,0,0.03);">'
+            . '<!-- Cabecera / Logo -->'
+            . '<tr><td align="center" style="padding:32px 40px;background-color:#ffffff;border-bottom:1px solid #f1f5f9;">'
+            . $brand
+            . '</td></tr>'
+            . '<!-- Cuerpo Principal -->'
+            . '<tr><td style="padding:40px;background-color:#ffffff;">'
+            . $inner
+            . '</td></tr>'
+            . '</table>'
+            . '<!-- Pie de página -->'
+            . '<table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:600px;">'
+            . '<tr><td align="center" style="padding:24px 20px;color:#94a3b8;font-size:13px;line-height:1.6;">'
+            . '<strong>' . $org . '</strong><br/>'
+            . 'Este es un correo automático, por favor no respondas.'
+            . '</td></tr>'
+            . '</table>'
+            . '</td></tr>'
+            . '</table>'
+            . '</body></html>';
     }
 
     /** @return array{cid:string,mime:string,data:string}|null */

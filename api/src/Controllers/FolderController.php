@@ -76,16 +76,16 @@ final class FolderController
         }
 
         $subfolders = array_map(
-            fn (array $f) => $this->folderPublic($f),
+            fn (array $f) => $this->folderPublic($f, $request->user()),
             $foldersList
         );
         $folderFiles = array_map(
-            fn (array $f) => $this->filePublic($f, $username),
+            fn (array $f) => $this->filePublic($f, $request->user()),
             $filesList
         );
 
         return Response::success([
-            'folder'      => $current !== null ? $this->folderPublic($current) : null,
+            'folder'      => $current !== null ? $this->folderPublic($current, $request->user()) : null,
             'breadcrumbs' => $breadcrumbs,
             'folders'     => $subfolders,
             'files'       => $folderFiles,
@@ -107,7 +107,7 @@ final class FolderController
             (string) $data['name'],
         );
 
-        return Response::created($this->folderPublic($folder));
+        return Response::created($this->folderPublic($folder, $request->user()));
     }
 
     /** PATCH /folders/{id} — renombrar, mover o destacar. */
@@ -133,7 +133,7 @@ final class FolderController
             throw HttpException::badRequest('Nada que actualizar.');
         }
 
-        return Response::success($this->folderPublic($result));
+        return Response::success($this->folderPublic($result, $request->user()));
     }
 
     /** POST /folders/{id}/copy — copia recursiva a otra carpeta. */
@@ -145,7 +145,7 @@ final class FolderController
             (int) $request->param('id'),
             $this->resolveId((string) $request->input('target_parent_id', 'root')),
         );
-        return Response::created($this->folderPublic($folder));
+        return Response::created($this->folderPublic($folder, $request->user()));
     }
 
     /** DELETE /folders/{id} — mueve a la papelera. */
@@ -178,7 +178,7 @@ final class FolderController
     }
 
     /** @param array<string,mixed> $f */
-    private function folderPublic(array $f): array
+    private function folderPublic(array $f, array $user): array
     {
         return [
             'type'       => 'folder',
@@ -189,11 +189,16 @@ final class FolderController
             'is_starred' => (bool) $f['is_starred'],
             'created_at' => $f['created_at'] ?? null,
             'updated_at' => $f['updated_at'] ?? null,
+            'owners'     => [[
+                'username' => $user['username'] ?? '',
+                'display_name' => $user['display_name'] ?? '',
+                'avatar_url' => \ProjectCloud\Services\AvatarService::urlFor((int) $user['id']),
+            ]],
         ];
     }
 
     /** @param array<string,mixed> $f */
-    private function filePublic(array $f, string $username): array
+    private function filePublic(array $f, array $user): array
     {
         return [
             'type'       => 'file',
@@ -205,9 +210,14 @@ final class FolderController
             'mime_type'  => $f['mime_type'] !== null ? (string) $f['mime_type'] : null,
             'extension'  => $f['extension'] !== null ? (string) $f['extension'] : null,
             'is_starred' => (bool) $f['is_starred'],
-            'url'        => FileService::publicUrl($username, (string) $f['path']),
+            'url'        => FileService::publicUrl($user['username'], (string) $f['path']),
             'created_at' => $f['created_at'] ?? null,
             'updated_at' => $f['updated_at'] ?? null,
+            'owners'     => [[
+                'username' => $user['username'] ?? '',
+                'display_name' => $user['display_name'] ?? '',
+                'avatar_url' => \ProjectCloud\Services\AvatarService::urlFor((int) $user['id']),
+            ]],
         ];
     }
 }

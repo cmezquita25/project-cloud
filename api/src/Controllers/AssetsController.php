@@ -23,12 +23,18 @@ final class AssetsController
     public function access(Request $request): Response
     {
         $role = (string) ($request->user()['role'] ?? 'user');
-        $allowed = $this->service()->canAccess((int) $request->userId(), $role);
-        return Response::success([
+        $svc = $this->service();
+        $allowed = $svc->canAccess((int) $request->userId(), $role);
+        $res = Response::success([
             'allowed'   => $allowed,
             'is_admin'  => $role === 'admin',
             'can_write' => $allowed, // acceso = ver + interactuar
+            'active'    => $svc->isActive(),
+            'folder_name' => $svc->getFolderName(),
         ]);
+        // Evita el uso de caché agresivo del ETag en esta petición, pues queremos siempre
+        // el estado real de la carpeta.
+        return $res->withHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     }
 
     /** GET /assets?path=... — contenido de una carpeta de assets. */
@@ -44,8 +50,9 @@ final class AssetsController
         $q = (string) $request->input('q', '');
         $type = (string) $request->input('type', '');
         $date = (string) $request->input('date', '');
+        $role = (string) ($request->user()['role'] ?? 'user');
         
-        return Response::success($service->list($path, $sort, $order, $limit, $offset, $q, $type, $date));
+        return Response::success($service->list($path, $role, $sort, $order, $limit, $offset, $q, $type, $date));
     }
 
     /** GET /assets/thumb?path=... — miniatura de una imagen de assets (pública). */
@@ -59,13 +66,15 @@ final class AssetsController
     public function createFolder(Request $request): Response
     {
         $service = $this->guard($request);
+        $role = (string) ($request->user()['role'] ?? 'user');
         $data = (new Validator($request->json()))
             ->required('name')->maxLength('name', 255)
             ->validate();
         $folder = $service->createFolder(
             (string) ($request->json()['path'] ?? ''),
             (string) $data['name'],
-            (int) $request->userId()
+            (int) $request->userId(),
+            $role
         );
         ActivityLogger::log($request, 'assets.folder_create', 'asset', null, ['path' => $folder['path']]);
         return Response::created($folder);
@@ -75,6 +84,7 @@ final class AssetsController
     public function upload(Request $request): Response
     {
         $service = $this->guard($request);
+        $role = (string) ($request->user()['role'] ?? 'user');
         $file = $_FILES['file'] ?? null;
         if (!is_array($file)) {
             throw HttpException::badRequest('No se recibió ningún archivo.', 'NO_FILE');
@@ -85,7 +95,7 @@ final class AssetsController
             'tmp_name' => (string) ($file['tmp_name'] ?? ''),
             'size'     => (int) ($file['size'] ?? 0),
             'error'    => (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE),
-        ], (int) $request->userId());
+        ], (int) $request->userId(), $role);
         ActivityLogger::log($request, 'assets.upload', 'asset', null, ['path' => $stored['path']]);
         return Response::created($stored);
     }
@@ -94,8 +104,9 @@ final class AssetsController
     public function move(Request $request): Response
     {
         $service = $this->guard($request);
+        $role = (string) ($request->user()['role'] ?? 'user');
         $body = $request->json();
-        $moved = $service->move((string) ($body['path'] ?? ''), (string) ($body['target'] ?? ''));
+        $moved = $service->move((string) ($body['path'] ?? ''), (string) ($body['target'] ?? ''), $role);
         ActivityLogger::log($request, 'assets.move', 'asset', null, ['path' => $moved['path']]);
         return Response::success($moved);
     }
@@ -104,9 +115,23 @@ final class AssetsController
     public function delete(Request $request): Response
     {
         $service = $this->guard($request);
+        $role = (string) ($request->user()['role'] ?? 'user');
+        $username = (string) ($request->user()['username'] ?? 'unknown');
         $path = (string) $request->input('path', '');
-        $service->delete($path);
+        $service->delete($path, $role, $username);
         ActivityLogger::log($request, 'assets.delete', 'asset', null, ['path' => $path]);
+        return Response::success(['ok' => true]);
+    }
+
+    /** POST /assets/restore — restaura un archivo/carpeta de la papelera (.trash). */
+    public function restore(Request $request): Response
+    {
+        $service = $this->guard($request);
+        $role = (string) ($request->user()['role'] ?? 'user');
+        $body = $request->json();
+        $path = (string) ($body['path'] ?? '');
+        $service->restore($path, $role);
+        ActivityLogger::log($request, 'assets.restore', 'asset', null, ['path' => $path]);
         return Response::success(['ok' => true]);
     }
 
@@ -138,6 +163,44 @@ final class AssetsController
         $this->service()->setAllowedUserIds($ids);
         ActivityLogger::log($request, 'assets.permissions', 'setting', null, ['count' => count($ids)]);
         return Response::success(['user_ids' => $this->service()->allowedUserIds()]);
+    }
+
+    /** PUT /admin/assets/block-actions — bloquea acciones para un archivo/carpeta. */
+    public function setBlockedActions(Request $request): Response
+    {
+        $role = (string) ($request->user()['role'] ?? 'user');
+        $body = $request->json();
+        $path = (string) ($body['path'] ?? '');
+        $actions = (string) ($body['blocked_actions'] ?? '');
+        $this->service()->updatePermissions($path, $actions, $role);
+        ActivityLogger::log($request, 'assets.block_actions', 'asset', null, ['path' => $path, 'actions' => $actions]);
+        return Response::success(['ok' => true]);
+    }
+
+    /** POST /admin/assets/activate — crea la carpeta física de assets. */
+    public function activate(Request $request): Response
+    {
+        $this->service()->createRoot();
+        ActivityLogger::log($request, 'assets.activate', 'setting', null, []);
+        return Response::success(['ok' => true]);
+    }
+
+    /** PUT /admin/assets/folder-name — cambia el nombre esperado de la raíz de assets. */
+    public function setFolderName(Request $request): Response
+    {
+        $body = $request->json();
+        $name = (string) ($body['folder_name'] ?? '');
+        if ($name === '' || preg_match('/[^a-zA-Z0-9_-]/', $name)) {
+            throw HttpException::badRequest('Nombre de carpeta inválido.');
+        }
+        $settings = new \ProjectCloud\Repositories\SettingsRepository();
+        $settings->set('assets_folder_name', $name);
+        
+        // Ensure the physical folder is created immediately if it doesn't exist
+        (new AssetsService())->createRoot();
+        
+        ActivityLogger::log($request, 'assets.folder_name', 'setting', null, ['folder_name' => $name]);
+        return Response::success(['folder_name' => $name]);
     }
 
     // --- Helpers ---

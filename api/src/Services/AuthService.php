@@ -114,6 +114,7 @@ final class AuthService
             'role'     => (string) $user['role'],
             'username' => (string) $user['username'],
             'email'    => (string) $user['email'],
+            'display_name' => (string) $user['display_name'],
             'jti'      => bin2hex(random_bytes(16)), // id único por token
         ], $accessTtl);
 

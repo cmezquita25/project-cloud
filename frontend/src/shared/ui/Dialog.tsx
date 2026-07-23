@@ -12,7 +12,7 @@ interface DialogProps {
   description?: ReactNode
   children?: ReactNode
   footer?: ReactNode
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl'
   /** Oculta el botón X (para diálogos que exigen una acción explícita). */
   hideClose?: boolean
 }
@@ -21,6 +21,9 @@ const SIZES = {
   sm: 'max-w-sm',
   md: 'max-w-md',
   lg: 'max-w-lg',
+  xl: 'max-w-xl',
+  '2xl': 'max-w-2xl',
+  '3xl': 'max-w-3xl',
 }
 
 /** Modal centrado estilo Google (escritorio). En móvil preferir BottomSheet. */

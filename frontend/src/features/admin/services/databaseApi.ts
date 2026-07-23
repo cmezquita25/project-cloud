@@ -15,6 +15,11 @@ export const databaseApi = {
     return res
   },
 
+  migrateAuto: async (): Promise<{ statements: number }> => {
+    const res = await api.post<{ statements: number }>('/admin/database/migrate-auto')
+    return res
+  },
+
   listBackups: async (): Promise<BackupItem[]> => {
     const res = await api.get<{ backups: BackupItem[] }>('/admin/database/backups')
     return res.backups

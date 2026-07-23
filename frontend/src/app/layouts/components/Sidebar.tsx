@@ -117,7 +117,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
     ...group,
     items: group.items.filter(
       (item) =>
-        (!item.adminOnly || isAdmin) && (!item.requiresAssets || access?.allowed)
+        (!item.adminOnly || isAdmin) && (!item.requiresAssets || (access?.allowed && access?.active))
     ),
   })).filter((group) => group.items.length > 0)
 

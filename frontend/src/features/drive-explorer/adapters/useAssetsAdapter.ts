@@ -20,6 +20,8 @@ function toDriveFile(f: any): FileItem {
     created_at: null,
     updated_at: null,
     owner: f.owner,
+    owners: f.owners,
+    blocked_actions: f.blocked_actions,
   }
 }
 
@@ -34,6 +36,8 @@ function toDriveFolder(f: any): FolderItem {
     created_at: null,
     updated_at: null,
     owner: f.owner,
+    owners: f.owners,
+    blocked_actions: f.blocked_actions,
   }
 }
 
@@ -43,6 +47,7 @@ export function useAssetsAdapter(): IExplorerAdapter {
 
   return useMemo<IExplorerAdapter>(() => ({
     mode: 'assets',
+    cacheKey: access?.folder_name ? `assets-${access.folder_name}` : 'assets',
     capabilities: {
       canWrite,
       canStar: false,
@@ -53,6 +58,7 @@ export function useAssetsAdapter(): IExplorerAdapter {
       canDownload: true,
       canDelete: canWrite,
       canShare: false,
+      canBlockActions: access?.is_admin ?? false,
     },
 
     loadContents: async (folderId, sort, signal, offset, limit, q, type, date) => {
@@ -64,7 +70,8 @@ export function useAssetsAdapter(): IExplorerAdapter {
         order: sort.dir,
         q,
         type,
-        date
+        date,
+        folder_name: access?.folder_name
       })
 
       return {
@@ -102,6 +109,10 @@ export function useAssetsAdapter(): IExplorerAdapter {
       }
     },
 
+    restoreItem: async (item: DriveItem) => {
+      await assetsApi.restore(String(item.id))
+    },
+
     starItem: async () => {
       throw new Error('Not supported in Assets')
     },
@@ -114,5 +125,5 @@ export function useAssetsAdapter(): IExplorerAdapter {
       if (item.type === 'file') return item.url
       return ''
     }
-  }), [canWrite])
+  }), [canWrite, access?.folder_name])
 }

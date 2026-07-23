@@ -108,6 +108,25 @@ final class DatabaseManagerService
         // 2. Storage
         $this->addFolderToZip($this->storageRoot, $zip, 'storage');
 
+        // 3. Configuración
+        $configDir = realpath(__DIR__ . '/../../config');
+        if ($configDir) {
+            if (file_exists($configDir . '/config.php')) {
+                $zip->addFile($configDir . '/config.php', 'config/config.php');
+            }
+            if (file_exists($configDir . '/install.lock')) {
+                $zip->addFile($configDir . '/install.lock', 'config/install.lock');
+            }
+        }
+
+        // 4. Unidad compartida (assets)
+        $assetsService = new \ProjectCloud\Services\AssetsService();
+        $assetsRoot = $assetsService->root ?? '';
+        if (is_dir($assetsRoot)) {
+            $assetsFolder = basename($assetsRoot);
+            $this->addFolderToZip($assetsRoot, $zip, $assetsFolder);
+        }
+
         $zip->close();
         
         return $filename;
@@ -207,18 +226,35 @@ final class DatabaseManagerService
             $this->executeMigration($sqlContent);
         }
 
-        // Extraer los archivos storage/ a storage/
-        // Ojo, si extractTo extrae con la misma estructura, sobreescribirá / creará.
         $tempExtractDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'cloud_restore_' . uniqid();
         @mkdir($tempExtractDir);
         
         $zip->extractTo($tempExtractDir);
         $zip->close();
 
-        // Mover los archivos de $tempExtractDir/storage/ al $this->storageRoot real.
-        $extractedStorage = $tempExtractDir . DIRECTORY_SEPARATOR . 'storage';
-        if (is_dir($extractedStorage)) {
-            $this->copyRecursive($extractedStorage, $this->storageRoot);
+        // 1. Restaurar configuración (si existía en el backup)
+        $extractedConfig = $tempExtractDir . DIRECTORY_SEPARATOR . 'config';
+        $realConfig = realpath(__DIR__ . '/../../config');
+        if (is_dir($extractedConfig) && $realConfig) {
+            $this->copyRecursive($extractedConfig, $realConfig);
+        }
+
+        // 2. Restaurar directorios de almacenamiento (storage y assets)
+        $handle = opendir($tempExtractDir);
+        if ($handle !== false) {
+            while (($entry = readdir($handle)) !== false) {
+                if ($entry === '.' || $entry === '..' || $entry === 'config') continue;
+                $extractedPath = $tempExtractDir . DIRECTORY_SEPARATOR . $entry;
+                if (is_dir($extractedPath)) {
+                    // 'storage' va a $this->storageRoot, otros van al mismo nivel (como 'assets')
+                    if ($entry === 'storage') {
+                        $this->copyRecursive($extractedPath, $this->storageRoot);
+                    } else {
+                        $this->copyRecursive($extractedPath, dirname($this->storageRoot) . DIRECTORY_SEPARATOR . $entry);
+                    }
+                }
+            }
+            closedir($handle);
         }
 
         $this->deleteRecursive($tempExtractDir);

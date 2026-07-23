@@ -25,6 +25,7 @@ use ProjectCloud\Controllers\EmailTemplateController;
 use ProjectCloud\Controllers\TrashController;
 use ProjectCloud\Controllers\LibraryController;
 use ProjectCloud\Controllers\AssetsController;
+use ProjectCloud\Controllers\DatabaseController;
 use ProjectCloud\Middleware\AuthMiddleware;
 use ProjectCloud\Middleware\AdminOnly;
 use ProjectCloud\Middleware\RateLimit;
@@ -118,11 +119,15 @@ return static function (Router $router): void {
     $router->get('/v1/admin/stats',               [AdminController::class, 'stats'], $admin);
     $router->get('/v1/admin/charts/storage-history', [AdminController::class, 'storageHistory'], $admin);
     $router->get('/v1/admin/charts/storage-distribution', [AdminController::class, 'storageDistribution'], $admin);
+    $router->get('/v1/admin/charts/workspace',    [AdminController::class, 'workspaceCharts'], $admin);
     $router->get('/v1/admin/server-info',         [AdminController::class, 'serverInfo'], $admin);
     $router->patch('/v1/admin/settings',          [AdminController::class, 'updateSettings'], $admin);
     $router->post('/v1/admin/settings/logo',      [AdminController::class, 'uploadLogo'], $admin);
     $router->get('/v1/admin/assets/permissions',  [AssetsController::class, 'permissions'], $admin);
     $router->put('/v1/admin/assets/permissions',  [AssetsController::class, 'setPermissions'], $admin);
+    $router->put('/v1/admin/assets/block-actions',[AssetsController::class, 'setBlockedActions'], $admin);
+    $router->post('/v1/admin/assets/activate',    [AssetsController::class, 'activate'], $admin);
+    $router->put('/v1/admin/assets/folder-name',  [AssetsController::class, 'setFolderName'], $admin);
     $router->get('/v1/admin/activity',            [AdminController::class, 'activity'], $admin);
     $router->get('/v1/admin/users',               [AdminController::class, 'users'], $admin);
     $router->post('/v1/admin/users',              [AdminController::class, 'createUser'], $admin);
@@ -143,6 +148,7 @@ return static function (Router $router): void {
 
     // Migración y Backups (Base de Datos)
     $router->post('/v1/admin/database/migrate',               [\ProjectCloud\Controllers\DatabaseController::class, 'migrate'], $admin);
+    $router->post('/v1/admin/database/migrate-auto',          [\ProjectCloud\Controllers\DatabaseController::class, 'migrateAuto'], $admin);
     $router->get('/v1/admin/database/backups',                [\ProjectCloud\Controllers\DatabaseController::class, 'listBackups'], $admin);
     $router->post('/v1/admin/database/backups',               [\ProjectCloud\Controllers\DatabaseController::class, 'createBackup'], $admin);
     $router->delete('/v1/admin/database/backups/{filename}',  [\ProjectCloud\Controllers\DatabaseController::class, 'deleteBackup'], $admin);

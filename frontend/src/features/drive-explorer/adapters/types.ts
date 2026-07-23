@@ -11,10 +11,12 @@ export interface ExplorerCapabilities {
   canDownload: boolean
   canDelete: boolean
   canShare: boolean
+  canBlockActions?: boolean
 }
 
 export interface IExplorerAdapter {
   mode: 'drive' | 'assets'
+  cacheKey: string
   capabilities: ExplorerCapabilities
   loadContents: (
     folderId: FolderRef,
@@ -32,6 +34,7 @@ export interface IExplorerAdapter {
   moveItems: (items: DriveItem[], targetId: FolderRef) => Promise<void>
   copyItems: (items: DriveItem[], targetId: FolderRef) => Promise<void>
   deleteItems: (items: DriveItem[]) => Promise<void>
+  restoreItem?: (item: DriveItem) => Promise<void>
   starItem: (item: DriveItem, starred: boolean) => Promise<void>
   duplicateItem: (item: DriveItem) => Promise<void>
   

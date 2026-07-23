@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { X, Paperclip, Loader2 } from 'lucide-react'
-import { Button, Dialog, useToast } from '@shared/ui'
+import { Button, Dialog, useToast, Select } from '@shared/ui'
 import { supportApi } from '../services/supportApi'
 
 interface ReportBugDialogProps {
@@ -70,16 +70,17 @@ export function ReportBugDialog({ isOpen, onClose }: ReportBugDialogProps) {
           <label className="block text-sm font-medium text-content-secondary mb-1">
             Asunto
           </label>
-          <select 
+          <Select 
             value={subject}
-            onChange={(e) => setSubject(e.target.value)}
+            onChange={(val) => setSubject(String(val))}
             className="w-full rounded-drive border border-border-strong bg-surface px-3.5 py-2.5 text-sm text-content-primary focus:border-transparent focus:outline-none focus:ring-2 focus:ring-focus"
-          >
-            <option value="Reporte de Error">Reportar un error (Bug)</option>
-            <option value="Sugerencia">Sugerencia de mejora</option>
-            <option value="Comentario General">Comentario general</option>
-            <option value="Duda">Tengo una duda / Necesito ayuda</option>
-          </select>
+            options={[
+              { value: 'Reporte de Error', label: 'Reportar un error (Bug)' },
+              { value: 'Sugerencia', label: 'Sugerencia de mejora' },
+              { value: 'Comentario General', label: 'Comentario general' },
+              { value: 'Duda', label: 'Tengo una duda / Necesito ayuda' }
+            ]}
+          />
         </div>
 
         <div className="flex flex-col gap-1.5">

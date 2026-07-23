@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { HelpCircle, MailCheck, KeyRound } from 'lucide-react'
-import { Dialog, Button, Input, Tooltip, Checkbox, useToast } from '@shared/ui'
+import { Dialog, Button, Input, Tooltip, Checkbox, useToast, Select } from '@shared/ui'
 import { ApiError } from '@shared/api'
 import { adminApi } from '../services/adminApi'
 import type { AdminUser } from '../types'
@@ -215,14 +215,15 @@ export function UserFormDialog({ open, user, onClose, onSaved }: UserFormDialogP
 
         <div>
           <label className="mb-1.5 block text-sm font-medium text-content-secondary">Rol</label>
-          <select
+          <Select
             value={form.role}
-            onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as 'admin' | 'user' }))}
+            onChange={(val) => setForm((f) => ({ ...f, role: val as 'admin' | 'user' }))}
             className="h-11 w-full rounded-drive border border-border-strong bg-surface px-3 text-content-primary focus:outline-none focus:ring-2 focus:ring-focus"
-          >
-            <option value="user">Usuario</option>
-            <option value="admin">Administrador</option>
-          </select>
+            options={[
+              { value: 'user', label: 'Usuario' },
+              { value: 'admin', label: 'Administrador' }
+            ]}
+          />
         </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -283,15 +284,15 @@ function QuotaField({
       </div>
       <div className="flex gap-2">
         <Input type="number" min="0" step="0.5" value={value} onChange={onValue} className="flex-1" />
-        <select
+        <Select
           value={unit}
-          onChange={(e) => onUnit(e.target.value as Unit)}
-          aria-label={`Unidad de ${label}`}
+          onChange={(val) => onUnit(String(val) as Unit)}
           className="h-11 shrink-0 rounded-drive border border-border-strong bg-surface px-3 text-content-primary focus:outline-none focus:ring-2 focus:ring-focus"
-        >
-          <option value="MB">MB</option>
-          <option value="GB">GB</option>
-        </select>
+          options={[
+            { value: 'MB', label: 'MB' },
+            { value: 'GB', label: 'GB' }
+          ]}
+        />
       </div>
     </div>
   )

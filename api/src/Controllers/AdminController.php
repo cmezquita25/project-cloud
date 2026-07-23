@@ -229,10 +229,10 @@ final class AdminController
     public function storageHistory(Request $request): Response
     {
         $period = $request->param('period', '7d');
-        $days = match($period) {
-            'today' => 1,
-            '30d' => 30,
-            default => 7,
+        $dateFilter = match($period) {
+            'today' => 'CURDATE()',
+            '30d' => 'DATE_SUB(CURDATE(), INTERVAL 30 DAY)',
+            default => 'DATE_SUB(CURDATE(), INTERVAL 7 DAY)',
         };
         
         $pdo = \ProjectCloud\Core\Database::pdo();
@@ -240,10 +240,10 @@ final class AdminController
         $stmt = $pdo->prepare("
             SELECT `date`, `total_bytes`
             FROM `storage_history`
-            WHERE `date` >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+            WHERE `date` >= $dateFilter
             ORDER BY `date` ASC
         ");
-        $stmt->execute([$days]);
+        $stmt->execute();
         $history = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
         // Convert types
@@ -261,10 +261,10 @@ final class AdminController
     public function storageDistribution(Request $request): Response
     {
         $period = $request->param('period', '7d');
-        $days = match($period) {
-            'today' => 1,
-            '30d' => 30,
-            default => 7,
+        $dateFilter = match($period) {
+            'today' => 'CURDATE()',
+            '30d' => 'DATE_SUB(CURDATE(), INTERVAL 30 DAY)',
+            default => 'DATE_SUB(CURDATE(), INTERVAL 7 DAY)',
         };
 
         $pdo = \ProjectCloud\Core\Database::pdo();
@@ -275,28 +275,36 @@ final class AdminController
                 COALESCE(NULLIF(SUBSTRING_INDEX(mime_type, '/', 1), ''), 'unknown') as type,
                 SUM(size_bytes) as total_bytes
             FROM files
-            WHERE deleted_at IS NULL AND created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+            WHERE deleted_at IS NULL AND created_at >= $dateFilter
             GROUP BY type
             ORDER BY total_bytes DESC
         ");
-        $stmtMime->execute([$days]);
+        $stmtMime->execute();
         $byType = $stmtMime->fetchAll(\PDO::FETCH_ASSOC);
 
         // Distribution by user
         $stmtUser = $pdo->prepare("
             SELECT u.username, u.display_name, COALESCE(SUM(f.size_bytes), 0) as total_bytes
             FROM users u
-            LEFT JOIN files f ON f.user_id = u.id AND f.deleted_at IS NULL AND f.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+            LEFT JOIN files f ON f.user_id = u.id AND f.deleted_at IS NULL AND f.created_at >= $dateFilter
             GROUP BY u.id
             ORDER BY total_bytes DESC
         ");
-        $stmtUser->execute([$days]);
+        $stmtUser->execute();
         $byUser = $stmtUser->fetchAll(\PDO::FETCH_ASSOC);
 
         return Response::success([
             'by_type' => array_map(fn($row) => ['type' => $row['type'], 'total_bytes' => (int) $row['total_bytes']], $byType),
             'by_user' => array_map(fn($row) => ['username' => $row['username'], 'display_name' => $row['display_name'], 'total_bytes' => (int) $row['total_bytes']], $byUser)
         ]);
+    }
+
+    /** GET /admin/charts/workspace */
+    public function workspaceCharts(Request $request): Response
+    {
+        $period = $request->param('period', '30d');
+        $assets = new \ProjectCloud\Services\AssetsService();
+        return Response::success($assets->getWorkspaceStats($period));
     }
 
     /** GET /admin/server-info */

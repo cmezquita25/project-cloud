@@ -6,6 +6,7 @@ import type { DriveItem, FolderRef } from '../types'
 export function useDriveAdapter(): IExplorerAdapter {
   return useMemo<IExplorerAdapter>(() => ({
     mode: 'drive',
+    cacheKey: 'drive',
     capabilities: {
       canWrite: true,
       canStar: true,

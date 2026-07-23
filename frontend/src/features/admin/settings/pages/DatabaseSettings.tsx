@@ -126,6 +126,24 @@ export function DatabaseSettings() {
     }
   }
 
+  const handleMigrateAuto = async () => {
+    if (!window.confirm('¿Estás seguro de ejecutar la migración automática? Esto aplicará la estructura y columnas más recientes a tu base de datos.')) {
+      return
+    }
+
+    setIsMigrating(true)
+    loader.show('Aplicando esquema oficial...')
+    try {
+      const res = await databaseApi.migrateAuto()
+      toast.success(`Base de datos actualizada con éxito. Se ejecutaron ${res.statements} sentencias.`)
+    } catch {
+      toast.error('Error al aplicar la migración automática.')
+    } finally {
+      setIsMigrating(false)
+      loader.hide()
+    }
+  }
+
   const handleCreateBackup = async () => {
     setIsBackingUp(true)
     loader.show('Generando copia de seguridad. Esto puede tardar unos minutos...')
@@ -186,7 +204,7 @@ export function DatabaseSettings() {
       <div className="space-y-4 rounded-drive border border-border bg-surface p-5 shadow-sm">
         <h3 className="text-base font-medium text-content-primary">Migrar / Actualizar BD</h3>
         <p className="text-xs text-content-secondary -mt-2">
-          Sube un archivo `.sql` para actualizar la estructura de la base de datos.
+          Aplica el esquema oficial para actualizar la base de datos (recomendado). O sube un archivo `.sql` de migración personalizado.
         </p>
         
         <div className="flex items-center gap-4">
@@ -198,9 +216,15 @@ export function DatabaseSettings() {
             onChange={handleMigrate}
           />
           <Button 
+            onClick={handleMigrateAuto}
+            loading={isMigrating}
+          >
+            Actualización Automática
+          </Button>
+          <Button 
             variant="secondary"
             onClick={() => fileInputRef.current?.click()}
-            loading={isMigrating}
+            disabled={isMigrating}
           >
             Subir archivo SQL
           </Button>

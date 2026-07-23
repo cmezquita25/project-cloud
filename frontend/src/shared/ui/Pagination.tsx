@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@shared/lib/cn'
+import { Select } from './Select'
 
 interface PaginationProps {
   page: number
@@ -19,18 +20,19 @@ export function Pagination({ page, limit, total, onPageChange, onLimitChange, cl
     <div className={cn("flex flex-wrap items-center justify-between gap-4 border-t border-border px-4 py-3 sm:px-6", className)}>
       <div className="flex items-center gap-2 text-sm text-content-secondary">
         <span>Filas por página:</span>
-        <select
+        <Select
           value={limit}
-          onChange={(e) => {
-            onLimitChange(Number(e.target.value))
+          onChange={(val) => {
+            onLimitChange(Number(val))
             onPageChange(1) // Reset to first page
           }}
           className="rounded-md border-transparent bg-surface-hover py-1 px-2 text-content-primary focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
-        >
-          <option value={10}>10</option>
-          <option value={25}>25</option>
-          <option value={50}>50</option>
-        </select>
+          options={[
+            { value: 10, label: '10' },
+            { value: 25, label: '25' },
+            { value: 50, label: '50' },
+          ]}
+        />
       </div>
 
       <div className="flex items-center gap-4">

@@ -13,6 +13,6 @@ export const SETTINGS_NAV: SettingsNavItem[] = [
   { to: '/admin/settings/appearance', label: 'Configuración visual', icon: Palette },
   { to: '/admin/settings/email', label: 'Configuración del SMTP', icon: Mail },
   { to: '/admin/settings/email-templates', label: 'Plantillas de correo', icon: FileText },
-  { to: '/admin/settings/access', label: 'Acceso y permisos', icon: ShieldCheck },
+  { to: '/admin/settings/workspace', label: 'Espacio de trabajo', icon: ShieldCheck },
   { to: '/admin/settings/database', label: 'Base de datos', icon: Database },
 ]

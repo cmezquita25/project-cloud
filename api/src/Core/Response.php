@@ -78,7 +78,9 @@ final class Response
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
         // Auto-ETag para respuestas GET exitosas
-        if ($this->status === 200 && isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'GET') {
+        $isNoStore = isset($this->headers['Cache-Control']) && str_contains($this->headers['Cache-Control'], 'no-store');
+        
+        if (!$isNoStore && $this->status === 200 && isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'GET') {
             $etag = '"' . md5($json) . '"';
             $this->headers['ETag'] = $etag;
             

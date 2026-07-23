@@ -55,6 +55,22 @@ final class SchemaMigrator
             }
         }
 
+        // Aplicar migraciones estructurales sobre tablas existentes
+        $this->applyManualMigrations($pdo);
+
         return $count;
+    }
+
+    private function applyManualMigrations(PDO $pdo): void
+    {
+        // Añadir blocked_actions a assets_metadata
+        try {
+            $stmt = $pdo->query("SHOW COLUMNS FROM `assets_metadata` LIKE 'blocked_actions'");
+            if ($stmt && $stmt->rowCount() === 0) {
+                $pdo->exec("ALTER TABLE `assets_metadata` ADD COLUMN `blocked_actions` VARCHAR(255) NULL DEFAULT NULL AFTER `user_id`");
+            }
+        } catch (\Exception $e) {
+            // La tabla podría no existir aún o haber otro error, ignorar silenciosamente
+        }
     }
 }

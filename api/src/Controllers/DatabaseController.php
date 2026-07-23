@@ -40,6 +40,19 @@ final class DatabaseController
         return Response::success(['ok' => true, 'statements' => $count]);
     }
 
+    /** POST /admin/database/migrate-auto */
+    public function migrateAuto(Request $request): Response
+    {
+        $migrator = new \ProjectCloud\Services\SchemaMigrator();
+        $count = $migrator->run();
+        
+        ActivityLogger::log($request, 'database_migrate_auto', 'system', 0, [
+            'statements_executed' => $count,
+        ]);
+
+        return Response::success(['ok' => true, 'statements' => $count]);
+    }
+
     /** GET /admin/database/backups */
     public function listBackups(Request $request): Response
     {
