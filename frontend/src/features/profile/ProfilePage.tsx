@@ -1,6 +1,6 @@
 import { useRef, useState, type FormEvent } from 'react'
-import { Save, KeyRound, ShieldCheck, User as UserIcon, Cloud, Camera, Trash2 } from 'lucide-react'
-import { Avatar, Button, Input, Spinner, useToast } from '@shared/ui'
+import { Save, KeyRound, ShieldCheck, User as UserIcon, Camera, Trash2 } from 'lucide-react'
+import { Avatar, Button, Dialog, Input, Spinner, useToast } from '@shared/ui'
 import { ApiError } from '@shared/api'
 import { cn } from '@shared/lib/cn'
 import { formatBytes, usagePercent } from '@shared/lib/formatBytes'
@@ -17,6 +17,8 @@ export function ProfilePage() {
   const [email, setEmail] = useState(user?.email ?? '')
   const [savingProfile, setSavingProfile] = useState(false)
 
+  // Estado del Modal de Contraseña
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false)
   const [current, setCurrent] = useState('')
   const [next, setNext] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -92,6 +94,7 @@ export function ProfilePage() {
       setCurrent('')
       setNext('')
       setConfirm('')
+      setPasswordModalOpen(false)
       toast.success('Contraseña actualizada')
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'No se pudo cambiar la contraseña')
@@ -101,128 +104,201 @@ export function ProfilePage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl">
-      <h1 className="mb-6 text-2xl font-normal text-content-primary">Mi perfil</h1>
-
-      {/* Cabecera de identidad */}
-      <div className="mb-4 flex items-center gap-4 rounded-drive border border-border bg-surface p-6">
-        <div className="relative shrink-0">
-          <Avatar name={user.display_name} src={user.avatar_url} size={64} />
-          <button
-            type="button"
-            onClick={() => avatarInput.current?.click()}
-            disabled={avatarBusy}
-            aria-label="Cambiar foto de perfil"
-            className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-surface bg-primary text-primary-on shadow-elevation-1 transition-colors hover:bg-primary-hover disabled:opacity-60"
-          >
-            {avatarBusy ? <Spinner size={13} /> : <Camera size={14} />}
-          </button>
-          <input
-            ref={avatarInput}
-            type="file"
-            accept="image/png,image/jpeg,image/webp,image/gif"
-            className="hidden"
-            onChange={onAvatarChange}
-          />
+    <div className="mx-auto max-w-5xl space-y-6 pb-12">
+      {/* Título de la página */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-normal text-content-primary">Mi perfil</h1>
+          <p className="mt-1 text-sm text-content-secondary">
+            Administra la información de tu cuenta, seguridad y almacenamiento.
+          </p>
         </div>
-        <div className="min-w-0">
-          <p className="truncate text-lg font-medium text-content-primary">{user.display_name}</p>
-          <p className="truncate text-sm text-content-secondary">@{user.username}</p>
-          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-content-tertiary">
-            <span className="inline-flex items-center gap-1 rounded-pill bg-surface-container px-2 py-0.5">
-              {user.role === 'admin' ? <ShieldCheck size={13} /> : <UserIcon size={13} />}
-              {user.role === 'admin' ? 'Administrador' : 'Usuario'}
-            </span>
-            <span>
-              {formatBytes(user.used_bytes)} de {formatBytes(user.quota_bytes)} usados ({percent.toFixed(0)}%)
-            </span>
-            {user.avatar_url && (
-              <button
-                type="button"
-                onClick={removeAvatar}
-                disabled={avatarBusy}
-                className="inline-flex items-center gap-1 text-danger hover:underline disabled:opacity-60"
+      </div>
+
+      {/* Grid Bento Principal */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+        {/* Bento 1: Tarjeta de Identidad (Header - Col 12) */}
+        <div className="lg:col-span-12 rounded-drive border border-border bg-surface p-6 shadow-sm transition-all hover:border-border-strong">
+          <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-5">
+              <div className="relative shrink-0">
+                <Avatar name={user.display_name} src={user.avatar_url} size={72} />
+                <button
+                  type="button"
+                  onClick={() => avatarInput.current?.click()}
+                  disabled={avatarBusy}
+                  aria-label="Cambiar foto de perfil"
+                  className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full border-2 border-surface bg-primary text-primary-on shadow-elevation-1 transition-colors hover:bg-primary-hover disabled:opacity-60"
+                  title="Cambiar foto"
+                >
+                  {avatarBusy ? <Spinner size={14} /> : <Camera size={15} />}
+                </button>
+                <input
+                  ref={avatarInput}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  className="hidden"
+                  onChange={onAvatarChange}
+                />
+              </div>
+
+              <div className="min-w-0">
+                <div className="flex items-center gap-2.5">
+                  <h2 className="truncate text-xl font-medium text-content-primary">{user.display_name}</h2>
+                  <span className="inline-flex items-center gap-1 rounded-pill bg-primary-subtle px-2.5 py-0.5 text-xs font-medium text-primary">
+                    {user.role === 'admin' ? <ShieldCheck size={13} /> : <UserIcon size={13} />}
+                    {user.role === 'admin' ? 'Administrador' : 'Usuario'}
+                  </span>
+                </div>
+                <p className="truncate text-sm text-content-secondary mt-0.5">@{user.username} • {user.email}</p>
+
+                {user.avatar_url && (
+                  <button
+                    type="button"
+                    onClick={removeAvatar}
+                    disabled={avatarBusy}
+                    className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-danger hover:underline disabled:opacity-60 transition-colors"
+                  >
+                    <Trash2 size={13} /> Eliminar foto de perfil
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Acción de Seguridad (Abrir Modal de Contraseña) */}
+            <div className="shrink-0 self-start sm:self-center">
+              <Button
+                variant="secondary"
+                leftIcon={KeyRound}
+                onClick={() => setPasswordModalOpen(true)}
               >
-                <Trash2 size={12} /> Quitar foto
-              </button>
+                Cambiar contraseña
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Bento 2: Almacenamiento (Col 7 en Escritorio) */}
+        <div className="lg:col-span-7 flex flex-col justify-between rounded-drive border border-border bg-surface p-6 shadow-sm transition-all hover:border-border-strong">
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2.5 text-content-primary">
+                <span className="material-symbols-rounded text-[22px] text-primary">cloud</span>
+                <h3 className="font-medium text-base">Almacenamiento</h3>
+              </div>
+              <span className="text-xs font-medium px-2.5 py-1 rounded-pill bg-surface-container text-content-secondary">
+                {percent.toFixed(1)}% usado
+              </span>
+            </div>
+
+            <p className="text-2xl font-medium text-content-primary mb-1">
+              {formatBytes(user.used_bytes)}
+            </p>
+            <p className="text-xs text-content-tertiary mb-4">
+              de {formatBytes(user.quota_bytes)} totales asignados a tu cuenta
+            </p>
+
+            {/* Barra segmentada por tipo */}
+            <div className="flex h-3.5 w-full overflow-hidden rounded-pill bg-surface-hover">
+              {(quota?.breakdown ?? []).map((b) => {
+                const w = quota && quota.quota_bytes > 0 ? (b.bytes / quota.quota_bytes) * 100 : 0
+                return (
+                  <div
+                    key={b.kind}
+                    className={cn('h-full transition-all', KIND_META[b.kind].bar)}
+                    style={{ width: `${w}%` }}
+                    title={`${KIND_META[b.kind].label}: ${formatBytes(b.bytes)}`}
+                  />
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Desglose por tipo */}
+          <div className="mt-6 border-t border-border/60 pt-4">
+            {quota && quota.breakdown.length > 0 ? (
+              <ul className="grid grid-cols-1 gap-x-6 gap-y-2.5 sm:grid-cols-2">
+                {quota.breakdown.map((b) => (
+                  <li key={b.kind} className="flex items-center gap-2.5 text-xs">
+                    <span className={cn('h-2.5 w-2.5 shrink-0 rounded-full', KIND_META[b.kind].dot)} />
+                    <span className="flex-1 truncate text-content-primary font-medium">{KIND_META[b.kind].label}</span>
+                    <span className="text-content-tertiary">({b.count})</span>
+                    <span className="font-medium text-content-secondary">{formatBytes(b.bytes)}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-xs text-content-tertiary">Aún no has subido archivos a tu espacio.</p>
             )}
           </div>
         </div>
+
+        {/* Bento 3: Datos de la Cuenta (Col 5 en Escritorio) */}
+        <div className="lg:col-span-5 flex flex-col justify-between rounded-drive border border-border bg-surface p-6 shadow-sm transition-all hover:border-border-strong">
+          <form onSubmit={saveProfile} className="flex h-full flex-col justify-between space-y-4">
+            <div>
+              <h3 className="mb-4 text-base font-medium text-content-primary">Datos personales</h3>
+              <div className="space-y-4">
+                <Input
+                  label="Nombre visible"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  maxLength={120}
+                  required
+                />
+                <Input
+                  label="Correo electrónico"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+                <Input
+                  label="Usuario"
+                  value={user.username}
+                  disabled
+                  hint="El nombre de usuario es identificador único y no se puede cambiar."
+                />
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-border/60 flex justify-end">
+              <Button type="submit" leftIcon={Save} loading={savingProfile} disabled={!profileDirty}>
+                Guardar cambios
+              </Button>
+            </div>
+          </form>
+        </div>
       </div>
 
-      {/* Almacenamiento: uso total + desglose por tipo (igual que Almacenamiento). */}
-      <div className="mb-4 rounded-drive border border-border bg-surface p-6">
-        <div className="mb-2 flex items-center gap-2 text-content-secondary">
-          <Cloud size={20} />
-          <span className="font-medium">Almacenamiento</span>
-        </div>
-        <p className="text-sm text-content-tertiary">
-          {formatBytes(user.used_bytes)} de {formatBytes(user.quota_bytes)} usados ({percent.toFixed(0)}%)
-        </p>
-
-        {/* Barra segmentada por tipo */}
-        <div className="mt-3 flex h-3.5 w-full overflow-hidden rounded-pill bg-surface-hover">
-          {(quota?.breakdown ?? []).map((b) => {
-            const w = quota && quota.quota_bytes > 0 ? (b.bytes / quota.quota_bytes) * 100 : 0
-            return (
-              <div
-                key={b.kind}
-                className={cn('h-full', KIND_META[b.kind].bar)}
-                style={{ width: `${w}%` }}
-                title={`${KIND_META[b.kind].label}: ${formatBytes(b.bytes)}`}
-              />
-            )
-          })}
-        </div>
-
-        {/* Desglose por tipo */}
-        {quota && quota.breakdown.length > 0 ? (
-          <ul className="mt-4 grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
-            {quota.breakdown.map((b) => (
-              <li key={b.kind} className="flex items-center gap-2.5 text-sm">
-                <span className={cn('h-2.5 w-2.5 shrink-0 rounded-full', KIND_META[b.kind].dot)} />
-                <span className="flex-1 truncate text-content-primary">{KIND_META[b.kind].label}</span>
-                <span className="text-xs text-content-tertiary">{b.count}</span>
-                <span className="w-20 text-right font-medium text-content-primary">{formatBytes(b.bytes)}</span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="mt-3 text-xs text-content-tertiary">Aún no has subido archivos.</p>
-        )}
-      </div>
-
-      {/* Datos del perfil */}
-      <form onSubmit={saveProfile} className="mb-4 rounded-drive border border-border bg-surface p-6">
-        <h2 className="mb-4 text-base font-medium text-content-primary">Datos de la cuenta</h2>
-        <div className="flex flex-col gap-4">
-          <Input
-            label="Nombre visible"
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            maxLength={120}
-            required
-          />
-          <Input
-            label="Correo electrónico"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-          <Input label="Usuario" value={user.username} disabled hint="El nombre de usuario no se puede cambiar." />
-        </div>
-        <div className="mt-5 flex justify-end">
-          <Button type="submit" leftIcon={Save} loading={savingProfile} disabled={!profileDirty}>
-            Guardar cambios
-          </Button>
-        </div>
-      </form>
-
-      {/* Cambio de contraseña */}
-      <form onSubmit={savePassword} className="rounded-drive border border-border bg-surface p-6">
-        <h2 className="mb-4 text-base font-medium text-content-primary">Cambiar contraseña</h2>
-        <div className="flex flex-col gap-4">
+      {/* Modal Global: Cambiar Contraseña */}
+      <Dialog
+        open={passwordModalOpen}
+        onClose={() => (savingPassword ? undefined : setPasswordModalOpen(false))}
+        title="Cambiar contraseña"
+        description="Introduce tu contraseña actual y define una nueva clave segura."
+        size="sm"
+        footer={
+          <>
+            <Button
+              variant="ghost"
+              onClick={() => setPasswordModalOpen(false)}
+              disabled={savingPassword}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              form="change-password-form"
+              loading={savingPassword}
+              disabled={!current || !next || !confirm}
+            >
+              Actualizar contraseña
+            </Button>
+          </>
+        }
+      >
+        <form id="change-password-form" onSubmit={savePassword} className="space-y-4 pt-2">
           <Input
             label="Contraseña actual"
             type="password"
@@ -230,6 +306,7 @@ export function ProfilePage() {
             value={current}
             onChange={(e) => setCurrent(e.target.value)}
             required
+            autoFocus
           />
           <Input
             label="Nueva contraseña"
@@ -248,19 +325,8 @@ export function ProfilePage() {
             onChange={(e) => setConfirm(e.target.value)}
             required
           />
-        </div>
-        <div className="mt-5 flex justify-end">
-          <Button
-            type="submit"
-            variant="secondary"
-            leftIcon={KeyRound}
-            loading={savingPassword}
-            disabled={!current || !next || !confirm}
-          >
-            Actualizar contraseña
-          </Button>
-        </div>
-      </form>
+        </form>
+      </Dialog>
     </div>
   )
 }

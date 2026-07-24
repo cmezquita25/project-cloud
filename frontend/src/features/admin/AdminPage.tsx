@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useLocation } from 'react-router-dom'
 import { Users, HardDrive, UserPlus, Pencil, Server } from 'lucide-react'
@@ -9,6 +9,8 @@ import { useAuth } from '@features/auth/AuthProvider'
 import { adminApi } from './services/adminApi'
 import { authApi } from '@features/auth/services/authApi'
 import { UsersTable } from './components/UsersTable'
+import type { UserSortField, UserSortOrder } from './components/UsersTable'
+import { UserFilters } from './components/UserFilters'
 import { UserFormDialog } from './components/UserFormDialog'
 import { PasswordResetDialog } from './components/PasswordResetDialog'
 import { ActivityList } from './components/ActivityList'
@@ -60,6 +62,60 @@ export function AdminPage() {
   const [userPage, setUserPage] = useState(1)
   const [userLimit, setUserLimit] = useState(10)
 
+  // --- Ordenamiento, búsqueda y filtros de la tabla de usuarios ---
+  const [userSort, setUserSort] = useState<UserSortField>('id')
+  const [userOrder, setUserOrder] = useState<UserSortOrder>('asc')
+  const [userSearch, setUserSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [userStatusFilter, setUserStatusFilter] = useState('')
+  const [userRoleFilter, setUserRoleFilter] = useState('')
+  const [userDateFrom, setUserDateFrom] = useState('')
+  const [userDateTo, setUserDateTo] = useState('')
+
+  // Debounce del buscador (300ms)
+  const searchTimer = useRef<ReturnType<typeof setTimeout>>()
+  useEffect(() => {
+    searchTimer.current = setTimeout(() => {
+      setDebouncedSearch(userSearch)
+      setUserPage(1)
+    }, 300)
+    return () => clearTimeout(searchTimer.current)
+  }, [userSearch])
+
+  const handleSortChange = (field: UserSortField) => {
+    if (field === userSort) {
+      setUserOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setUserSort(field)
+      setUserOrder(field === 'used_bytes' ? 'desc' : 'asc')
+    }
+    setUserPage(1)
+  }
+
+  const userFilters = useMemo(() => {
+    const f: Record<string, string> = { sort: userSort, order: userOrder }
+    if (debouncedSearch) f.search = debouncedSearch
+    if (userStatusFilter) f.status = userStatusFilter
+    if (userRoleFilter) f.role = userRoleFilter
+    if (userDateFrom) f.date_from = userDateFrom
+    if (userDateTo) f.date_to = userDateTo
+    return f
+  }, [userSort, userOrder, debouncedSearch, userStatusFilter, userRoleFilter, userDateFrom, userDateTo])
+
+  const hasActiveFilters = !!(debouncedSearch || userStatusFilter || userRoleFilter || userDateFrom || userDateTo)
+
+  const clearAllFilters = () => {
+    setUserSearch('')
+    setDebouncedSearch('')
+    setUserStatusFilter('')
+    setUserRoleFilter('')
+    setUserDateFrom('')
+    setUserDateTo('')
+    setUserSort('id')
+    setUserOrder('asc')
+    setUserPage(1)
+  }
+
   const [activityPage, setActivityPage] = useState(1)
   const [activityLimit, setActivityLimit] = useState(30)
 
@@ -78,8 +134,8 @@ export function AdminPage() {
   })
 
   const { data: usersData, isLoading: usersLoading } = useQuery({
-    queryKey: ['admin', 'users', userPage, userLimit],
-    queryFn: () => adminApi.users(userPage, userLimit)
+    queryKey: ['admin', 'users', userPage, userLimit, userFilters],
+    queryFn: () => adminApi.users(userPage, userLimit, userFilters)
   })
   const users = usersData?.items ?? []
   const userTotal = usersData?.total ?? 0
@@ -362,19 +418,39 @@ export function AdminPage() {
             </div>
           </div>
         ) : tab === 'users' ? (
-          <UsersTable
-            users={users}
-            currentUserId={user?.id ?? 0}
-            onEdit={(u) => { setEditUser(u); setFormOpen(true) }}
-            onResetPassword={setPwdUser}
-            onToggleStatus={toggleStatus}
-            onDelete={setDeleteUser}
-            page={userPage}
-            limit={userLimit}
-            total={userTotal}
-            onPageChange={setUserPage}
-            onLimitChange={setUserLimit}
-          />
+          <div className="space-y-4">
+            <UserFilters
+              dateFrom={userDateFrom}
+              onDateFromChange={(val) => { setUserDateFrom(val); setUserPage(1) }}
+              dateTo={userDateTo}
+              onDateToChange={(val) => { setUserDateTo(val); setUserPage(1) }}
+              role={userRoleFilter}
+              onRoleChange={(val) => { setUserRoleFilter(val); setUserPage(1) }}
+              status={userStatusFilter}
+              onStatusChange={(val) => { setUserStatusFilter(val); setUserPage(1) }}
+              search={userSearch}
+              onSearchChange={setUserSearch}
+              hasActiveFilters={hasActiveFilters}
+              onClearFilters={clearAllFilters}
+            />
+
+            <UsersTable
+              users={users}
+              currentUserId={user?.id ?? 0}
+              onEdit={(u) => { setEditUser(u); setFormOpen(true) }}
+              onResetPassword={setPwdUser}
+              onToggleStatus={toggleStatus}
+              onDelete={setDeleteUser}
+              page={userPage}
+              limit={userLimit}
+              total={userTotal}
+              onPageChange={setUserPage}
+              onLimitChange={setUserLimit}
+              sort={userSort}
+              order={userOrder}
+              onSortChange={handleSortChange}
+            />
+          </div>
         ) : (
           <ActivityList
             items={activity}

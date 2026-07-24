@@ -99,6 +99,66 @@ final class AvatarService
             }
         }
         @chmod($dest, 0644);
+        $this->resizeAvatar($dest, 250);
+    }
+
+    /** Redimensiona la imagen a un tamaño máximo manteniendo proporciones. */
+    private function resizeAvatar(string $path, int $max = 250): void
+    {
+        if (!function_exists('imagecreatetruecolor') || !is_file($path)) {
+            return;
+        }
+
+        $info = @getimagesize($path);
+        if ($info === false) {
+            return;
+        }
+
+        $w = (int) ($info[0] ?? 0);
+        $h = (int) ($info[1] ?? 0);
+        $type = (int) ($info[2] ?? 0);
+        if ($w <= $max && $h <= $max) {
+            return;
+        }
+
+        $srcImg = match ($type) {
+            IMAGETYPE_JPEG => @imagecreatefromjpeg($path),
+            IMAGETYPE_PNG  => @imagecreatefrompng($path),
+            IMAGETYPE_GIF  => @imagecreatefromgif($path),
+            IMAGETYPE_WEBP => function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($path) : false,
+            default        => false,
+        };
+        if (!$srcImg) {
+            return;
+        }
+
+        $scale = min(1.0, $max / max($w, $h));
+        $nw = max(1, (int) round($w * $scale));
+        $nh = max(1, (int) round($h * $scale));
+
+        $dst = imagecreatetruecolor($nw, $nh);
+
+        if ($type === IMAGETYPE_PNG || $type === IMAGETYPE_WEBP) {
+            imagealphablending($dst, false);
+            imagesavealpha($dst, true);
+            $transparent = imagecolorallocatealpha($dst, 0, 0, 0, 127);
+            if ($transparent !== false) {
+                imagefilledrectangle($dst, 0, 0, $nw, $nh, $transparent);
+            }
+        }
+
+        imagecopyresampled($dst, $srcImg, 0, 0, 0, 0, $nw, $nh, $w, $h);
+
+        match ($type) {
+            IMAGETYPE_JPEG => @imagejpeg($dst, $path, 85),
+            IMAGETYPE_PNG  => @imagepng($dst, $path, 6),
+            IMAGETYPE_GIF  => @imagegif($dst, $path),
+            IMAGETYPE_WEBP => function_exists('imagewebp') ? @imagewebp($dst, $path, 85) : @imagejpeg($dst, $path, 85),
+            default        => null,
+        };
+
+        imagedestroy($srcImg);
+        imagedestroy($dst);
     }
 
     /** Elimina el avatar del usuario (vuelve a iniciales). */

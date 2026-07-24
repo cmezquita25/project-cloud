@@ -35,8 +35,15 @@ final class AdminController
         $users = new UserRepository();
         $limit = min(100, max(1, (int) ($request->query['limit'] ?? 50)));
         $page = max(1, (int) ($request->query['page'] ?? 1));
-        
-        $result = $users->paginate($limit, ($page - 1) * $limit);
+
+        $filters = [];
+        foreach (['sort', 'order', 'search', 'status', 'role', 'date_from', 'date_to'] as $key) {
+            if (!empty($request->query[$key])) {
+                $filters[$key] = (string) $request->query[$key];
+            }
+        }
+
+        $result = $users->paginate($limit, ($page - 1) * $limit, $filters);
         $list = array_map(fn (array $u) => $this->userPublic($u), $result['items']);
         
         return Response::success([
@@ -185,6 +192,9 @@ final class AdminController
                 throw new HttpException(422, 'CANNOT_SUSPEND_SELF', 'No puedes suspender tu propia cuenta.');
             }
             $fields['status'] = (string) $body['status'];
+            if ($fields['status'] === 'suspended') {
+                (new \ProjectCloud\Repositories\RefreshTokenRepository())->revokeAllForUser($id);
+            }
         }
 
         if ($fields === []) {

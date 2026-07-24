@@ -31,7 +31,7 @@ export function AppLayout() {
     setTimeout(() => {
       drawer.close()
       setIsClosing(false)
-    }, 200) // Duración de la animación (menor o igual a la duración CSS)
+    }, 240) // Duración de la animación (240ms)
   }
 
   const showDrawer = isMobile && (drawer.isOpen || isClosing)
@@ -69,10 +69,15 @@ export function AppLayout() {
             <div className="mx-auto h-full w-full max-w-[1600px] px-4 py-4 sm:px-6 flex flex-col">
               <Outlet />
             </div>
+
+            {/* Móvil: footer dentro del scroll (se ve al llegar al final) */}
+            <div className="mt-auto block sm:hidden">
+              <Footer />
+            </div>
           </main>
 
-          {/* Pie de página global (fijo abajo) */}
-          <div className="shrink-0">
+          {/* Escritorio: footer fijo abajo */}
+          <div className="hidden shrink-0 sm:block">
             <Footer />
           </div>
         </div>

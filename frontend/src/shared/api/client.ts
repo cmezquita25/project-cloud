@@ -25,11 +25,12 @@ interface RequestOptions {
   headers?: Record<string, string>
 }
 
-/** Callback invocado cuando la sesión expira irrecuperablemente. */
-let onSessionExpired: (() => void) | null = null
-export function setOnSessionExpired(cb: (() => void) | null): void {
+/** Callback invocado cuando la sesión expira o es revocada. */
+let onSessionExpired: ((reason?: string, message?: string) => void) | null = null
+export function setOnSessionExpired(cb: ((reason?: string, message?: string) => void) | null): void {
   onSessionExpired = cb
 }
+
 
 // Single-flight del refresh: si varias peticiones fallan con 401 a la vez,
 // solo se dispara UN refresh y todas esperan su resultado.
@@ -140,9 +141,12 @@ async function request<T>(
     try {
       await refreshOnce()
       res = await raw(method, path, body, options)
-    } catch {
-      onSessionExpired?.()
-      throw new ApiError('SESSION_EXPIRED', 'Tu sesión expiró. Inicia de nuevo.', 401)
+    } catch (refreshErr) {
+      const code = refreshErr instanceof ApiError ? refreshErr.code : 'SESSION_EXPIRED'
+      const msg = refreshErr instanceof ApiError ? refreshErr.message : 'Tu sesión expiró. Inicia de nuevo.'
+      session.clear()
+      onSessionExpired?.(code, msg)
+      throw new ApiError(code, msg, 401)
     }
   }
 
@@ -162,9 +166,15 @@ async function request<T>(
   }
 
   if (!res.ok || !envelope.success) {
+    const code = envelope.error?.code ?? 'ERROR'
+    const msg = envelope.error?.message ?? 'Ocurrió un error'
+    if (code === 'ACCOUNT_SUSPENDED') {
+      session.clear()
+      onSessionExpired?.('ACCOUNT_SUSPENDED', msg)
+    }
     throw new ApiError(
-      envelope.error?.code ?? 'ERROR',
-      envelope.error?.message ?? 'Ocurrió un error',
+      code,
+      msg,
       res.status,
       envelope.error?.details
     )

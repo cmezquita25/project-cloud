@@ -9,6 +9,7 @@ import {
 } from 'react'
 import { session, setOnSessionExpired } from '@shared/api'
 import { useQueryClient } from '@tanstack/react-query'
+import { useToast } from '@shared/ui'
 import { authApi } from './services/authApi'
 import type { LoginCredentials, User } from './types'
 
@@ -29,6 +30,8 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUserState] = useState<User | null>(null)
   const [status, setStatus] = useState<AuthStatus>('loading')
+  const toast = useToast()
+  const queryClient = useQueryClient()
 
   // Rehidrata la sesión al arrancar (si hay refresh token guardado).
   useEffect(() => {
@@ -54,22 +57,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  // Si una petición en segundo plano detecta sesión expirada, cerramos.
+  // Si una petición en segundo plano detecta sesión expirada o cuenta suspendida, cerramos.
   useEffect(() => {
-    setOnSessionExpired(() => {
+    setOnSessionExpired((reason, message) => {
       setUserState(null)
       setStatus('unauthenticated')
+      queryClient.clear()
+      window.sessionStorage.clear()
+      if (reason === 'ACCOUNT_SUSPENDED') {
+        toast.error(message || 'Tu sesión ha finalizado. Tu cuenta ha sido suspendida. Ponte en contacto con el administrador.')
+      }
     })
     return () => setOnSessionExpired(null)
-  }, [])
+  }, [queryClient, toast])
 
   const login = useCallback(async (credentials: LoginCredentials) => {
     const u = await authApi.login(credentials)
     setUserState(u)
     setStatus('authenticated')
   }, [])
-
-  const queryClient = useQueryClient()
 
   const logout = useCallback(async () => {
     await authApi.logout()

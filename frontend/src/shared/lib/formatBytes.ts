@@ -2,7 +2,7 @@
  * Formatea bytes a una cadena legible (KB, MB, GB…).
  * @example formatBytes(1536) // "1.5 KB"
  */
-export function formatBytes(bytes: number, decimals = 1): string {
+export function formatBytes(bytes: number, decimals = 2): string {
   if (!Number.isFinite(bytes) || bytes <= 0) return '0 B'
   const k = 1024
   const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']

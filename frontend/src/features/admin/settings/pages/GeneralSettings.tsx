@@ -11,11 +11,11 @@ export function GeneralSettings() {
   const settings = usePlatformSettings()
   const toast = useToast()
   const loader = useLoader()
-  
+
   const [orgName, setOrgName] = useState('')
   const [slogan, setSlogan] = useState('')
   const [supportEmail, setSupportEmail] = useState('')
-  
+
   const [savingOrg, setSavingOrg] = useState(false)
   const [savingSupport, setSavingSupport] = useState(false)
 
@@ -68,14 +68,14 @@ export function GeneralSettings() {
         <p className="text-xs text-content-secondary -mt-2">
           Personaliza la identidad visual y marca de tu nube.
         </p>
-        
+
         <Input
           label="Nombre de la organización"
           placeholder="Ej. Mi Empresa S.A."
           value={orgName}
           onChange={(e) => setOrgName(e.target.value)}
         />
-        
+
         <div className="flex w-full flex-col gap-1.5">
           <label htmlFor="org-slogan" className="text-sm font-medium text-content-secondary">
             Descripción o eslogan <span className="font-normal text-content-tertiary">(opcional)</span>
@@ -93,7 +93,7 @@ export function GeneralSettings() {
             Se muestra bajo el logo en la pantalla de inicio de sesión. {slogan.length}/{SLOGAN_MAX}
           </p>
         </div>
-        
+
         <div className="flex justify-end pt-2">
           <Button onClick={saveOrg} loading={savingOrg}>
             Guardar cambios
@@ -137,7 +137,7 @@ export function GeneralSettings() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 rounded-lg bg-surface-container/50 p-4 border border-border/40">
             <div>
               <p className="text-xs text-content-tertiary">Desarrollado por</p>
-              <p className="text-sm font-medium text-content-primary">Techmaleon</p>
+              <p className="text-sm font-medium text-content-primary">Carlos Mezquita Alvarado</p>
             </div>
             <div>
               <p className="text-xs text-content-tertiary">Versión de la app</p>

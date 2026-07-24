@@ -246,10 +246,34 @@ final class AuthController
         if ($path === null) {
             throw HttpException::notFound('Sin avatar');
         }
+
+        $mtime = (int) (@filemtime($path) ?: 0);
+        $etag = '"avatar-' . $id . '-' . $mtime . '"';
+
+        $ifNoneMatch = $_SERVER['HTTP_IF_NONE_MATCH'] ?? '';
+        if ($ifNoneMatch !== '' && trim($ifNoneMatch) === $etag) {
+            http_response_code(304);
+            exit;
+        }
+
+        $ifModifiedSince = $_SERVER['HTTP_IF_MODIFIED_SINCE'] ?? '';
+        if ($ifModifiedSince !== '' && strtotime($ifModifiedSince) >= $mtime) {
+            http_response_code(304);
+            exit;
+        }
+
         $mime = mime_content_type($path) ?: 'application/octet-stream';
         header('Content-Type: ' . $mime);
         header('Content-Length: ' . (string) filesize($path));
-        header('Cache-Control: public, max-age=300');
+        header('ETag: ' . $etag);
+        header('Last-Modified: ' . gmdate('D, d M Y H:i:s', $mtime) . ' GMT');
+
+        if (!empty($request->query['v'])) {
+            header('Cache-Control: public, max-age=31536000, immutable');
+        } else {
+            header('Cache-Control: public, max-age=86400');
+        }
+
         readfile($path);
         exit;
     }

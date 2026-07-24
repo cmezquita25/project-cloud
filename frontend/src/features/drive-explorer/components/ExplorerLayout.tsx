@@ -447,7 +447,7 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
 
   return (
     <div
-      className="relative flex h-full max-sm:h-auto max-sm:flex-1"
+      className="relative flex flex-1 h-full"
       onDragEnter={onDragEnter}
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
@@ -464,7 +464,7 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="sticky top-16 z-20 -mx-4 px-4 py-3 sm:static sm:mx-0 sm:px-0 sm:py-0 mb-4 bg-canvas flex flex-col sm:flex-row sm:h-10 sm:items-center justify-between gap-3 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)] sm:shadow-none">
+        <div className="sticky top-0 z-20 -mx-4 px-4 py-1.5 sm:static sm:mx-0 sm:px-0 sm:py-0 mb-1 sm:mb-4 bg-canvas flex flex-col sm:flex-row sm:h-10 sm:items-center justify-between gap-3 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)] sm:shadow-none">
           {selected.size > 0 ? (
             <div className="flex min-w-0 flex-wrap items-center gap-2">
               <IconButton icon={X} label="Deseleccionar" size="sm" onClick={clearSelection} />
@@ -501,7 +501,7 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
               }}
               className={cn(
                 'sm:hidden rounded-lg px-3 py-1.5 text-sm font-medium transition-colors',
-                isSelectMode ? 'bg-primary text-primary-content' : 'bg-surface-container text-content-primary hover:bg-surface-hover'
+                isSelectMode ? 'bg-primary text-primary-on' : 'bg-surface-container text-content-primary hover:bg-surface-hover'
               )}
             >
               {isSelectMode ? 'Listo' : 'Seleccionar'}

@@ -523,6 +523,17 @@ final class AssetsService
         $stmt = $this->pdo->prepare("INSERT INTO assets_metadata (path, user_id, size_bytes) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE user_id = VALUES(user_id), size_bytes = VALUES(size_bytes)");
         $stmt->execute([$rel, $userId, $size]);
 
+        if ($parentRelative !== '') {
+            $folderSegments = explode('/', trim($parentRelative, '/'));
+            $accPath = '';
+            $folderMetaStmt = $this->pdo->prepare("INSERT INTO assets_metadata (path, user_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE user_id = COALESCE(user_id, VALUES(user_id))");
+            foreach ($folderSegments as $seg) {
+                if ($seg === '') continue;
+                $accPath = $accPath === '' ? $seg : $accPath . '/' . $seg;
+                $folderMetaStmt->execute([$accPath, $userId]);
+            }
+        }
+
         $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
         return [
             'type'       => 'file',

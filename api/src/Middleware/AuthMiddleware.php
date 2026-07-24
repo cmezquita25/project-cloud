@@ -8,13 +8,11 @@ use ProjectCloud\Core\HttpException;
 use ProjectCloud\Core\Jwt;
 use ProjectCloud\Core\Middleware;
 use ProjectCloud\Core\Request;
+use ProjectCloud\Repositories\UserRepository;
 
 /**
  * Exige un access token JWT válido en `Authorization: Bearer`.
- * Adjunta el usuario (derivado de los claims) a la Request.
- *
- * El access token es stateless; la verificación contra BD (status, revocación)
- * se refuerza en la Fase 3 con el UserRepository.
+ * Adjunta el usuario a la Request y verifica que su cuenta esté activa.
  */
 final class AuthMiddleware implements Middleware
 {
@@ -33,12 +31,18 @@ final class AuthMiddleware implements Middleware
             throw HttpException::unauthorized('Token sin sujeto válido', 'TOKEN_INVALID');
         }
 
+        // Verificación de estado activo en BD
+        $user = (new UserRepository())->findById($userId);
+        if ($user === null || ($user['status'] ?? 'active') !== 'active') {
+            throw HttpException::unauthorized('Tu cuenta ha sido suspendida. Ponte en contacto con el administrador.', 'ACCOUNT_SUSPENDED');
+        }
+
         $request->setUser([
             'id'           => $userId,
-            'role'         => (string) ($claims['role'] ?? 'user'),
-            'username'     => (string) ($claims['username'] ?? ''),
-            'email'        => (string) ($claims['email'] ?? ''),
-            'display_name' => (string) ($claims['display_name'] ?? ''),
+            'role'         => (string) ($user['role'] ?? 'user'),
+            'username'     => (string) ($user['username'] ?? ''),
+            'email'        => (string) ($user['email'] ?? ''),
+            'display_name' => (string) ($user['display_name'] ?? ''),
         ]);
     }
 }

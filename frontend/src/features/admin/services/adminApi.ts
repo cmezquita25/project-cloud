@@ -17,7 +17,13 @@ import type {
 export const adminApi = {
   stats: () => api.get<AdminStats>('/admin/stats'),
   serverInfo: () => api.get<Record<string, string>>('/admin/server-info'),
-  users: (page = 1, limit = 10) => api.get<UsersPage>(`/admin/users?page=${page}&limit=${limit}`),
+  users: (page = 1, limit = 10, filters?: { sort?: string; order?: string; search?: string; status?: string; role?: string; date_from?: string; date_to?: string }) => {
+    const params = new URLSearchParams({ page: String(page), limit: String(limit) })
+    if (filters) {
+      Object.entries(filters).forEach(([k, v]) => { if (v) params.set(k, v) })
+    }
+    return api.get<UsersPage>(`/admin/users?${params.toString()}`)
+  },
   createUser: (payload: CreateUserPayload) => api.post<CreateUserResult>('/admin/users', payload),
   updateUser: (id: number, fields: UpdateUserPayload) =>
     api.patch<AdminUser>(`/admin/users/${id}`, fields),

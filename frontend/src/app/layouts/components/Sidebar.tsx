@@ -1,5 +1,4 @@
 import { useRef, useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
 import { Plus, FolderPlus, FileUp, FolderUp } from 'lucide-react'
 import { NavLink, useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { cn } from '@shared/lib/cn'
@@ -158,12 +157,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
   ]
 
   return (
-    <motion.div 
-      initial={{ x: '-100%', opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      transition={{ duration: 0.3 }}
-      className="flex h-full flex-col border-r border-border bg-surface"
-    >
+    <div className="flex h-full flex-col border-r border-border bg-surface">
       {/* Buscador móvil */}
       <div className="px-3 pt-4 pb-2 md:hidden">
         <form
@@ -228,6 +222,6 @@ export function Sidebar({ onNavigate }: SidebarProps) {
           onNavigate={onNavigate}
         />
       </div>
-    </motion.div>
+    </div>
   )
 }

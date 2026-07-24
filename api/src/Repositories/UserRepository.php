@@ -74,15 +74,76 @@ class UserRepository
     }
 
     /**
+     * Paginación con orden, búsqueda y filtros opcionales.
+     *
+     * @param array{sort?:string,order?:string,search?:string,status?:string,role?:string,date_from?:string,date_to?:string} $filters
      * @return array{items:array<int,array<string,mixed>>,total:int}
      */
-    public function paginate(int $limit, int $offset): array
+    public function paginate(int $limit, int $offset, array $filters = []): array
     {
-        $total = (int) $this->pdo->query('SELECT COUNT(*) FROM users')->fetchColumn();
+        // --- Whitelist de columnas para ORDER BY ---
+        $sortWhitelist = [
+            'id'               => 'id',
+            'username'         => 'username',
+            'display_name'     => 'display_name',
+            'role'             => 'role',
+            'status'           => 'status',
+            'max_upload_bytes' => 'max_upload_bytes',
+            'used_bytes'       => 'used_bytes',
+            'created_at'       => 'created_at',
+        ];
 
-        $stmt = $this->pdo->prepare('SELECT * FROM users ORDER BY created_at DESC LIMIT ? OFFSET ?');
-        $stmt->bindValue(1, $limit, PDO::PARAM_INT);
-        $stmt->bindValue(2, $offset, PDO::PARAM_INT);
+        $sortCol = $sortWhitelist[$filters['sort'] ?? 'id'] ?? 'id';
+        $sortDir = strtoupper($filters['order'] ?? 'asc') === 'DESC' ? 'DESC' : 'ASC';
+
+        // --- WHERE dinámico ---
+        $where  = [];
+        $params = [];
+
+        if (!empty($filters['search'])) {
+            $where[]  = '(username LIKE ? OR display_name LIKE ?)';
+            $term     = '%' . $filters['search'] . '%';
+            $params[] = $term;
+            $params[] = $term;
+        }
+
+        if (!empty($filters['status']) && in_array($filters['status'], ['active', 'suspended'], true)) {
+            $where[]  = 'status = ?';
+            $params[] = $filters['status'];
+        }
+
+        if (!empty($filters['role']) && in_array($filters['role'], ['admin', 'user'], true)) {
+            $where[]  = 'role = ?';
+            $params[] = $filters['role'];
+        }
+
+        if (!empty($filters['date_from'])) {
+            $where[]  = 'created_at >= ?';
+            $params[] = $filters['date_from'] . ' 00:00:00';
+        }
+
+        if (!empty($filters['date_to'])) {
+            $where[]  = 'created_at <= ?';
+            $params[] = $filters['date_to'] . ' 23:59:59';
+        }
+
+        $whereClause = $where ? ' WHERE ' . implode(' AND ', $where) : '';
+
+        // --- COUNT ---
+        $countStmt = $this->pdo->prepare("SELECT COUNT(*) FROM users{$whereClause}");
+        $countStmt->execute($params);
+        $total = (int) $countStmt->fetchColumn();
+
+        // --- SELECT ---
+        $sql  = "SELECT * FROM users{$whereClause} ORDER BY {$sortCol} {$sortDir} LIMIT ? OFFSET ?";
+        $stmt = $this->pdo->prepare($sql);
+
+        $i = 1;
+        foreach ($params as $p) {
+            $stmt->bindValue($i++, $p);
+        }
+        $stmt->bindValue($i++, $limit, PDO::PARAM_INT);
+        $stmt->bindValue($i, $offset, PDO::PARAM_INT);
         $stmt->execute();
 
         return ['items' => $stmt->fetchAll(), 'total' => $total];
@@ -161,11 +222,15 @@ class UserRepository
                     COALESCE(SUM(quota_bytes), 0) AS allocated_users
                FROM users"
         )->fetch();
+
+        $usedFiles = (int) $this->pdo->query("SELECT COALESCE(SUM(size_bytes), 0) FROM files WHERE deleted_at IS NULL")->fetchColumn();
+        $totalUsed = max((int) $row['used'], $usedFiles);
+
         return [
             'users'           => (int) $row['users'],
             'active'          => (int) $row['active'],
             'admins'          => (int) $row['admins'],
-            'used'            => (int) $row['used'],
+            'used'            => $totalUsed,
             'quota'           => (int) $row['quota'],
             // Suma de cuotas asignadas SOLO a usuarios (excluye a los admin, que
             // gestionan el conjunto): es lo que se compara con la capacidad.
