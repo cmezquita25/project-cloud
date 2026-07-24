@@ -66,6 +66,9 @@ export const assetsApi = {
   move: (path: string, target: string) =>
     api.post<{ type: string; name: string; path: string }>('/assets/move', { path, target }),
 
+  rename: (path: string, name: string) =>
+    api.post<{ type: string; name: string; path: string }>('/assets/rename', { path, name }),
+
   remove: (path: string) => api.delete<{ ok: true }>(`/assets?path=${encodeURIComponent(path)}`),
   
   restore: (path: string) => api.post<{ ok: true }>('/assets/restore', { path }),

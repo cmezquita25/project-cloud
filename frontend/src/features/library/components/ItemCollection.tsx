@@ -1,5 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { cn } from '@shared/lib/cn'
+import { motion, AnimatePresence } from 'framer-motion'
 import { X, FolderInput, Copy, Trash2, Download, Info, type LucideIcon } from 'lucide-react'
 import { EmptyState, Spinner, IconButton, Menu, useToast } from '@shared/ui'
 import { usePreview } from '@features/preview'
@@ -57,6 +59,7 @@ export function ItemCollection({ items, loading, error, reload, empty, showLocat
     () => (localStorage.getItem('pc-view') as ViewMode) || 'list'
   )
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [isSelectMode, setIsSelectMode] = useState(false)
   const [showDetails, setShowDetails] = useState(false)
   const [dialog, setDialog] = useState<DialogState>(null)
   const [ctxMenu, setCtxMenu] = useState<{ item: DriveItem; x: number; y: number } | null>(null)
@@ -65,7 +68,10 @@ export function ItemCollection({ items, loading, error, reload, empty, showLocat
   const [sort, setSort] = useSortState()
   const sorted = useMemo(() => sortDriveItems(items, sort), [items, sort])
   const selectedItems = useMemo(() => sorted.filter((i) => selected.has(key(i))), [sorted, selected])
-  const clearSelection = () => setSelected(new Set())
+  const clearSelection = () => {
+    setSelected(new Set())
+    setIsSelectMode(false)
+  }
 
   // Selección por área (lazo).
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -82,7 +88,8 @@ export function ItemCollection({ items, loading, error, reload, empty, showLocat
   // Selección por clic (el mosaico ya no muestra casilla): clic selecciona,
   // Ctrl/Cmd alterna. Se pinta el elemento seleccionado.
   const onItemClick = (item: DriveItem, e: React.MouseEvent) => {
-    if (e.ctrlKey || e.metaKey) {
+    const isMobileSelection = isSelectMode || (window.innerWidth < 640 && selected.size > 0)
+    if (e.ctrlKey || e.metaKey || isMobileSelection) {
       setSelected((prev) => {
         const next = new Set(prev)
         const k = key(item)
@@ -208,12 +215,12 @@ export function ItemCollection({ items, loading, error, reload, empty, showLocat
   }
 
   return (
-    <div className="relative flex h-full">
+    <div className="relative flex h-full max-sm:h-auto max-sm:flex-1">
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* Barra de herramientas (altura fija: sin salto al seleccionar) */}
-        <div className="mb-3 flex h-9 items-center justify-between gap-3">
+        {/* Barra de herramientas */}
+        <div className="sticky top-0 z-20 -mx-4 px-4 py-3 sm:static sm:mx-0 sm:px-0 sm:py-0 mb-3 bg-canvas flex flex-col sm:flex-row sm:h-9 sm:items-center justify-between gap-3 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)] sm:shadow-none">
           {selected.size > 0 ? (
-            <div className="flex min-w-0 items-center gap-2">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
               <IconButton icon={X} label="Deseleccionar" size="sm" onClick={clearSelection} />
               <span className="whitespace-nowrap text-sm font-medium text-primary">
                 {selected.size} seleccionado(s)
@@ -232,7 +239,19 @@ export function ItemCollection({ items, loading, error, reload, empty, showLocat
               {items.length > 0 ? `${items.length} elemento(s)` : ''}
             </span>
           )}
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
+            <button
+              onClick={() => {
+                setIsSelectMode(!isSelectMode)
+                if (isSelectMode) clearSelection()
+              }}
+              className={cn(
+                'sm:hidden rounded-lg px-3 py-1.5 text-sm font-medium transition-colors',
+                isSelectMode ? 'bg-primary text-primary-content' : 'bg-surface-container text-content-primary hover:bg-surface-hover'
+              )}
+            >
+              {isSelectMode ? 'Listo' : 'Seleccionar'}
+            </button>
             <SortControl value={sort} onChange={setSort} showOwner={false} />
             <ViewToggle value={view} onChange={setViewMode} />
             <IconButton icon={Info} label="Detalles" size="sm" active={showDetails} onClick={() => setShowDetails(!showDetails)} />
@@ -240,7 +259,7 @@ export function ItemCollection({ items, loading, error, reload, empty, showLocat
         </div>
 
         {/* Contenido */}
-        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
+        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto max-sm:overflow-visible">
           {loading ? (
             <div className="flex h-64 items-center justify-center text-content-tertiary">
               <Spinner size={32} />
@@ -263,11 +282,28 @@ export function ItemCollection({ items, loading, error, reload, empty, showLocat
       {marqueeOverlay}
 
       {/* Panel de detalles */}
-      {showDetails && (
-        <div className="ml-4 hidden w-80 shrink-0 overflow-hidden rounded-drive border border-border lg:block">
-          <DetailsPanel items={selectedItems} onClose={() => setShowDetails(false)} />
-        </div>
-      )}
+      <AnimatePresence>
+        {showDetails && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-40 bg-overlay/60 lg:hidden"
+              onClick={() => setShowDetails(false)}
+            />
+            <motion.div 
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 50 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-y-0 right-0 z-50 w-80 shrink-0 overflow-hidden border-l border-border bg-surface shadow-elevation-3 lg:static lg:ml-4 lg:rounded-drive lg:border lg:shadow-none lg:block"
+            >
+              <DetailsPanel items={selectedItems} onClose={() => setShowDetails(false)} />
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Diálogos */}
       <NamePromptDialog

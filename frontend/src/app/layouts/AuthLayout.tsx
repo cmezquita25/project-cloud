@@ -87,7 +87,7 @@ export function AuthLayout() {
       </div>
 
       {/* Botón de tema: flotante, abajo a la derecha (estilo botón elevado). */}
-      <div className="fixed bottom-5 right-5 flex h-11 w-11 items-center justify-center rounded-full border border-border bg-surface shadow-elevation-2">
+      <div className="fixed bottom-5 right-5 z-50 flex h-11 w-11 items-center justify-center rounded-full border border-border bg-surface shadow-elevation-2">
         <ThemeToggle />
       </div>
     </div>

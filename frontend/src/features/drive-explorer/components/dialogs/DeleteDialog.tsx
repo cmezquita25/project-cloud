@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Dialog, Button } from '@shared/ui'
+import { Dialog, Button, useToast } from '@shared/ui'
 import type { DriveItem } from '../../types'
 
 interface DeleteDialogProps {
@@ -15,11 +15,15 @@ export function DeleteDialog({ open, items, onClose, onConfirm }: DeleteDialogPr
   const count = items.length
   const target = count === 1 ? `"${items[0]!.name}"` : `${count} elementos`
 
+  const toast = useToast()
+  
   const confirm = async () => {
     setSubmitting(true)
     try {
       await onConfirm()
       onClose()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'No se pudo completar')
     } finally {
       setSubmitting(false)
     }

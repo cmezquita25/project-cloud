@@ -1,4 +1,4 @@
-import { Star } from 'lucide-react'
+import { Star, Lock } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { cn } from '@shared/lib/cn'
 import { Checkbox, AvatarGroup } from '@shared/ui'
@@ -114,6 +114,9 @@ export function FileListView({
                     <span className="truncate font-medium text-content-primary" title={item.name}>{item.name}</span>
                     {item.is_starred && (
                       <Star size={14} className="shrink-0 fill-warning text-warning" />
+                    )}
+                    {item.blocked_actions && item.blocked_actions.length > 0 && (
+                      <Lock size={14} className="shrink-0 text-danger" />
                     )}
                   </div>
                 </td>

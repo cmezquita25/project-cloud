@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useLocation } from 'react-router-dom'
-import { Users, HardDrive, Shield, UserPlus, Pencil, Server } from 'lucide-react'
+import { Users, HardDrive, UserPlus, Pencil, Server } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Button, Dialog, Input, Spinner, useToast, Select } from '@shared/ui'
 import { formatBytes } from '@shared/lib/formatBytes'
@@ -14,6 +14,9 @@ import { PasswordResetDialog } from './components/PasswordResetDialog'
 import { ActivityList } from './components/ActivityList'
 import { ServerLimits } from './components/ServerLimits'
 import { AdminCharts } from './components/AdminCharts'
+import { UserContributionChart } from './components/UserContributionChart'
+import Chart from 'react-apexcharts'
+import { useTheme } from '@app/providers/ThemeProvider'
 import { useAssetsAccess } from '@features/assets/hooks/useAssetsAccess'
 import type { AdminUser } from './types'
 
@@ -61,6 +64,8 @@ export function AdminPage() {
   const [activityLimit, setActivityLimit] = useState(30)
 
   const { access } = useAssetsAccess()
+  const { resolved: theme } = useTheme()
+  const isDark = theme === 'dark'
 
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['admin', 'stats'],
@@ -99,6 +104,8 @@ export function AdminPage() {
   const [capOpen, setCapOpen] = useState(false)
   const [capVal, setCapVal] = useState('')
   const [capUnit, setCapUnit] = useState<'MB' | 'GB'>('GB')
+  const [assetsCapVal, setAssetsCapVal] = useState('')
+  const [assetsCapUnit, setAssetsCapUnit] = useState<'MB' | 'GB'>('GB')
   const [savingCap, setSavingCap] = useState(false)
 
   const invalidateAdmin = () => {
@@ -117,13 +124,22 @@ export function AdminPage() {
   const openCapacity = () => {
     const bytes = stats?.server_capacity_bytes ?? 0
     if (bytes > 0 && bytes < GB) {
-      // Menos de 1 GB: es más natural mostrarlo en MB.
       setCapVal(String(Math.round(bytes / MB)))
       setCapUnit('MB')
     } else {
       setCapVal(bytes > 0 ? String(Math.round(bytes / GB)) : '')
       setCapUnit('GB')
     }
+
+    const assetsBytes = stats?.assets_quota_bytes ?? 0
+    if (assetsBytes > 0 && assetsBytes < GB) {
+      setAssetsCapVal(String(Math.round(assetsBytes / MB)))
+      setAssetsCapUnit('MB')
+    } else {
+      setAssetsCapVal(assetsBytes > 0 ? String(Math.round(assetsBytes / GB)) : '')
+      setAssetsCapUnit('GB')
+    }
+
     setCapOpen(true)
   }
 
@@ -133,11 +149,19 @@ export function AdminPage() {
       toast.error(`Introduce una capacidad válida en ${capUnit}`)
       return
     }
+
+    const assetsVal = parseFloat(assetsCapVal)
+    if (!Number.isFinite(assetsVal) || assetsVal <= 0) {
+      toast.error(`Introduce una cuota válida para la Unidad Compartida`)
+      return
+    }
+
     const bytes = Math.round(val * (capUnit === 'GB' ? GB : MB))
+    const assetsBytes = Math.round(assetsVal * (assetsCapUnit === 'GB' ? GB : MB))
+
     setSavingCap(true)
     try {
-      const res = await adminApi.updateCapacity(bytes)
-      // Refresca el usuario en memoria para que sidebar/perfil reflejen el cambio.
+      const res = await adminApi.updateCapacity(bytes, assetsBytes)
       if (res.user) setUser(res.user)
       else await authApi.me().then(setUser)
       toast.success('Capacidad actualizada')
@@ -189,64 +213,153 @@ export function AdminPage() {
             <Spinner size={32} />
           </div>
         ) : tab === 'overview' && stats ? (
-          <div className="space-y-12 pb-12">
-            
-            <section>
-              <h2 className="text-xl font-medium text-content-primary mb-2">Mi Unidad</h2>
-              <p className="text-sm text-content-secondary mb-6">Uso y distribución del almacenamiento privado de los usuarios.</p>
-              <AdminCharts source="private" />
-            </section>
+          <div className="space-y-6 pb-12">
 
-            {access?.active && (
-              <section>
-                <h2 className="text-xl font-medium text-content-primary mb-2">Espacio de Trabajo</h2>
-                <p className="text-sm text-content-secondary mb-6">Uso y distribución de la carpeta compartida.</p>
-                <AdminCharts source="workspace" />
-              </section>
-            )}
+            {/* Bento Grid: Top row - Stats */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+              <StatCard icon={Users} label="Usuarios" value={String(stats.users)} />
+              <StatCard icon={HardDrive} label="Asignado a usuarios" value={formatBytes(stats.allocated_users)} />
+              <StatCard icon={HardDrive} label="Espacio total usado" value={formatBytes(stats.used + stats.assets_used_bytes)} />
+              <StatCard icon={HardDrive} label="Usado Unidades" value={formatBytes(stats.used)} />
+              <StatCard icon={HardDrive} label="Usado Compartida" value={formatBytes(stats.assets_used_bytes)} />
+            </div>
 
-            <section>
-              <h2 className="text-xl font-medium text-content-primary mb-6">Visión General</h2>
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-                <div className="lg:col-span-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2">
-                  <StatCard icon={Users} label="Usuarios" value={String(stats.users)} />
-                  <StatCard icon={Shield} label="Administradores" value={String(stats.admins)} />
-                  <StatCard icon={HardDrive} label="Espacio usado" value={formatBytes(stats.used)} />
-                  <StatCard icon={HardDrive} label="Asignado a usuarios" value={formatBytes(stats.allocated_users)} />
-                </div>
+            {/* Bento Grid: Main sections */}
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
 
-                <div className="lg:col-span-4">
-                  <div className="flex h-full flex-col justify-between gap-4 rounded-drive border border-border bg-surface p-5">
-                    <div className="flex items-center gap-3">
-                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-subtle text-primary">
-                        <Server size={22} />
-                      </span>
-                      <h3 className="font-medium text-content-primary">Capacidad del servidor</h3>
-                    </div>
-                    <div>
-                      <p className="text-3xl font-medium text-content-primary">
-                        {stats.server_capacity_bytes > 0 ? formatBytes(stats.server_capacity_bytes) : 'No definida'}
-                      </p>
-                      <p className="mt-1 text-sm text-content-tertiary">
-                        Asignado: {formatBytes(stats.allocated_users)}
-                        {stats.server_capacity_bytes > 0 && stats.allocated_users > stats.server_capacity_bytes && (
-                          <span className="mt-1 block text-danger">Supera la capacidad del servidor</span>
-                        )}
-                      </p>
-                    </div>
-                    <Button size="sm" variant="secondary" leftIcon={Pencil} onClick={openCapacity} className="w-full">
-                      Ajustar capacidad
-                    </Button>
-                  </div>
-                </div>
+              {/* Left Column - Charts (2/3 width on xl) */}
+              <div className="xl:col-span-2 space-y-6 flex flex-col">
+                <section className="flex-1 rounded-drive border border-border bg-surface p-5 shadow-sm">
+                  <h2 className="text-xl font-medium text-content-primary mb-2">Mi Unidad</h2>
+                  <p className="text-sm text-content-secondary mb-6">Uso y distribución del almacenamiento privado de los usuarios.</p>
+                  <AdminCharts source="private" />
+                </section>
+
+                {access?.active && (
+                  <section className="flex-1 rounded-drive border border-border bg-surface p-5 shadow-sm">
+                    <h2 className="text-xl font-medium text-content-primary mb-2">Espacio de Trabajo</h2>
+                    <p className="text-sm text-content-secondary mb-6">Uso y distribución de la carpeta compartida.</p>
+                    <AdminCharts source="workspace" />
+                  </section>
+                )}
               </div>
 
-              {serverInfo && (
-                <div className="mt-6">
-                  <ServerLimits serverInfo={serverInfo} />
+              {/* Right Column - Server Limits & Info (1/3 width on xl) */}
+              <div className="xl:col-span-1 space-y-6 flex flex-col">
+                <div className="flex flex-col justify-between gap-4 rounded-drive border border-border bg-surface p-5 shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-subtle text-primary">
+                      <Server size={22} />
+                    </span>
+                    <h3 className="font-medium text-content-primary">Límites del Servidor</h3>
+                  </div>
+                  <div>
+                    <div className="grid grid-cols-2 gap-4 mt-2 mb-2">
+                      <div>
+                        <p className="text-sm font-medium text-content-secondary">Capacidad Asignada</p>
+                        <p className="text-2xl font-medium text-content-primary">
+                          {stats.server_capacity_bytes > 0 ? formatBytes(stats.server_capacity_bytes) : 'No definida'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-content-secondary">Espacio Disponible</p>
+                        <p className="text-2xl font-medium text-success">
+                          {stats.server_capacity_bytes > 0 ? formatBytes(Math.max(0, stats.server_capacity_bytes - (stats.used + stats.assets_used_bytes))) : 'N/A'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between mt-4">
+                      <p className="text-sm text-content-secondary">Total Espacio Usado:</p>
+                      <p className="text-sm font-medium text-content-primary">{formatBytes(stats.used + stats.assets_used_bytes)}</p>
+                    </div>
+
+                    <div className="flex items-center justify-between mt-2">
+                      <p className="text-sm text-content-secondary">Usado Unidades:</p>
+                      <p className="text-sm font-medium text-content-primary">{formatBytes(stats.used)}</p>
+                    </div>
+
+                    <div className="flex items-center justify-between mt-2">
+                      <p className="text-sm text-content-secondary">Usado Compartida:</p>
+                      <p className="text-sm font-medium text-content-primary">{formatBytes(stats.assets_used_bytes)}</p>
+                    </div>
+
+                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-border">
+                      <p className="text-sm text-content-secondary font-medium">Espacio libre sin asignar</p>
+                      <p className="text-sm font-medium text-success">
+                        {stats.server_capacity_bytes > 0 ? formatBytes(Math.max(0, stats.server_capacity_bytes - stats.allocated_users - stats.assets_quota_bytes)) : 'N/A'}
+                      </p>
+                    </div>
+
+                    {stats.server_capacity_bytes > 0 && (stats.allocated_users + stats.assets_quota_bytes) > stats.server_capacity_bytes && (
+                      <span className="mt-2 block text-sm font-medium text-danger">Las cuotas superan la capacidad real del servidor</span>
+                    )}
+                  </div>
+
+                  {stats.server_capacity_bytes > 0 && (
+                    <div className="mt-2 flex justify-center border-t border-border pt-4">
+                      <Chart
+                        type="donut"
+                        height={180}
+                        series={[
+                          stats.allocated_users,
+                          stats.assets_quota_bytes,
+                          Math.max(0, stats.server_capacity_bytes - stats.allocated_users - stats.assets_quota_bytes)
+                        ]}
+                        options={{
+                          chart: { background: 'transparent' },
+                          labels: ['Asignado Unidades', 'Asignado Compartida', 'Libre'],
+                          colors: ['#3b82f6', '#8b5cf6', isDark ? '#374151' : '#e5e7eb'],
+                          theme: { mode: isDark ? 'dark' : 'light' },
+                          stroke: { show: true, colors: [isDark ? '#1f2937' : '#ffffff'], width: 2 },
+                          dataLabels: { enabled: false },
+                          tooltip: {
+                            y: { formatter: (val: number) => formatBytes(val) },
+                            theme: isDark ? 'dark' : 'light',
+                          },
+                          legend: { show: false },
+                          plotOptions: { 
+                            pie: { 
+                              donut: { 
+                                size: '75%',
+                                labels: {
+                                  show: true,
+                                  name: { show: true, fontSize: '12px' },
+                                  value: { show: true, fontSize: '14px', formatter: (val: any) => formatBytes(Number(val)) },
+                                  total: {
+                                    show: true,
+                                    showAlways: true,
+                                    label: 'Total',
+                                    fontSize: '14px',
+                                    formatter: function () {
+                                      return formatBytes(stats.server_capacity_bytes)
+                                    }
+                                  }
+                                }
+                              } 
+                            } 
+                          },
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  <Button size="sm" variant="secondary" leftIcon={Pencil} onClick={openCapacity} className="w-full mt-2">
+                    Ajustar capacidades
+                  </Button>
                 </div>
-              )}
-            </section>
+
+                {serverInfo && (
+                  <div className="rounded-drive border border-border bg-surface p-5 shadow-sm">
+                    <ServerLimits serverInfo={serverInfo} />
+                  </div>
+                )}
+
+                <div className="rounded-drive border border-border bg-surface p-5 shadow-sm">
+                  <UserContributionChart period="30d" />
+                </div>
+              </div>
+            </div>
           </div>
         ) : tab === 'users' ? (
           <UsersTable
@@ -263,8 +376,8 @@ export function AdminPage() {
             onLimitChange={setUserLimit}
           />
         ) : (
-          <ActivityList 
-            items={activity} 
+          <ActivityList
+            items={activity}
             page={activityPage}
             limit={activityLimit}
             total={activityTotal}
@@ -303,28 +416,57 @@ export function AdminPage() {
           </>
         }
       >
-        <div className="flex items-end gap-2">
-          <div className="flex-1">
-            <Input
-              label="Capacidad"
-              type="number"
-              min={1}
-              step={capUnit === 'GB' ? 1 : 100}
-              value={capVal}
-              onChange={(e) => setCapVal(e.target.value)}
-              placeholder={capUnit === 'GB' ? '25' : '500'}
-              autoFocus
+        <div className="space-y-4">
+          <p className="text-sm font-medium text-content-primary">Capacidad Real del Servidor</p>
+          <div className="flex items-end gap-2">
+            <div className="flex-1">
+              <Input
+                label="Total en Disco"
+                type="number"
+                min={1}
+                step={capUnit === 'GB' ? 1 : 100}
+                value={capVal}
+                onChange={(e) => setCapVal(e.target.value)}
+                placeholder={capUnit === 'GB' ? '25' : '500'}
+                autoFocus
+              />
+            </div>
+            <Select
+              value={capUnit}
+              onChange={(val) => setCapUnit(String(val) as 'MB' | 'GB')}
+              className="h-11 rounded-drive border border-border-strong bg-surface px-3 text-sm text-content-primary focus:border-transparent focus:outline-none focus:ring-2 focus:ring-focus"
+              options={[
+                { value: 'MB', label: 'MB' },
+                { value: 'GB', label: 'GB' }
+              ]}
             />
           </div>
-          <Select
-            value={capUnit}
-            onChange={(val) => setCapUnit(String(val) as 'MB' | 'GB')}
-            className="h-11 rounded-drive border border-border-strong bg-surface px-3 text-sm text-content-primary focus:border-transparent focus:outline-none focus:ring-2 focus:ring-focus"
-            options={[
-              { value: 'MB', label: 'MB' },
-              { value: 'GB', label: 'GB' }
-            ]}
-          />
+
+          <div className="pt-2 border-t border-border">
+            <p className="text-sm font-medium text-content-primary mb-3">Asignación para Unidad Compartida</p>
+            <div className="flex items-end gap-2">
+              <div className="flex-1">
+                <Input
+                  label="Cuota asignada"
+                  type="number"
+                  min={1}
+                  step={assetsCapUnit === 'GB' ? 1 : 100}
+                  value={assetsCapVal}
+                  onChange={(e) => setAssetsCapVal(e.target.value)}
+                  placeholder={assetsCapUnit === 'GB' ? '5' : '500'}
+                />
+              </div>
+              <Select
+                value={assetsCapUnit}
+                onChange={(val) => setAssetsCapUnit(String(val) as 'MB' | 'GB')}
+                className="h-11 rounded-drive border border-border-strong bg-surface px-3 text-sm text-content-primary focus:border-transparent focus:outline-none focus:ring-2 focus:ring-focus"
+                options={[
+                  { value: 'MB', label: 'MB' },
+                  { value: 'GB', label: 'GB' }
+                ]}
+              />
+            </div>
+          </div>
         </div>
       </Dialog>
     </div>

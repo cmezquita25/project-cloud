@@ -26,9 +26,10 @@ export const adminApi = {
   deleteUser: (id: number) => api.delete<{ ok: true }>(`/admin/users/${id}`),
   activity: (page = 1, limit = 30) =>
     api.get<ActivityPage>(`/admin/activity?page=${page}&limit=${limit}`),
-  updateCapacity: (bytes: number) =>
+  updateCapacity: (bytes: number, assetsQuota: number) =>
     api.patch<{ server_capacity_bytes: number; user: User | null }>('/admin/settings', {
       server_capacity_bytes: bytes,
+      assets_quota_bytes: assetsQuota
     }),
   updateSettings: (payload: Record<string, string | number | boolean>) =>
     api.patch<{ server_capacity_bytes?: number; user?: User | null }>('/admin/settings', payload),

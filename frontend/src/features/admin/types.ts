@@ -27,8 +27,9 @@ export interface AdminStats {
   quota: number
   /** Suma de cuotas asignadas SOLO a usuarios (excluye admins). */
   allocated_users: number
-  /** Capacidad real del servidor (definida en la instalación). */
   server_capacity_bytes: number
+  assets_quota_bytes: number
+  assets_used_bytes: number
 }
 
 export interface ActivityItem {

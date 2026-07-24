@@ -53,7 +53,7 @@ export function useAssetsAdapter(): IExplorerAdapter {
       canStar: false,
       canCopy: false,
       canMove: canWrite,
-      canRename: false,
+      canRename: canWrite,
       canDuplicate: false,
       canDownload: true,
       canDelete: canWrite,
@@ -88,8 +88,8 @@ export function useAssetsAdapter(): IExplorerAdapter {
       await assetsApi.createFolder(parentPath, name)
     },
 
-    renameItem: async () => {
-      throw new Error('Not supported in Assets')
+    renameItem: async (item: DriveItem, newName: string) => {
+      await assetsApi.rename(String(item.id), newName)
     },
 
     moveItems: async (items: DriveItem[], targetId: FolderRef) => {

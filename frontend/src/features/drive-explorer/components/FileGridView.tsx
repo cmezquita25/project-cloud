@@ -1,4 +1,4 @@
-import { Star } from 'lucide-react'
+import { Star, Lock } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { cn } from '@shared/lib/cn'
 import { getFileIcon } from '@shared/lib/fileIcons'
@@ -119,6 +119,7 @@ function FolderChip({ item, selected, onOpen, onAction, interactions, capabiliti
       <Icon size={22} className={cn('shrink-0', className)} />
       <span className="min-w-0 flex-1 truncate text-sm font-medium text-content-primary">{item.name}</span>
       {item.is_starred && <Star size={14} className="shrink-0 fill-warning text-warning" />}
+      {item.blocked_actions && item.blocked_actions.length > 0 && <Lock size={14} className="shrink-0 text-danger" />}
       <div className="flex shrink-0 items-center justify-end p-1 opacity-0 group-hover:opacity-100 group-focus:opacity-100 group-focus-within:opacity-100" onClick={(e) => e.stopPropagation()}>
         <ItemActionsMenu item={item} onAction={onAction} capabilities={capabilities} />
       </div>
@@ -170,6 +171,7 @@ function FileCard({ item, selected, onOpen, onAction, interactions, capabilities
         <Icon size={18} className={cn('shrink-0', className)} />
         <span className="min-w-0 flex-1 truncate text-sm text-content-primary">{item.name}</span>
         {item.is_starred && <Star size={13} className="shrink-0 fill-warning text-warning" />}
+        {item.blocked_actions && item.blocked_actions.length > 0 && <Lock size={13} className="shrink-0 text-danger" />}
         <div className="absolute right-1 top-1 opacity-0 group-hover:opacity-100 group-focus:opacity-100 group-focus-within:opacity-100" onClick={(e) => e.stopPropagation()}>
           <ItemActionsMenu item={item} onAction={onAction} capabilities={capabilities} />
         </div>

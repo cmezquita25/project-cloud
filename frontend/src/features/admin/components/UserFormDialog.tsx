@@ -33,10 +33,10 @@ const EMPTY = {
   display_name: '',
   password: '',
   role: 'user' as 'admin' | 'user',
-  quotaVal: '5',
-  quotaUnit: 'GB' as Unit,
-  maxVal: '2',
-  maxUnit: 'GB' as Unit,
+  quotaVal: '500',
+  quotaUnit: 'MB' as Unit,
+  maxVal: '10',
+  maxUnit: 'MB' as Unit,
 }
 
 /** Alta y edición de usuarios. */

@@ -1,4 +1,4 @@
-import { X, Link as LinkIcon, Check, Info, FileStack } from 'lucide-react'
+import { X, Link as LinkIcon, Check, Info, FileStack, Lock } from 'lucide-react'
 import { useState } from 'react'
 import { IconButton, Button, Avatar, AvatarGroup } from '@shared/ui'
 import { cn } from '@shared/lib/cn'
@@ -68,8 +68,13 @@ function SingleItemDetails({ item, copied, onCopyUrl }: { item: DriveItem, copie
   return (
     <>
       <div className="flex flex-col items-center gap-3 border-b border-border px-4 py-6">
-        <div className="flex h-24 w-24 items-center justify-center rounded-drive bg-surface-container">
+        <div className="relative flex h-24 w-24 items-center justify-center rounded-drive bg-surface-container">
           <Icon size={48} className={cn('opacity-80', className)} strokeWidth={1.5} />
+          {item.blocked_actions && item.blocked_actions.length > 0 && (
+            <div className="absolute right-0 top-0 rounded-full bg-danger-subtle p-1.5 text-danger shadow-sm">
+              <Lock size={16} />
+            </div>
+          )}
         </div>
         <p className="break-all text-center text-sm font-medium text-content-primary">{item.name}</p>
       </div>
@@ -80,6 +85,7 @@ function SingleItemDetails({ item, copied, onCopyUrl }: { item: DriveItem, copie
         {item.created_at && <Row label="Creado" value={formatDateTime(item.created_at)} />}
         {item.updated_at && <Row label="Modificado" value={formatDateTime(item.updated_at)} />}
         <Row label="Ubicación" value={'/' + (item.path.split('/').slice(0, -1).join('/') || '')} />
+        <Row label="Bloqueado" value={item.blocked_actions && item.blocked_actions.length > 0 ? 'Sí' : 'No'} />
 
         {item.owners && item.owners.length > 0 && (
           <div className="mt-4 border-t border-border pt-4">

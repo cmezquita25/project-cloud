@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { cn } from '@shared/lib/cn'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   FolderPlus,
@@ -72,6 +73,7 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
     () => (localStorage.getItem('pc-view') as ViewMode) || 'list'
   )
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [isSelectMode, setIsSelectMode] = useState(false)
   const [showDetails, setShowDetails] = useState(false)
   const [dialog, setDialog] = useState<DialogState>(null)
   const [dragging, setDragging] = useState(false)
@@ -210,16 +212,21 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
     })
   }
 
-  const clearSelection = () => setSelected(new Set())
+  const clearSelection = () => {
+    setSelected(new Set())
+    setIsSelectMode(false)
+  }
 
   // --- Selección estilo Drive: clic simple, Ctrl/Cmd alterna, Shift rango ---
   const onItemClick = (item: DriveItem, e: React.MouseEvent) => {
     const index = items.findIndex((i) => key(i) === key(item))
+    const isMobileSelection = isSelectMode || (window.innerWidth < 640 && selected.size > 0)
+
     if (e.shiftKey && anchorIndex.current !== null) {
       const a = Math.min(anchorIndex.current, index)
       const b = Math.max(anchorIndex.current, index)
       setSelected(new Set(items.slice(a, b + 1).map(key)))
-    } else if (e.ctrlKey || e.metaKey) {
+    } else if (e.ctrlKey || e.metaKey || isMobileSelection) {
       setSelected((prev) => {
         const next = new Set(prev)
         const k = key(item)
@@ -440,7 +447,7 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
 
   return (
     <div
-      className="relative flex h-full"
+      className="relative flex h-full max-sm:h-auto max-sm:flex-1"
       onDragEnter={onDragEnter}
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
@@ -457,9 +464,9 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="mb-4 flex h-10 items-center justify-between gap-3">
+        <div className="sticky top-16 z-20 -mx-4 px-4 py-3 sm:static sm:mx-0 sm:px-0 sm:py-0 mb-4 bg-canvas flex flex-col sm:flex-row sm:h-10 sm:items-center justify-between gap-3 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)] sm:shadow-none">
           {selected.size > 0 ? (
-            <div className="flex min-w-0 items-center gap-2">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
               <IconButton icon={X} label="Deseleccionar" size="sm" onClick={clearSelection} />
               <span className="whitespace-nowrap text-sm font-medium text-primary">
                 {selected.size} seleccionado(s)
@@ -486,14 +493,26 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
               onNavigate={(id: FolderRef) => navigate(adapter.mode === 'assets' ? (id === 'root' ? '/assets' : `/assets/${id}`) : (id === 'root' ? '/' : `/folder/${id}`))}
             />
           )}
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
+            <button
+              onClick={() => {
+                setIsSelectMode(!isSelectMode)
+                if (isSelectMode) clearSelection()
+              }}
+              className={cn(
+                'sm:hidden rounded-lg px-3 py-1.5 text-sm font-medium transition-colors',
+                isSelectMode ? 'bg-primary text-primary-content' : 'bg-surface-container text-content-primary hover:bg-surface-hover'
+              )}
+            >
+              {isSelectMode ? 'Listo' : 'Seleccionar'}
+            </button>
             <SortControl value={sort} onChange={setSort} />
             <ViewToggle value={view} onChange={setViewMode} />
             <IconButton icon={Info} label="Detalles" size="sm" active={showDetails} onClick={() => setShowDetails(!showDetails)} />
           </div>
         </div>
 
-        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto" onContextMenu={onBackgroundContextMenu}>
+        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto max-sm:overflow-visible" onContextMenu={onBackgroundContextMenu}>
           {atRoot && (
             <div className="mb-8 flex flex-col items-center px-2 pt-4 text-center sm:pt-8">
               <h1 className="mb-6 text-2xl font-normal text-content-primary sm:text-[28px]">
@@ -611,15 +630,24 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
 
       <AnimatePresence>
         {showDetails && (
-          <motion.div 
-            initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 50 }}
-            transition={{ duration: 0.2 }}
-            className="ml-4 hidden w-80 shrink-0 overflow-hidden rounded-drive border border-border lg:block"
-          >
-            <DetailsPanel items={selectedItems} onClose={() => setShowDetails(false)} />
-          </motion.div>
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-40 bg-overlay/60 lg:hidden"
+              onClick={() => setShowDetails(false)}
+            />
+            <motion.div 
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 50 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-y-0 right-0 z-50 w-[85vw] max-w-[320px] shrink-0 overflow-hidden border-l border-border bg-surface shadow-elevation-3 sm:w-80 lg:static lg:ml-4 lg:rounded-drive lg:border lg:shadow-none lg:block"
+            >
+              <DetailsPanel items={selectedItems} onClose={() => setShowDetails(false)} />
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
 

@@ -3,6 +3,9 @@ import { X, Paperclip, Loader2 } from 'lucide-react'
 import { Button, Dialog, useToast, Select } from '@shared/ui'
 import { supportApi } from '../services/supportApi'
 
+const LAST_REPORT_KEY = 'pc_last_report_time'
+const COOLDOWN_MS = 60 * 1000 // 60 segundos
+
 interface ReportBugDialogProps {
   isOpen: boolean
   onClose: () => void
@@ -48,9 +51,20 @@ export function ReportBugDialog({ isOpen, onClose }: ReportBugDialogProps) {
       return
     }
 
+    const lastSent = localStorage.getItem(LAST_REPORT_KEY)
+    if (lastSent) {
+      const elapsed = Date.now() - parseInt(lastSent, 10)
+      if (elapsed < COOLDOWN_MS) {
+        const remaining = Math.ceil((COOLDOWN_MS - elapsed) / 1000)
+        toast.error(`Espera ${remaining} segundos antes de enviar otro reporte.`)
+        return
+      }
+    }
+
     setSending(true)
     try {
       await supportApi.report(subject, message, files)
+      localStorage.setItem(LAST_REPORT_KEY, Date.now().toString())
       toast.success('Reporte enviado correctamente. ¡Gracias por tus comentarios!')
       onClose()
       setSubject('Reporte de Error')

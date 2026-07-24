@@ -33,11 +33,24 @@ export function PlatformSettingsProvider({ children }: { children: ReactNode }) 
           : 'Project Cloud'
 
         if (data.logo_favicon) {
-          const link = document.querySelector("link[rel*='icon']") as HTMLLinkElement || document.createElement('link')
-          link.type = 'image/x-icon'
-          link.rel = 'shortcut icon'
-          link.href = '/api/v1/settings/logo/favicon?t=' + Date.now()
-          document.getElementsByTagName('head')[0]?.appendChild(link)
+          const url = '/api/v1/settings/logo/favicon?t=' + Date.now()
+          
+          let iconLink = document.querySelector("link[rel='icon']") as HTMLLinkElement
+          if (!iconLink) {
+            iconLink = document.createElement('link')
+            iconLink.rel = 'icon'
+            document.head.appendChild(iconLink)
+          }
+          iconLink.type = 'image/png'
+          iconLink.href = url
+
+          let appleLink = document.querySelector("link[rel='apple-touch-icon']") as HTMLLinkElement
+          if (!appleLink) {
+            appleLink = document.createElement('link')
+            appleLink.rel = 'apple-touch-icon'
+            document.head.appendChild(appleLink)
+          }
+          appleLink.href = url
         }
 
         const hexToRgb = (hexStr: string) => {
