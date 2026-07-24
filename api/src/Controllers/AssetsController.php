@@ -111,6 +111,17 @@ final class AssetsController
         return Response::success($moved);
     }
 
+    /** POST /assets/rename — renombra un elemento en assets. */
+    public function rename(Request $request): Response
+    {
+        $service = $this->guard($request);
+        $role = (string) ($request->user()['role'] ?? 'user');
+        $body = $request->json();
+        $renamed = $service->rename((string) ($body['path'] ?? ''), (string) ($body['name'] ?? ''), $role);
+        ActivityLogger::log($request, 'assets.rename', 'asset', null, ['path' => $renamed['path']]);
+        return Response::success($renamed);
+    }
+
     /** DELETE /assets?path=... — elimina un archivo o carpeta. */
     public function delete(Request $request): Response
     {

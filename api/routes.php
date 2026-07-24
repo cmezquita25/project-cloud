@@ -104,6 +104,7 @@ return static function (Router $router): void {
     $router->post('/v1/assets/folder',  [AssetsController::class, 'createFolder'], $auth);
     $router->post('/v1/assets/upload',  [AssetsController::class, 'upload'], $auth);
     $router->post('/v1/assets/move',    [AssetsController::class, 'move'], $auth);
+    $router->post('/v1/assets/rename',  [AssetsController::class, 'rename'], $auth);
     $router->delete('/v1/assets',       [AssetsController::class, 'delete'], $auth);
 
     // --- Fase 7: Papelera ---
@@ -128,6 +129,7 @@ return static function (Router $router): void {
     $router->put('/v1/admin/assets/block-actions',[AssetsController::class, 'setBlockedActions'], $admin);
     $router->post('/v1/admin/assets/activate',    [AssetsController::class, 'activate'], $admin);
     $router->put('/v1/admin/assets/folder-name',  [AssetsController::class, 'setFolderName'], $admin);
+    $router->get('/v1/admin/migrate-assets',      [AdminController::class, 'migrateAssets'], $admin);
     $router->get('/v1/admin/activity',            [AdminController::class, 'activity'], $admin);
     $router->get('/v1/admin/users',               [AdminController::class, 'users'], $admin);
     $router->post('/v1/admin/users',              [AdminController::class, 'createUser'], $admin);

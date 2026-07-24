@@ -476,10 +476,29 @@ final class AssetsService
         if ($parentRelative !== '') {
             $this->assertActionAllowed($parentRelative, 'add', $role);
         }
-        if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
-            throw HttpException::badRequest('No se recibió el archivo (¿supera el límite del servidor?).', 'UPLOAD_ERROR');
+        if (!is_array($file) || ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            throw HttpException::badRequest('No se recibió el archivo o hubo un error.', 'UPLOAD_ERROR');
         }
-        $name = $this->fs->sanitizeName((string) $file['name']);
+
+        $size = (int) ($file['size'] ?? 0);
+        if ($size <= 0) {
+            throw HttpException::badRequest('El archivo está vacío.', 'INVALID_SIZE');
+        }
+
+        // Validate Shared Drive Quota
+        $settings = new \ProjectCloud\Repositories\SettingsRepository();
+        $quota = (int) $settings->get('assets_quota_bytes');
+        if ($quota > 0) {
+            $stats = $this->getStorageStats();
+            if ($stats['total_bytes'] + $size > $quota) {
+                throw new HttpException(413, 'QUOTA_EXCEEDED', 'La unidad compartida no tiene espacio suficiente.', [
+                    'quota_bytes' => $quota,
+                    'used_bytes' => $stats['total_bytes']
+                ]);
+            }
+        }
+
+        $name = $this->fs->sanitizeName((string) ($file['name'] ?? ''));
         if ($this->fs->isBlockedExtension($name)) {
             throw new HttpException(422, 'BLOCKED_EXTENSION', 'Ese tipo de archivo no está permitido.');
         }
@@ -501,8 +520,8 @@ final class AssetsService
         }
         @chmod($abs, 0644);
 
-        $stmt = $this->pdo->prepare("INSERT INTO assets_metadata (path, user_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE user_id = VALUES(user_id)");
-        $stmt->execute([$rel, $userId]);
+        $stmt = $this->pdo->prepare("INSERT INTO assets_metadata (path, user_id, size_bytes) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE user_id = VALUES(user_id), size_bytes = VALUES(size_bytes)");
+        $stmt->execute([$rel, $userId, $size]);
 
         $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
         return [
@@ -570,6 +589,53 @@ final class AssetsService
         }
 
         return ['type' => is_dir($destAbs) ? 'folder' : 'file', 'name' => $name, 'path' => $destRel];
+    }
+
+    /** Renombra un archivo o carpeta en assets. */
+    public function rename(string $relative, string $newName, string $role): array
+    {
+        $src = trim($relative, '/');
+        if ($src === '') {
+            throw HttpException::badRequest('No se puede renombrar la raíz de assets.', 'INVALID_TARGET');
+        }
+        $this->assertActionAllowed($src, 'modify', $role);
+        
+        $srcAbs = $this->safe($src);
+        if (!file_exists($srcAbs)) {
+            throw HttpException::notFound('Elemento no encontrado en assets.');
+        }
+
+        $newName = $this->fs->sanitizeName($newName);
+        if ($newName === '') {
+            throw HttpException::badRequest('El nombre no puede estar vacío.');
+        }
+
+        $dirRel = dirname($src);
+        if ($dirRel === '.') $dirRel = '';
+        
+        $destRel = ltrim($dirRel . '/' . $newName, '/');
+        if ($destRel === $src) {
+            return ['type' => is_dir($srcAbs) ? 'folder' : 'file', 'name' => $newName, 'path' => $src];
+        }
+
+        $destAbs = $this->safe($destRel);
+        if (file_exists($destAbs)) {
+            throw new HttpException(409, 'NAME_EXISTS', 'Ya existe un elemento con ese nombre.');
+        }
+
+        if (!@rename($srcAbs, $destAbs)) {
+            throw new HttpException(500, 'FS_ERROR', 'No se pudo renombrar el elemento.');
+        }
+
+        $stmt = $this->pdo->prepare("UPDATE assets_metadata SET path = ? WHERE path = ?");
+        $stmt->execute([$destRel, $src]);
+        
+        if (is_dir($destAbs)) {
+            $stmt = $this->pdo->prepare("UPDATE assets_metadata SET path = CONCAT(?, SUBSTRING(path, ?)) WHERE path LIKE ?");
+            $stmt->execute([$destRel, strlen($src) + 1, $src . '/%']);
+        }
+
+        return ['type' => is_dir($destAbs) ? 'folder' : 'file', 'name' => $newName, 'path' => $destRel];
     }
 
     /** Elimina un archivo o carpeta de assets. Lo mueve a .trash si no está ahí, o lo elimina definitivamente si ya está en .trash. */
@@ -760,13 +826,20 @@ final class AssetsService
         return is_string($mime) && $mime !== '' ? $mime : null;
     }
 
-    public function getWorkspaceStats(string $period = '30d'): array
+    public function getStorageStats(): array
+    {
+        $stmt = $this->pdo->query("SELECT SUM(size_bytes) as total FROM assets_metadata");
+        return ['total_bytes' => (int) $stmt->fetchColumn()];
+    }
+
+    public function getWorkspaceStats(string $period = '30d', ?int $userId = null): array
     {
         if (!$this->isActive()) {
             return [
                 'total_bytes' => 0,
                 'by_type' => [],
                 'by_user' => [],
+                'by_user_history' => [],
                 'history' => []
             ];
         }
@@ -774,106 +847,131 @@ final class AssetsService
         $cutoffDate = match($period) {
             'today' => date('Y-m-d'),
             '7d' => date('Y-m-d', strtotime('-7 days')),
-            default => date('Y-m-d', strtotime('-30 days')),
+            default => date('Y-m-01'), // First day of the month for 30d
         };
 
-        $iterator = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($this->root, \RecursiveDirectoryIterator::SKIP_DOTS),
-            \RecursiveIteratorIterator::SELF_FIRST
-        );
+        $whereUser = $userId ? " WHERE m.user_id = " . (int)$userId : "";
+        
+        // 1. By Type & Total History
+        $stmt = $this->pdo->query("SELECT m.path, m.size_bytes, m.created_at, m.user_id, u.username, u.display_name FROM assets_metadata m LEFT JOIN users u ON m.user_id = u.id" . $whereUser);
+        $files = $stmt->fetchAll();
 
         $totalBytes = 0;
         $byType = [];
         $filesForHistory = [];
-        
-        // Cargar metadata para asignación de usuarios
-        $stmt = $this->pdo->query("
-            SELECT m.path, u.username 
-            FROM assets_metadata m 
-            JOIN users u ON m.user_id = u.id
-        ");
-        $metadata = [];
-        foreach ($stmt->fetchAll() as $row) {
-            $metadata[$row['path']] = $row['username'];
-        }
-
         $byUser = [];
+        $byUserDaily = [];
+        $userInfos = [];
 
-        foreach ($iterator as $file) {
-            if ($file->isDir()) continue;
+        foreach ($files as $f) {
+            $size = (int) $f['size_bytes'];
+            $uid = (int) $f['user_id'];
+            $date = substr($f['created_at'], 0, 10);
             
-            $name = $file->getFilename();
-            if ($name[0] === '.') continue; // Ignorar ocultos
+            $totalBytes += $size;
 
-            $size = (int) $file->getSize();
-            $ext = strtolower($file->getExtension());
-            $mtime = $file->getMTime();
-            $relPath = ltrim(str_replace('\\', '/', $iterator->getSubPathname()), '/');
-
-            // --- Historial (basado en mtime, all time para acumulado) ---
-            $date = date('Y-m-d', $mtime);
             if (!isset($filesForHistory[$date])) {
                 $filesForHistory[$date] = 0;
             }
             $filesForHistory[$date] += $size;
 
-            if ($date >= $cutoffDate) {
-                // --- Distribución Global (Tipo) ---
-                $type = 'other';
-                if (in_array($ext, ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'])) $type = 'image';
-                elseif (in_array($ext, ['mp4', 'mkv', 'avi', 'mov', 'webm'])) $type = 'video';
-                elseif (in_array($ext, ['mp3', 'wav', 'ogg', 'aac'])) $type = 'audio';
-                elseif (in_array($ext, ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt'])) $type = 'document';
-                elseif (in_array($ext, ['zip', 'rar', '7z', 'tar', 'gz'])) $type = 'archive';
-                
-                $byType[$type] = ($byType[$type] ?? 0) + $size;
-                $totalBytes += $size;
-
-                // --- Distribución por Usuario ---
-                $owner = $metadata[$relPath] ?? 'desconocido';
-                $byUser[$owner] = ($byUser[$owner] ?? 0) + $size;
-            }
-        }
-
-        // Procesar historial acumulativo ordenando por fecha
-        ksort($filesForHistory);
-        $history = [];
-        $cumulative = 0;
-        foreach ($filesForHistory as $date => $sizeAdded) {
-            $cumulative += $sizeAdded;
-            if ($date >= $cutoffDate) {
-                $history[] = [
-                    'date' => $date,
-                    'total_bytes' => $cumulative
+            // Track user info
+            if ($uid > 0 && !isset($userInfos[$uid])) {
+                $userInfos[$uid] = [
+                    'username' => $f['username'],
+                    'display_name' => $f['display_name']
                 ];
             }
-        }
-        
-        // Si no hay datos en el periodo pero hay un acumulado anterior, inyectar el punto de hoy
-        if (empty($history) && $cumulative > 0) {
-            $history[] = [
-                'date' => date('Y-m-d'),
-                'total_bytes' => $cumulative
-            ];
+            
+            $name = $f['display_name'] ?: ($f['username'] ?: 'system');
+            
+            if (!isset($byUserDaily[$name])) $byUserDaily[$name] = [];
+            if (!isset($byUserDaily[$name][$date])) $byUserDaily[$name][$date] = 0;
+            $byUserDaily[$name][$date] += $size;
+
+            if (!isset($byUser[$uid])) {
+                $byUser[$uid] = 0;
+            }
+            $byUser[$uid] += $size;
+
+            if ($date >= $cutoffDate) {
+                // By Type
+                $ext = strtolower(pathinfo($f['path'], PATHINFO_EXTENSION));
+                $type = 'other';
+                if (in_array($ext, ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv'])) $type = 'document';
+                elseif (in_array($ext, ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'])) $type = 'image';
+                elseif (in_array($ext, ['mp4', 'webm', 'mov', 'avi'])) $type = 'video';
+                elseif (in_array($ext, ['mp3', 'wav', 'ogg'])) $type = 'audio';
+                elseif (in_array($ext, ['zip', 'rar', '7z', 'tar', 'gz'])) $type = 'archive';
+
+                if (!isset($byType[$type])) {
+                    $byType[$type] = 0;
+                }
+                $byType[$type] += $size;
+            }
         }
 
-        // Formatear byType
-        $typeStats = [];
-        foreach ($byType as $type => $size) {
-            $typeStats[] = ['type' => $type, 'size_bytes' => $size];
-        }
-
-        // Formatear byUser
+        // Build User list
         $userStats = [];
-        foreach ($byUser as $owner => $size) {
-            $userStats[] = ['username' => $owner, 'used_bytes' => $size];
+        if (!empty($byUser)) {
+            foreach ($byUser as $uid => $total) {
+                if ($uid > 0 && isset($userInfos[$uid])) {
+                    $userStats[] = [
+                        'username' => $userInfos[$uid]['username'],
+                        'display_name' => $userInfos[$uid]['display_name'],
+                        'total_bytes' => $total
+                    ];
+                }
+            }
+            usort($userStats, fn($a, $b) => $b['total_bytes'] <=> $a['total_bytes']);
         }
-        usort($userStats, static fn($a, $b) => $b['used_bytes'] <=> $a['used_bytes']);
+
+        // Format by_type
+        $typeStats = [];
+        foreach ($byType as $type => $bytes) {
+            $typeStats[] = ['type' => $type, 'total_bytes' => $bytes];
+        }
+        usort($typeStats, fn($a, $b) => $b['total_bytes'] <=> $a['total_bytes']);
+
+        // Format history
+        $history = [];
+        $byUserHistory = [];
+        $currentDate = new \DateTime($cutoffDate);
+        $endDateStr = match($period) {
+            'today' => date('Y-m-d'),
+            '7d' => date('Y-m-d'),
+            default => date('Y-m-t') // Last day of the month
+        };
+        $endDate = new \DateTime($endDateStr);
+        
+        // Collect all unique user names from $userInfos to ensure all users are present in daily data
+        $uniqueUserNames = [];
+        foreach ($userInfos as $info) {
+            $name = $info['display_name'] ?: $info['username'];
+            $uniqueUserNames[$name] = true;
+        }
+
+        while ($currentDate <= $endDate) {
+            $dStr = $currentDate->format('Y-m-d');
+            $history[] = [
+                'date' => $dStr,
+                'total_bytes' => $filesForHistory[$dStr] ?? 0
+            ];
+            
+            $dayData = ['date' => $dStr];
+            foreach ($uniqueUserNames as $name => $_) {
+                $dayData[$name] = $byUserDaily[$name][$dStr] ?? 0;
+            }
+            $byUserHistory[] = $dayData;
+
+            $currentDate->modify('+1 day');
+        }
 
         return [
             'total_bytes' => $totalBytes,
             'by_type' => $typeStats,
             'by_user' => $userStats,
+            'by_user_history' => $byUserHistory,
             'history' => $history
         ];
     }

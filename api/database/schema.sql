@@ -129,9 +129,10 @@ INSERT INTO `settings` (`key`, `value`) VALUES
     ('site_name', 'Project Cloud'),
     ('allow_registration', '0'),
     ('default_quota_bytes', '5368709120'),
+    ('assets_quota_bytes', '1073741824'),
     ('support_email', ''),
     ('primary_color', '#3b82f6'),
-    ('schema_version', '3')
+    ('schema_version', '4')
 ON DUPLICATE KEY UPDATE `key` = `key`;
 
 -- --------------------------------------------------------------------------
@@ -174,6 +175,7 @@ CREATE TABLE IF NOT EXISTS `email_templates` (
 CREATE TABLE IF NOT EXISTS `assets_metadata` (
   `path` VARCHAR(1024) NOT NULL,
   `user_id` BIGINT UNSIGNED NOT NULL,
+  `size_bytes` BIGINT UNSIGNED NOT NULL DEFAULT 0,
   `blocked_actions` VARCHAR(255) NULL DEFAULT NULL,
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`path`(255)),

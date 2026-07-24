@@ -99,7 +99,7 @@ DirectoryIndex index.html
     # 6c-bis. Si es un archivo estático dentro de /assets, servirlo si existe.
     # Si NO existe, forzar un 404 en lugar de cargar el SPA (evita bucles o falsos 200).
     # IMPORTANTE: No aplicar a la carpeta raíz /assets/ para que el SPA pueda manejar la ruta.
-    RewriteCond %{REQUEST_URI} ^/assets/.+
+    RewriteCond %{REQUEST_URI} ^/assets/.+\.(png|jpg|jpeg|gif|svg|webp|ico|css|js)$ [NC]
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ - [R=404,L]
 

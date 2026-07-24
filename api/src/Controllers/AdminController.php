@@ -71,8 +71,19 @@ final class AdminController
         }
 
         $role = in_array($data['role'] ?? 'user', self::ROLES, true) ? (string) $data['role'] : 'user';
-        $quota = (int) ($data['quota_bytes'] ?? 5 * 1024 ** 3);
-        $maxUpload = (int) ($data['max_upload_bytes'] ?? 2 * 1024 ** 3);
+        $quota = (int) ($data['quota_bytes'] ?? 524288000); // 500MB
+        $maxUpload = (int) ($data['max_upload_bytes'] ?? 10485760); // 10MB
+
+        $settings = new SettingsRepository();
+        $serverCapacity = $settings->getInt('server_capacity_bytes', 0);
+        if ($serverCapacity > 0) {
+            $stats = $users->stats();
+            $assetsQuota = $settings->getInt('assets_quota_bytes', 1073741824);
+            $totalAllocated = $stats['allocated_users'] + $assetsQuota;
+            if ($totalAllocated + $quota > $serverCapacity) {
+                throw new HttpException(422, 'CAPACITY_EXCEEDED', 'No hay suficiente capacidad en el servidor para asignar esta cuota al usuario. Capacidad disponible: ' . max(0, $serverCapacity - $totalAllocated) . ' bytes.');
+            }
+        }
 
         $plainPassword = $generate ? Password::generate(10) : (string) $data['password'];
 
@@ -142,7 +153,22 @@ final class AdminController
             $fields['display_name'] = (string) $body['display_name'];
         }
         if (array_key_exists('quota_bytes', $body)) {
-            $fields['quota_bytes'] = max(0, (int) $body['quota_bytes']);
+            $newQuota = max(0, (int) $body['quota_bytes']);
+            
+            $settings = new SettingsRepository();
+            $serverCapacity = $settings->getInt('server_capacity_bytes', 0);
+            if ($serverCapacity > 0) {
+                $stats = $users->stats();
+                $assetsQuota = $settings->getInt('assets_quota_bytes', 1073741824);
+                $oldQuota = (int) $target['quota_bytes'];
+                $totalAllocatedWithoutUser = $stats['allocated_users'] - $oldQuota + $assetsQuota;
+                
+                if ($totalAllocatedWithoutUser + $newQuota > $serverCapacity) {
+                    throw new HttpException(422, 'CAPACITY_EXCEEDED', 'No hay suficiente capacidad en el servidor para asignar esta cuota al usuario.');
+                }
+            }
+            
+            $fields['quota_bytes'] = $newQuota;
         }
         if (array_key_exists('max_upload_bytes', $body)) {
             $fields['max_upload_bytes'] = max(0, (int) $body['max_upload_bytes']);
@@ -220,39 +246,111 @@ final class AdminController
     public function stats(Request $request): Response
     {
         $stats = (new UserRepository())->stats();
+        $settings = new SettingsRepository();
+        $assets = new \ProjectCloud\Services\AssetsService();
+        
+        $assetsStats = $assets->getStorageStats();
+        
         // Capacidad real del servidor (definida en la instalación, editable aquí).
-        $stats['server_capacity_bytes'] = (new SettingsRepository())->getInt('server_capacity_bytes', 0);
+        $stats['server_capacity_bytes'] = $settings->getInt('server_capacity_bytes', 0);
+        $stats['assets_quota_bytes'] = $settings->getInt('assets_quota_bytes', 1073741824);
+        $stats['assets_used_bytes'] = $assetsStats['total_bytes'];
+
         return Response::success($stats);
+    }
+
+    /** GET /admin/migrate-assets */
+    public function migrateAssets(Request $request): Response
+    {
+        $pdo = \ProjectCloud\Core\Database::pdo();
+        
+        $settings = new SettingsRepository();
+        $folderName = $settings->get('assets_folder_name') ?: 'assets';
+        $storage = rtrim((string) \ProjectCloud\Core\Config::get('storage.path', ''), '/\\');
+        $root = dirname($storage) . DIRECTORY_SEPARATOR . $folderName;
+        
+        if (!is_dir($root)) {
+            return Response::success(['status' => 'error', 'message' => "La carpeta root de assets no existe o no está activada ($root)."]);
+        }
+        
+        $stmt = $pdo->query("SELECT path, size_bytes FROM assets_metadata");
+        $updateStmt = $pdo->prepare("UPDATE assets_metadata SET size_bytes = ? WHERE path = ?");
+        
+        $updated = 0;
+        $files = [];
+        while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
+            $abs = $root . '/' . ltrim($row['path'], '/');
+            if (is_file($abs)) {
+                $size = filesize($abs) ?: 0;
+                $updateStmt->execute([$size, $row['path']]);
+                $updated++;
+                $files[] = ['path' => $row['path'], 'size' => $size, 'abs' => $abs, 'found' => true];
+            } else {
+                $files[] = ['path' => $row['path'], 'size' => 0, 'abs' => $abs, 'found' => false];
+            }
+        }
+        
+        return Response::success([
+            'status' => 'success',
+            'updated' => $updated,
+            'root' => $root,
+            'files' => $files
+        ]);
     }
 
     /** GET /admin/charts/storage-history */
     public function storageHistory(Request $request): Response
     {
-        $period = $request->param('period', '7d');
+        $period = $request->input('period', '7d');
+        $userId = $request->input('user_id');
         $dateFilter = match($period) {
             'today' => 'CURDATE()',
-            '30d' => 'DATE_SUB(CURDATE(), INTERVAL 30 DAY)',
+            '30d' => 'DATE_FORMAT(CURDATE(), "%Y-%m-01")', // First day of current month
             default => 'DATE_SUB(CURDATE(), INTERVAL 7 DAY)',
         };
         
         $pdo = \ProjectCloud\Core\Database::pdo();
         
+        $whereUser = $userId && $userId !== 'all' ? " AND user_id = " . (int)$userId : "";
+        
         $stmt = $pdo->prepare("
-            SELECT `date`, `total_bytes`
-            FROM `storage_history`
-            WHERE `date` >= $dateFilter
+            SELECT DATE(created_at) as `date`, SUM(size_bytes) as total_bytes
+            FROM files
+            WHERE deleted_at IS NULL AND created_at >= $dateFilter $whereUser
+            GROUP BY DATE(created_at)
             ORDER BY `date` ASC
         ");
         $stmt->execute();
-        $history = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        $dbHistory = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
-        // Convert types
-        $history = array_map(function ($row) {
-            return [
-                'date' => $row['date'],
-                'total_bytes' => (int) $row['total_bytes']
+        $history = [];
+        $historyMap = [];
+        foreach ($dbHistory as $row) {
+            $historyMap[$row['date']] = (int) $row['total_bytes'];
+        }
+
+        $cutoffDate = match($period) {
+            'today' => date('Y-m-d'),
+            '30d' => date('Y-m-01'),
+            default => date('Y-m-d', strtotime('-7 days')),
+        };
+        $endDateStr = match($period) {
+            'today' => date('Y-m-d'),
+            '30d' => date('Y-m-t'),
+            default => date('Y-m-d')
+        };
+
+        $currentDate = new \DateTime($cutoffDate);
+        $endDate = new \DateTime($endDateStr);
+
+        while ($currentDate <= $endDate) {
+            $dStr = $currentDate->format('Y-m-d');
+            $history[] = [
+                'date' => $dStr,
+                'total_bytes' => $historyMap[$dStr] ?? 0
             ];
-        }, $history);
+            $currentDate->modify('+1 day');
+        }
 
         return Response::success(['history' => $history]);
     }
@@ -260,10 +358,18 @@ final class AdminController
     /** GET /admin/charts/storage-distribution */
     public function storageDistribution(Request $request): Response
     {
-        $period = $request->param('period', '7d');
+        $period = $request->input('period', '7d');
+        $userId = $request->input('user_id');
+        $whereUser = $userId && $userId !== 'all' ? " AND user_id = " . (int)$userId : "";
+        
+        $cutoffDate = match($period) {
+            'today' => date('Y-m-d'),
+            '30d' => date('Y-m-01'), // First day of current month
+            default => date('Y-m-d', strtotime('-7 days')),
+        };
         $dateFilter = match($period) {
             'today' => 'CURDATE()',
-            '30d' => 'DATE_SUB(CURDATE(), INTERVAL 30 DAY)',
+            '30d' => 'DATE_FORMAT(CURDATE(), "%Y-%m-01")',
             default => 'DATE_SUB(CURDATE(), INTERVAL 7 DAY)',
         };
 
@@ -275,36 +381,88 @@ final class AdminController
                 COALESCE(NULLIF(SUBSTRING_INDEX(mime_type, '/', 1), ''), 'unknown') as type,
                 SUM(size_bytes) as total_bytes
             FROM files
-            WHERE deleted_at IS NULL AND created_at >= $dateFilter
+            WHERE deleted_at IS NULL AND created_at >= $dateFilter $whereUser
             GROUP BY type
             ORDER BY total_bytes DESC
         ");
         $stmtMime->execute();
         $byType = $stmtMime->fetchAll(\PDO::FETCH_ASSOC);
 
-        // Distribution by user
+        // Current Total Distribution by user (for the donut chart / totals)
+        $whereUserJoin = $userId && $userId !== 'all' ? " AND u.id = " . (int)$userId : "";
         $stmtUser = $pdo->prepare("
             SELECT u.username, u.display_name, COALESCE(SUM(f.size_bytes), 0) as total_bytes
             FROM users u
-            LEFT JOIN files f ON f.user_id = u.id AND f.deleted_at IS NULL AND f.created_at >= $dateFilter
+            LEFT JOIN files f ON f.user_id = u.id AND f.deleted_at IS NULL
+            WHERE 1=1 $whereUserJoin
             GROUP BY u.id
             ORDER BY total_bytes DESC
         ");
         $stmtUser->execute();
         $byUser = $stmtUser->fetchAll(\PDO::FETCH_ASSOC);
 
+        // History by user (Daily)
+        $stmtFiles = $pdo->prepare("
+            SELECT f.size_bytes, f.created_at, u.username, u.display_name, u.id as user_id
+            FROM files f
+            JOIN users u ON f.user_id = u.id
+            WHERE f.deleted_at IS NULL $whereUser
+        ");
+        $stmtFiles->execute();
+        $files = $stmtFiles->fetchAll(\PDO::FETCH_ASSOC);
+
+        $filesForHistory = []; // [username|display_name => [date => bytes]]
+        $userNames = []; // user_id => name
+        foreach ($files as $f) {
+            $name = $f['display_name'] ?: $f['username'];
+            $uid = $f['user_id'];
+            $userNames[$uid] = $name;
+            $date = substr($f['created_at'], 0, 10);
+            $size = (int) $f['size_bytes'];
+            
+            if (!isset($filesForHistory[$name])) {
+                $filesForHistory[$name] = [];
+            }
+            if (!isset($filesForHistory[$name][$date])) {
+                $filesForHistory[$name][$date] = 0;
+            }
+            $filesForHistory[$name][$date] += $size;
+        }
+
+        $byUserHistory = [];
+        $currentDate = new \DateTime($cutoffDate);
+        $endDateStr = match($period) {
+            'today' => date('Y-m-d'),
+            '30d' => date('Y-m-t'),
+            default => date('Y-m-d')
+        };
+        $endDate = new \DateTime($endDateStr);
+        
+        while ($currentDate <= $endDate) {
+            $dStr = $currentDate->format('Y-m-d');
+            
+            $dayData = ['date' => $dStr];
+            foreach ($userNames as $name) {
+                $dayData[$name] = $filesForHistory[$name][$dStr] ?? 0;
+            }
+            $byUserHistory[] = $dayData;
+            $currentDate->modify('+1 day');
+        }
+
         return Response::success([
             'by_type' => array_map(fn($row) => ['type' => $row['type'], 'total_bytes' => (int) $row['total_bytes']], $byType),
-            'by_user' => array_map(fn($row) => ['username' => $row['username'], 'display_name' => $row['display_name'], 'total_bytes' => (int) $row['total_bytes']], $byUser)
+            'by_user' => array_map(fn($row) => ['username' => $row['username'], 'display_name' => $row['display_name'], 'total_bytes' => (int) $row['total_bytes']], $byUser),
+            'by_user_history' => $byUserHistory,
         ]);
     }
 
     /** GET /admin/charts/workspace */
     public function workspaceCharts(Request $request): Response
     {
-        $period = $request->param('period', '30d');
+        $period = $request->input('period', '30d');
+        $userId = $request->input('user_id');
         $assets = new \ProjectCloud\Services\AssetsService();
-        return Response::success($assets->getWorkspaceStats($period));
+        return Response::success($assets->getWorkspaceStats($period, $userId ? (int)$userId : null));
     }
 
     /** GET /admin/server-info */
@@ -329,18 +487,29 @@ final class AdminController
         $adminId = (int) $request->userId();
         $updatedUser = null;
 
-        if (array_key_exists('server_capacity_bytes', $body)) {
-            $capacity = (int) $body['server_capacity_bytes'];
-            if ($capacity <= 0) {
+        if (array_key_exists('server_capacity_bytes', $body) || array_key_exists('assets_quota_bytes', $body)) {
+            $capacity = array_key_exists('server_capacity_bytes', $body) ? (int) $body['server_capacity_bytes'] : $settings->getInt('server_capacity_bytes', 0);
+            $assetsQuota = array_key_exists('assets_quota_bytes', $body) ? (int) $body['assets_quota_bytes'] : $settings->getInt('assets_quota_bytes', 0);
+            
+            if (array_key_exists('server_capacity_bytes', $body) && $capacity <= 0) {
                 throw new HttpException(422, 'INVALID_CAPACITY', 'La capacidad del servidor debe ser mayor a 0.');
             }
+
             $stats = $users->stats();
-            if ($capacity < $stats['used']) {
-                throw new HttpException(422, 'CAPACITY_TOO_LOW', 'La capacidad no puede ser menor al almacenamiento actualmente en uso (' . $stats['used'] . ' bytes).');
+            $totalAllocated = $stats['allocated_users'] + $assetsQuota;
+
+            if ($capacity > 0 && $capacity < $totalAllocated) {
+                throw new HttpException(422, 'CAPACITY_TOO_LOW', 'La capacidad máxima del servidor no es suficiente para cubrir la cuota de usuarios más la cuota de la Unidad Compartida.');
             }
 
-            $settings->set('server_capacity_bytes', (string) $capacity);
-            ActivityLogger::log($request, 'settings.update', 'setting', null, ['server_capacity_bytes' => $capacity]);
+            if (array_key_exists('server_capacity_bytes', $body)) {
+                $settings->set('server_capacity_bytes', (string) $capacity);
+                ActivityLogger::log($request, 'settings.update', 'setting', null, ['server_capacity_bytes' => $capacity]);
+            }
+            if (array_key_exists('assets_quota_bytes', $body)) {
+                $settings->set('assets_quota_bytes', (string) $assetsQuota);
+                ActivityLogger::log($request, 'settings.update', 'setting', null, ['assets_quota_bytes' => $assetsQuota]);
+            }
         }
         if (array_key_exists('organization_name', $body)) {
             $orgName = trim((string) $body['organization_name']);
