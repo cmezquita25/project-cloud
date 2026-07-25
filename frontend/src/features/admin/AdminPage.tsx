@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useLocation } from 'react-router-dom'
-import { Users, HardDrive, UserPlus, Pencil, Server } from 'lucide-react'
+import { Users, HardDrive, UserPlus, Pencil, Server, Info } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Button, Dialog, Input, Spinner, useToast, Select } from '@shared/ui'
 import { formatBytes } from '@shared/lib/formatBytes'
@@ -162,6 +162,7 @@ export function AdminPage() {
   const [capUnit, setCapUnit] = useState<'MB' | 'GB'>('GB')
   const [assetsCapVal, setAssetsCapVal] = useState('')
   const [assetsCapUnit, setAssetsCapUnit] = useState<'MB' | 'GB'>('GB')
+  const [chunkVal, setChunkVal] = useState<string>('4')
   const [savingCap, setSavingCap] = useState(false)
 
   const invalidateAdmin = () => {
@@ -196,6 +197,9 @@ export function AdminPage() {
       setAssetsCapUnit('GB')
     }
 
+    const currentChunk = stats?.chunk_size_bytes ?? (4 * MB)
+    setChunkVal(String(Math.round(currentChunk / MB)))
+
     setCapOpen(true)
   }
 
@@ -214,13 +218,14 @@ export function AdminPage() {
 
     const bytes = Math.round(val * (capUnit === 'GB' ? GB : MB))
     const assetsBytes = Math.round(assetsVal * (assetsCapUnit === 'GB' ? GB : MB))
+    const chunkBytes = Math.round(parseFloat(chunkVal) * MB)
 
     setSavingCap(true)
     try {
-      const res = await adminApi.updateCapacity(bytes, assetsBytes)
+      const res = await adminApi.updateCapacity(bytes, assetsBytes, chunkBytes)
       if (res.user) setUser(res.user)
       else await authApi.me().then(setUser)
-      toast.success('Capacidad actualizada')
+      toast.success('Configuración actualizada')
       setCapOpen(false)
       invalidateAdmin()
     } catch (e) {
@@ -244,6 +249,32 @@ export function AdminPage() {
       setDeleting(false)
     }
   }
+
+  const parseIniBytes = (str?: string): number => {
+    if (!str || str === 'N/A') return 0
+    const v = str.trim()
+    const num = parseFloat(v)
+    const unit = v.slice(-1).toUpperCase()
+    if (unit === 'G') return num * 1024 * 1024 * 1024
+    if (unit === 'M') return num * 1024 * 1024
+    if (unit === 'K') return num * 1024
+    return num
+  }
+
+  const phpPostMax = parseIniBytes(serverInfo?.post_max_size)
+  const phpUploadMax = parseIniBytes(serverInfo?.upload_max_filesize)
+  const phpEffectiveCap = (phpPostMax > 0 && phpUploadMax > 0) ? Math.min(phpPostMax, phpUploadMax) : (phpPostMax || phpUploadMax)
+
+  const chunkCandidates = [4, 6, 8, 10, 16]
+  const chunkOptions = chunkCandidates.map((mb) => {
+    const bytes = mb * MB
+    const isExceeded = phpEffectiveCap > 0 && bytes > phpEffectiveCap
+    return {
+      value: String(mb),
+      label: `${mb} MB${mb === 4 ? ' (Predeterminado)' : ''}${isExceeded ? ' ⚠️ (Supera límite PHP)' : ''}`,
+      disabled: isExceeded,
+    }
+  })
 
   return (
     <div className="flex h-full flex-col">
@@ -340,6 +371,11 @@ export function AdminPage() {
                       <p className="text-sm font-medium text-content-primary">{formatBytes(stats.assets_used_bytes)}</p>
                     </div>
 
+                    <div className="flex items-center justify-between mt-2">
+                      <p className="text-sm text-content-secondary">Bloque de Subida (Chunk Size):</p>
+                      <p className="text-sm font-medium text-primary font-mono">{formatBytes(stats.chunk_size_bytes ?? (4 * MB))}</p>
+                    </div>
+
                     <div className="flex items-center justify-between mt-2 pt-2 border-t border-border">
                       <p className="text-sm text-content-secondary font-medium">Espacio libre sin asignar</p>
                       <p className="text-sm font-medium text-success">
@@ -407,7 +443,11 @@ export function AdminPage() {
 
                 {serverInfo && (
                   <div className="rounded-drive border border-border bg-surface p-5 shadow-sm">
-                    <ServerLimits serverInfo={serverInfo} />
+                    <ServerLimits
+                      serverInfo={serverInfo}
+                      chunkSizeBytes={stats?.chunk_size_bytes}
+                      onEditChunk={openCapacity}
+                    />
                   </div>
                 )}
 
@@ -541,6 +581,25 @@ export function AdminPage() {
                   { value: 'GB', label: 'GB' }
                 ]}
               />
+            </div>
+          </div>
+
+          <div className="pt-2 border-t border-border">
+            <p className="text-sm font-medium text-content-primary mb-1">Bloque de Subida (Chunk Size)</p>
+            <p className="text-xs text-content-tertiary mb-3">
+              Tamaño de cada paquete HTTP al transportar archivos por trozos.
+            </p>
+            <Select
+              value={chunkVal}
+              onChange={(val) => setChunkVal(String(val))}
+              className="h-11 w-full rounded-drive border border-border-strong bg-surface px-3 text-sm text-content-primary focus:border-transparent focus:outline-none focus:ring-2 focus:ring-focus"
+              options={chunkOptions}
+            />
+            <div className="mt-3 flex items-start gap-2 rounded-drive border border-info/30 bg-info/10 p-2.5 text-xs text-content-secondary">
+              <Info size={16} className="mt-0.5 shrink-0 text-info" />
+              <span>
+                <strong>Nota:</strong> Si la configuración de tu servidor (PHP <code>upload_max_filesize</code> / <code>post_max_size</code>) tiene un límite menor al bloque seleccionado, el sistema ajustará automáticamente el bloque para no exceder la capacidad real del servidor.
+              </span>
             </div>
           </div>
         </div>

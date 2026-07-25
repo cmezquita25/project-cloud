@@ -9,19 +9,23 @@ interface InitResponse {
 }
 
 interface InitPayload {
-  folder_id: FolderRef
+  folder_id?: FolderRef
+  target_path?: string
+  mode?: 'drive' | 'assets'
   name: string
   size: number
   mime?: string | null
 }
 
-const ref = (id: FolderRef): string => (id === null || id === undefined ? 'root' : String(id))
+const ref = (id?: FolderRef): string => (id === null || id === undefined ? 'root' : String(id))
 
 /** Cliente de subida por chunks (endpoints /uploads/*). */
 export const uploadApi = {
   init: (payload: InitPayload) =>
     api.post<InitResponse>('/uploads/init', {
       folder_id: ref(payload.folder_id),
+      target_path: payload.target_path ?? '',
+      mode: payload.mode ?? 'drive',
       name: payload.name,
       size: payload.size,
       mime: payload.mime ?? null,

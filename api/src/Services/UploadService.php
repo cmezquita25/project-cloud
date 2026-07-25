@@ -44,8 +44,16 @@ final class UploadService
      *
      * @return array{upload_id:string,chunk_size:int,offset:int,name:string}
      */
-    public function init(int $userId, ?int $folderId, string $rawName, int $size, ?string $mime): array
-    {
+    public function init(
+        int $userId,
+        ?int $folderId,
+        string $rawName,
+        int $size,
+        ?string $mime,
+        string $mode = 'drive',
+        string $targetPath = '',
+        string $role = 'user'
+    ): array {
         $this->cleanupOrphans($userId);
 
         $name = $this->fs->sanitizeName($rawName);
@@ -60,33 +68,55 @@ final class UploadService
         if ($user === null) {
             throw HttpException::unauthorized();
         }
-        $maxUpload = (int) $user['max_upload_bytes'];
+        $maxUpload = (int) ($user['max_upload_bytes'] ?? 0);
         if ($maxUpload > 0 && $size > $maxUpload) {
             throw new HttpException(413, 'FILE_TOO_LARGE', 'El archivo supera el tamaño máximo por archivo.', [
                 'max_upload_bytes' => $maxUpload,
             ]);
         }
-        $quota = (int) $user['quota_bytes'];
-        if ($quota > 0 && (int) $user['used_bytes'] + $size > $quota) {
-            throw new HttpException(413, 'QUOTA_EXCEEDED', 'No tienes espacio suficiente.', [
-                'quota_bytes' => $quota,
-                'used_bytes'  => (int) $user['used_bytes'],
-            ]);
+
+        if ($mode === 'assets') {
+            $assets = new AssetsService();
+            if (!$assets->canAccess($userId, $role)) {
+                throw HttpException::forbidden('Sin permisos para subir a la unidad compartida.');
+            }
+
+            $settings = new \ProjectCloud\Repositories\SettingsRepository();
+            $quota = (int) $settings->get('assets_quota_bytes');
+            if ($quota > 0) {
+                $stats = $assets->getStorageStats();
+                if ($stats['total_bytes'] + $size > $quota) {
+                    throw new HttpException(413, 'QUOTA_EXCEEDED', 'La unidad compartida no tiene espacio suficiente.', [
+                        'quota_bytes' => $quota,
+                        'used_bytes'  => $stats['total_bytes'],
+                    ]);
+                }
+            }
+        } else {
+            $quota = (int) $user['quota_bytes'];
+            if ($quota > 0 && (int) $user['used_bytes'] + $size > $quota) {
+                throw new HttpException(413, 'QUOTA_EXCEEDED', 'No tienes espacio suficiente.', [
+                    'quota_bytes' => $quota,
+                    'used_bytes'  => (int) $user['used_bytes'],
+                ]);
+            }
         }
 
-        // Resuelve la carpeta destino y evita colisiones de nombre.
+        // Resuelve la carpeta destino y evita colisiones de nombre (en Mi Unidad).
         $folderPath = '';
-        if ($folderId !== null) {
+        if ($mode !== 'assets' && $folderId !== null) {
             $folder = $this->folders->find($folderId, $userId);
             if ($folder === null) {
                 throw new HttpException(422, 'INVALID_FOLDER', 'La carpeta destino no existe.');
             }
             $folderPath = (string) $folder['path'];
         }
-        $name = PathHelper::uniqueName(
-            $name,
-            fn (string $n): bool => $this->files->existsByName($userId, $folderId, $n)
-        );
+        if ($mode !== 'assets') {
+            $name = PathHelper::uniqueName(
+                $name,
+                fn (string $n): bool => $this->files->existsByName($userId, $folderId, $n)
+            );
+        }
 
         $uploadId = bin2hex(random_bytes(16));
         $dir = $this->uploadsDir($userId);
@@ -95,6 +125,9 @@ final class UploadService
             'name'        => $name,
             'folder_id'   => $folderId,
             'folder_path' => $folderPath,
+            'mode'        => $mode,
+            'target_path' => $targetPath,
+            'role'        => $role,
             'size'        => $size,
             'mime'        => $mime,
             'created_at'  => time(),
@@ -140,6 +173,30 @@ final class UploadService
         $actual = (int) (filesize($partPath) ?: 0);
         if ($actual !== (int) $meta['size']) {
             throw new HttpException(422, 'SIZE_MISMATCH', 'La subida está incompleta o corrupta.');
+        }
+
+        $mode = (string) ($meta['mode'] ?? 'drive');
+
+        if ($mode === 'assets') {
+            $targetPath = (string) ($meta['target_path'] ?? '');
+            $name = (string) $meta['name'];
+            $role = (string) ($meta['role'] ?? 'user');
+
+            $assets = new AssetsService();
+            $settings = new \ProjectCloud\Repositories\SettingsRepository();
+            $quota = (int) $settings->get('assets_quota_bytes');
+            if ($quota > 0) {
+                $stats = $assets->getStorageStats();
+                if ($stats['total_bytes'] + $actual > $quota) {
+                    @unlink($partPath);
+                    @unlink($this->metaPath($userId, $uploadId));
+                    throw new HttpException(413, 'QUOTA_EXCEEDED', 'La unidad compartida no tiene espacio suficiente.');
+                }
+            }
+
+            $result = $assets->storeChunkedUpload($targetPath, $name, $partPath, $actual, $userId, $role);
+            @unlink($this->metaPath($userId, $uploadId));
+            return $result;
         }
 
         // MIME real del contenido (no confiamos en el declarado por el cliente).
@@ -221,10 +278,14 @@ final class UploadService
         return $this->uploadsDir($userId) . '/' . $uploadId . '.part';
     }
 
-    /** Tamaño de chunk efectivo: respeta config y post_max_size del servidor. */
+    /** Tamaño de chunk efectivo: respeta settings, config y post_max_size del servidor. */
     private function chunkSize(): int
     {
-        $configured = (int) Config::get('storage.chunk_size', 4 * 1024 * 1024);
+        $settings = new \ProjectCloud\Repositories\SettingsRepository();
+        $configured = $settings->getInt('chunk_size_bytes', 0);
+        if ($configured <= 0) {
+            $configured = (int) Config::get('storage.chunk_size', 4 * 1024 * 1024);
+        }
         $postMax = $this->iniBytes((string) ini_get('post_max_size'));
         $cap = $postMax > 0 ? (int) ($postMax * 0.9) : $configured;
         return max(256 * 1024, min($configured, $cap));

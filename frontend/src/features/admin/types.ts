@@ -30,6 +30,7 @@ export interface AdminStats {
   server_capacity_bytes: number
   assets_quota_bytes: number
   assets_used_bytes: number
+  chunk_size_bytes?: number
 }
 
 export interface ActivityItem {

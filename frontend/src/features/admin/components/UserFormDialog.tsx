@@ -1,7 +1,9 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { HelpCircle, MailCheck, KeyRound } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { HelpCircle, MailCheck, KeyRound, AlertTriangle } from 'lucide-react'
 import { Dialog, Button, Input, Tooltip, Checkbox, useToast, Select } from '@shared/ui'
 import { ApiError } from '@shared/api'
+import { formatBytes } from '@shared/lib/formatBytes'
 import { adminApi } from '../services/adminApi'
 import type { AdminUser } from '../types'
 
@@ -50,6 +52,30 @@ export function UserFormDialog({ open, user, onClose, onSaved }: UserFormDialogP
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
   const [submitting, setSubmitting] = useState(false)
 
+  const { data: serverInfo } = useQuery({
+    queryKey: ['admin', 'serverInfo'],
+    queryFn: () => adminApi.serverInfo(),
+    enabled: open,
+  })
+
+  const parseIniBytes = (str?: string): number => {
+    if (!str || str === 'N/A') return 0
+    const v = str.trim()
+    const num = parseFloat(v)
+    const unit = v.slice(-1).toUpperCase()
+    if (unit === 'G') return num * 1024 * 1024 * 1024
+    if (unit === 'M') return num * 1024 * 1024
+    if (unit === 'K') return num * 1024
+    return num
+  }
+
+  const phpPostMax = parseIniBytes(serverInfo?.post_max_size)
+  const phpUploadMax = parseIniBytes(serverInfo?.upload_max_filesize)
+  const phpEffectiveCap = (phpPostMax > 0 && phpUploadMax > 0) ? Math.min(phpPostMax, phpUploadMax) : (phpPostMax || phpUploadMax)
+
+  const currentMaxBytes = toBytes(form.maxVal, form.maxUnit)
+  const isMaxExceedingPhp = phpEffectiveCap > 0 && currentMaxBytes > phpEffectiveCap
+
   useEffect(() => {
     if (!open) return
     setError(null)
@@ -86,6 +112,13 @@ export function UserFormDialog({ open, user, onClose, onSaved }: UserFormDialogP
     try {
       const quota_bytes = toBytes(form.quotaVal, form.quotaUnit)
       const max_upload_bytes = toBytes(form.maxVal, form.maxUnit)
+
+      if (isMaxExceedingPhp) {
+        setError(`La subida máxima por archivo (${formatBytes(max_upload_bytes)}) no puede superar el límite real de PHP de tu servidor (${formatBytes(phpEffectiveCap)}).`)
+        setSubmitting(false)
+        return
+      }
+
       if (isEdit) {
         await adminApi.updateUser(user.id, {
           email: form.email,
@@ -244,6 +277,15 @@ export function UserFormDialog({ open, user, onClose, onSaved }: UserFormDialogP
             onUnit={(u) => setForm((f) => ({ ...f, maxUnit: u }))}
           />
         </div>
+
+        {isMaxExceedingPhp && (
+          <div className="flex items-start gap-2 rounded-drive border border-warning/30 bg-warning/10 p-2.5 text-xs text-warning">
+            <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+            <span>
+              <strong>Advertencia de PHP del Servidor:</strong> La subida máxima asignada (<strong>{formatBytes(currentMaxBytes)}</strong>) supera el límite de PHP detectado en tu servidor (<strong>{serverInfo?.upload_max_filesize ?? 'N/A'} / {serverInfo?.post_max_size ?? 'N/A'}</strong>). Las subidas individuales superiores al límite del servidor no funcionarán a menos que tu proveedor de hosting aumente <code>post_max_size</code> o <code>upload_max_filesize</code>.
+            </span>
+          </div>
+        )}
 
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="ghost" onClick={onClose} disabled={submitting}>

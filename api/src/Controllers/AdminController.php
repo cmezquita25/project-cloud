@@ -81,8 +81,11 @@ final class AdminController
         $quota = (int) ($data['quota_bytes'] ?? 524288000); // 500MB
         $maxUpload = (int) ($data['max_upload_bytes'] ?? 10485760); // 10MB
 
-        $settings = new SettingsRepository();
-        $serverCapacity = $settings->getInt('server_capacity_bytes', 0);
+        $phpLimit = $this->effectivePhpLimit();
+        if ($phpLimit > 0 && $maxUpload > $phpLimit) {
+            throw HttpException::validation(['max_upload_bytes' => ['La subida máxima no puede superar el límite real de PHP del servidor.']]);
+        }
+
         if ($serverCapacity > 0) {
             $stats = $users->stats();
             $assetsQuota = $settings->getInt('assets_quota_bytes', 1073741824);
@@ -178,7 +181,12 @@ final class AdminController
             $fields['quota_bytes'] = $newQuota;
         }
         if (array_key_exists('max_upload_bytes', $body)) {
-            $fields['max_upload_bytes'] = max(0, (int) $body['max_upload_bytes']);
+            $maxUpload = max(0, (int) $body['max_upload_bytes']);
+            $phpLimit = $this->effectivePhpLimit();
+            if ($phpLimit > 0 && $maxUpload > $phpLimit) {
+                throw HttpException::validation(['max_upload_bytes' => ['La subida máxima no puede superar el límite real de PHP del servidor.']]);
+            }
+            $fields['max_upload_bytes'] = $maxUpload;
         }
         if (array_key_exists('role', $body) && in_array($body['role'], self::ROLES, true)) {
             // Evita quitarte a ti mismo el rol admin.
@@ -265,6 +273,7 @@ final class AdminController
         $stats['server_capacity_bytes'] = $settings->getInt('server_capacity_bytes', 0);
         $stats['assets_quota_bytes'] = $settings->getInt('assets_quota_bytes', 1073741824);
         $stats['assets_used_bytes'] = $assetsStats['total_bytes'];
+        $stats['chunk_size_bytes'] = $settings->getInt('chunk_size_bytes', 4 * 1024 * 1024);
 
         return Response::success($stats);
     }
@@ -521,6 +530,11 @@ final class AdminController
                 ActivityLogger::log($request, 'settings.update', 'setting', null, ['assets_quota_bytes' => $assetsQuota]);
             }
         }
+        if (array_key_exists('chunk_size_bytes', $body)) {
+            $chunkSize = max(1024 * 1024, (int) $body['chunk_size_bytes']);
+            $settings->set('chunk_size_bytes', (string) $chunkSize);
+            ActivityLogger::log($request, 'settings.update', 'setting', null, ['chunk_size_bytes' => $chunkSize]);
+        }
         if (array_key_exists('organization_name', $body)) {
             $orgName = trim((string) $body['organization_name']);
             if ($orgName === '') {
@@ -695,5 +709,31 @@ final class AdminController
             'avatar_url'       => AvatarService::urlFor((int) ($u['id'] ?? 0)),
             'created_at'       => $u['created_at'] ?? null,
         ];
+    }
+
+    private function effectivePhpLimit(): int
+    {
+        $postMax = $this->parseIniBytes((string) ini_get('post_max_size'));
+        $uploadMax = $this->parseIniBytes((string) ini_get('upload_max_filesize'));
+        if ($postMax > 0 && $uploadMax > 0) {
+            return min($postMax, $uploadMax);
+        }
+        return max(0, max($postMax, $uploadMax));
+    }
+
+    private function parseIniBytes(string $val): int
+    {
+        $val = trim($val);
+        if ($val === '') {
+            return 0;
+        }
+        $unit = strtolower($val[strlen($val) - 1]);
+        $num = (int) $val;
+        return match ($unit) {
+            'g' => $num * 1024 * 1024 * 1024,
+            'm' => $num * 1024 * 1024,
+            'k' => $num * 1024,
+            default => (int) $val,
+        };
     }
 }

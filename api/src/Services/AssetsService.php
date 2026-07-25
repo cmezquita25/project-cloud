@@ -339,6 +339,61 @@ final class AssetsService
                 $blocked[$row['path']] = $row['blocked_actions'] !== null ? array_map('trim', explode(',', strtolower($row['blocked_actions']))) : [];
             }
         }
+
+        // Resolver dueños de elementos secundarios heredando de las carpetas ancestro
+        $missingPaths = [];
+        foreach ($paths as $p) {
+            if (!isset($owners[$p])) {
+                $missingPaths[] = $p;
+            }
+        }
+
+        if (!empty($missingPaths)) {
+            $ancestorPaths = [];
+            foreach ($missingPaths as $mp) {
+                $segments = explode('/', $mp);
+                array_pop($segments);
+                $acc = '';
+                foreach ($segments as $seg) {
+                    if ($seg === '') continue;
+                    $acc = $acc === '' ? $seg : $acc . '/' . $seg;
+                    $ancestorPaths[$acc] = true;
+                }
+            }
+
+            if (!empty($ancestorPaths)) {
+                $ancList = array_keys($ancestorPaths);
+                $ancIn = str_repeat('?,', count($ancList) - 1) . '?';
+                $ancStmt = $this->pdo->prepare("
+                    SELECT m.path, u.id as user_id, u.username, u.display_name 
+                    FROM assets_metadata m 
+                    JOIN users u ON m.user_id = u.id 
+                    WHERE m.path IN ($ancIn)
+                ");
+                $ancStmt->execute($ancList);
+                $ancOwners = [];
+                foreach ($ancStmt->fetchAll() as $row) {
+                    $ancOwners[$row['path']] = [
+                        'username' => $row['username'],
+                        'display_name' => $row['display_name'],
+                        'avatar_url' => \ProjectCloud\Services\AvatarService::urlFor((int) $row['user_id']),
+                    ];
+                }
+
+                foreach ($missingPaths as $mp) {
+                    $segments = explode('/', $mp);
+                    array_pop($segments);
+                    while (!empty($segments)) {
+                        $parentPath = implode('/', $segments);
+                        if (isset($ancOwners[$parentPath])) {
+                            $owners[$mp] = $ancOwners[$parentPath];
+                            break;
+                        }
+                        array_pop($segments);
+                    }
+                }
+            }
+        }
         
         // --- Obtener participantes para carpetas ---
         $folderParticipants = [];
@@ -463,6 +518,17 @@ final class AssetsService
         $stmt = $this->pdo->prepare("INSERT INTO assets_metadata (path, user_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE user_id = VALUES(user_id)");
         $stmt->execute([$rel, $userId]);
 
+        if ($parentRelative !== '') {
+            $folderSegments = explode('/', trim($parentRelative, '/'));
+            $accPath = '';
+            $folderMetaStmt = $this->pdo->prepare("INSERT INTO assets_metadata (path, user_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE user_id = COALESCE(user_id, VALUES(user_id))");
+            foreach ($folderSegments as $seg) {
+                if ($seg === '') continue;
+                $accPath = $accPath === '' ? $seg : $accPath . '/' . $seg;
+                $folderMetaStmt->execute([$accPath, $userId]);
+            }
+        }
+
         return ['type' => 'folder', 'name' => $name, 'path' => $rel];
     }
 
@@ -517,6 +583,69 @@ final class AssetsService
         $moved = is_uploaded_file($tmp) ? @move_uploaded_file($tmp, $abs) : @rename($tmp, $abs);
         if (!$moved) {
             throw new HttpException(500, 'FS_ERROR', 'No se pudo guardar el archivo.');
+        }
+        @chmod($abs, 0644);
+
+        $stmt = $this->pdo->prepare("INSERT INTO assets_metadata (path, user_id, size_bytes) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE user_id = VALUES(user_id), size_bytes = VALUES(size_bytes)");
+        $stmt->execute([$rel, $userId, $size]);
+
+        if ($parentRelative !== '') {
+            $folderSegments = explode('/', trim($parentRelative, '/'));
+            $accPath = '';
+            $folderMetaStmt = $this->pdo->prepare("INSERT INTO assets_metadata (path, user_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE user_id = COALESCE(user_id, VALUES(user_id))");
+            foreach ($folderSegments as $seg) {
+                if ($seg === '') continue;
+                $accPath = $accPath === '' ? $seg : $accPath . '/' . $seg;
+                $folderMetaStmt->execute([$accPath, $userId]);
+            }
+        }
+
+        $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+        return [
+            'type'       => 'file',
+            'name'       => $name,
+            'path'       => $rel,
+            'size_bytes' => (int) @filesize($abs),
+            'mime_type'  => $this->detectMime($abs),
+            'extension'  => $ext !== '' ? $ext : null,
+            'url'        => $this->publicUrl($rel),
+        ];
+    }
+
+    /**
+     * Finaliza y guarda un archivo subido por CHUNKS en una carpeta de assets.
+     */
+    public function storeChunkedUpload(string $parentRelative, string $name, string $partPath, int $size, int $userId, string $role): array
+    {
+        if ($parentRelative !== '') {
+            $this->assertActionAllowed($parentRelative, 'add', $role);
+        }
+
+        if ($size <= 0) {
+            throw HttpException::badRequest('El archivo está vacío.', 'INVALID_SIZE');
+        }
+
+        $name = $this->fs->sanitizeName($name);
+        if ($this->fs->isBlockedExtension($name)) {
+            @unlink($partPath);
+            throw new HttpException(422, 'BLOCKED_EXTENSION', 'Ese tipo de archivo no está permitido.');
+        }
+
+        $rel = ltrim($parentRelative . '/' . $name, '/');
+        $abs = $this->safe($rel);
+        $this->fs->ensureDir(dirname($abs));
+
+        if (file_exists($abs)) {
+            $this->assertActionAllowed($rel, 'modify', $role);
+            @unlink($abs);
+        }
+
+        if (!@rename($partPath, $abs)) {
+            if (!@copy($partPath, $abs)) {
+                @unlink($partPath);
+                throw new HttpException(500, 'FS_ERROR', 'No se pudo mover el archivo final a assets.');
+            }
+            @unlink($partPath);
         }
         @chmod($abs, 0644);
 

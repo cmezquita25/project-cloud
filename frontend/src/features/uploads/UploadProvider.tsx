@@ -11,7 +11,6 @@ import { ApiError } from '@shared/api'
 import { driveApi } from '@features/drive-explorer/services/driveApi'
 import { authApi } from '@features/auth/services/authApi'
 import { uploadApi } from './services/uploadApi'
-import { assetsApi } from '@features/assets/services/assetsApi'
 import type { FolderRef } from '@features/drive-explorer/types'
 
 export type UploadStatus = 'queued' | 'uploading' | 'done' | 'error' | 'canceled'
@@ -113,7 +112,27 @@ export function UploadProvider({ children }: { children: ReactNode }) {
           targetPath = targetPath.replace(/^\/+/, '').replace(/\/+/g, '/') // clean slashes
           
           if (controller.signal.aborted) throw new DOMException('abort', 'AbortError')
-          await assetsApi.upload(targetPath, task.file)
+
+          const init = await uploadApi.init({
+            target_path: targetPath,
+            mode: 'assets',
+            name: task.name,
+            size: task.size,
+            mime: task.file.type || null,
+          })
+
+          let offset = init.offset
+          const chunkSize = init.chunk_size
+          while (offset < task.size) {
+            if (controller.signal.aborted) throw new DOMException('abort', 'AbortError')
+            const end = Math.min(offset + chunkSize, task.size)
+            const blob = task.file.slice(offset, end)
+            const res = await uploadApi.chunk(init.upload_id, offset, blob, controller.signal)
+            offset = res.offset
+            patch(task.id, { loaded: offset })
+          }
+
+          await uploadApi.complete(init.upload_id)
           patch(task.id, { status: 'done', loaded: task.size })
           setCompletion((c) => ({
             tick: c.tick + 1,

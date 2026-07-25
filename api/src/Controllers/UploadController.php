@@ -24,10 +24,15 @@ final class UploadController
     /** POST /uploads/init */
     public function init(Request $request): Response
     {
-        $data = (new Validator($request->json()))
+        $body = $request->json();
+        $data = (new Validator($body))
             ->required('name')->maxLength('name', 255)
             ->required('size')->integer('size')
             ->validate();
+
+        $mode = (string) ($body['mode'] ?? 'drive');
+        $targetPath = (string) ($body['target_path'] ?? '');
+        $role = (string) ($request->user()['role'] ?? 'user');
 
         $result = $this->service()->init(
             (int) $request->userId(),
@@ -35,6 +40,9 @@ final class UploadController
             (string) $data['name'],
             (int) $data['size'],
             isset($data['mime']) ? (string) $data['mime'] : null,
+            $mode,
+            $targetPath,
+            $role
         );
 
         return Response::success($result);
@@ -65,6 +73,13 @@ final class UploadController
             $username,
             (string) $request->param('id'),
         );
+
+        if (isset($file['type']) && $file['type'] === 'file' && !isset($file['id'])) {
+            // Es un elemento de la Unidad Compartida (Assets)
+            ActivityLogger::log($request, 'assets.upload', 'asset', null, ['path' => $file['path'] ?? '']);
+            return Response::created($file);
+        }
+
         ActivityLogger::log($request, 'upload', 'file', (int) ($file['id'] ?? 0), [
             'name' => $file['name'] ?? null,
             'size' => $file['size_bytes'] ?? null,
