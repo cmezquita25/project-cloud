@@ -113,6 +113,7 @@ return static function (Router $router): void {
     $router->post('/v1/shares',                [ShareController::class, 'create'], $auth);
     $router->get('/v1/shares',                 [ShareController::class, 'listByTarget'], $auth);
     $router->get('/v1/shares/shared-with-me',  [ShareController::class, 'listSharedWithMe'], $auth);
+    $router->get('/v1/shares/my-shares',        [ShareController::class, 'listMyShares'], $auth);
     $router->patch('/v1/shares/{id}',          [ShareController::class, 'update'], $auth);
     $router->delete('/v1/shares/{id}',         [ShareController::class, 'delete'], $auth);
 

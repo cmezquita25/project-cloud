@@ -29,6 +29,7 @@ import { useTheme } from '@app/providers/ThemeProvider'
 import { useQuota } from './hooks/useQuota'
 import { KIND_META } from './kindMeta'
 import type { FileKind } from './services/quotaApi'
+import { SharedItemsBentoCard } from './components/SharedItemsBentoCard'
 
 const KIND_ICONS: Record<FileKind, LucideIcon> = {
   image: Image,
@@ -366,6 +367,9 @@ export function StoragePage() {
         </div>
 
       </div>
+
+      {/* Bento Card: Gestión de Elementos Compartidos */}
+      <SharedItemsBentoCard />
 
       {/* Sección Secundaria Bento: Grid de Categorías de Archivos */}
       <div className="space-y-3 pt-2">

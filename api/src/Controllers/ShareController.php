@@ -322,6 +322,63 @@ final class ShareController
     }
 
     /**
+     * GET /v1/shares/my-shares
+     * Lista todos los recursos compartidos otorgados por el usuario actual.
+     */
+    public function listMyShares(Request $request): Response
+    {
+        $user = $request->user();
+        if (!$user) {
+            throw HttpException::unauthorized();
+        }
+        $currentUserId = (int) $user['id'];
+
+        $stmt = $this->pdo->prepare("
+            SELECT 
+                sa.id as share_id,
+                sa.target_type,
+                sa.target_id,
+                sa.permission_level,
+                sa.created_at,
+                u.id as invited_id,
+                u.display_name as invited_name,
+                u.email as invited_email,
+                f.name as folder_name,
+                fi.name as file_name
+            FROM shared_access sa
+            JOIN users u ON u.id = sa.invited_user_id
+            LEFT JOIN folders f ON sa.target_type = 'folder' AND f.id = sa.target_id
+            LEFT JOIN files fi ON sa.target_type = 'file' AND fi.id = sa.target_id
+            WHERE sa.owner_id = :user_id
+            ORDER BY sa.created_at DESC
+        ");
+        $stmt->execute(['user_id' => $currentUserId]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $items = array_map(static fn($r) => [
+            'share_id' => (int) $r['share_id'],
+            'target_type' => (string) $r['target_type'],
+            'target_id' => $r['target_id'] !== null ? (int) $r['target_id'] : null,
+            'item_name' => match ($r['target_type']) {
+                'unit' => 'Unidad Completa (Mi Unidad)',
+                'folder' => (string) ($r['folder_name'] ?? 'Carpeta'),
+                'file' => (string) ($r['file_name'] ?? 'Archivo'),
+                default => 'Recurso',
+            },
+            'permission_level' => (string) $r['permission_level'],
+            'invited_user' => [
+                'id' => (int) $r['invited_id'],
+                'display_name' => (string) $r['invited_name'],
+                'email' => (string) $r['invited_email'],
+                'avatar_url' => \ProjectCloud\Services\AvatarService::urlFor((int) $r['invited_id']),
+            ],
+            'created_at' => (string) $r['created_at'],
+        ], $rows);
+
+        return Response::success(['items' => $items]);
+    }
+
+    /**
      * PATCH /v1/shares/{id}
      * Body: { "permission_level": "read"|"full" }
      */
