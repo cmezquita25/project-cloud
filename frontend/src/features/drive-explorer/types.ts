@@ -1,7 +1,21 @@
 export interface Owner {
-  username: string
+  id?: number
+  username?: string
   display_name: string
+  email?: string
   avatar_url: string | null
+  role?: 'owner' | 'invited'
+  permission_level?: 'read' | 'full'
+}
+
+export interface Collaborator {
+  share_id?: number
+  id: number
+  display_name: string
+  email: string
+  avatar_url: string | null
+  role: 'owner' | 'invited'
+  permission_level: 'read' | 'full'
 }
 
 export interface FolderItem {
@@ -18,6 +32,8 @@ export interface FolderItem {
   updated_at: string | null
   owner?: string | null // deprecated
   owners?: Owner[]
+  created_by?: Owner | null
+  collaborators?: Collaborator[]
   blocked_actions?: string[]
 }
 
@@ -40,6 +56,8 @@ export interface FileItem {
   updated_at: string | null
   owner?: string | null // deprecated
   owners?: Owner[]
+  created_by?: Owner | null
+  collaborators?: Collaborator[]
   blocked_actions?: string[]
 }
 
@@ -63,6 +81,7 @@ export type FolderRef = string | number | 'root' | null
 
 export type ItemAction =
   | 'open'
+  | 'share'
   | 'download'
   | 'copyUrl'
   | 'rename'
@@ -74,6 +93,7 @@ export type ItemAction =
   | 'delete'
   | 'restore'
   | 'block'
+
 
 export type ViewMode = 'list' | 'grid'
 

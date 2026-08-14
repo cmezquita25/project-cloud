@@ -92,45 +92,61 @@ final class UploadService
                     ]);
                 }
             }
-        } else {
-            $quota = (int) $user['quota_bytes'];
-            if ($quota > 0 && (int) $user['used_bytes'] + $size > $quota) {
-                throw new HttpException(413, 'QUOTA_EXCEEDED', 'No tienes espacio suficiente.', [
-                    'quota_bytes' => $quota,
-                    'used_bytes'  => (int) $user['used_bytes'],
-                ]);
-            }
         }
 
-        // Resuelve la carpeta destino y evita colisiones de nombre (en Mi Unidad).
         $folderPath = '';
+        $targetUserId = $userId;
+        $targetUsername = (string) ($user['username'] ?? '');
+
+
         if ($mode !== 'assets' && $folderId !== null) {
-            $folder = $this->folders->find($folderId, $userId);
+            $folder = $this->folders->findAnyById($folderId);
             if ($folder === null) {
                 throw new HttpException(422, 'INVALID_FOLDER', 'La carpeta destino no existe.');
             }
+            $targetUserId = (int) $folder['user_id'];
+            $permService = new SharePermissionService();
+            if (!$permService->canAccessFolder($userId, $folderId, 'full')) {
+                throw new HttpException(403, 'FORBIDDEN', 'No tienes permisos de escritura en esta carpeta compartida.');
+            }
             $folderPath = (string) $folder['path'];
+            $targetOwner = $this->users->findById($targetUserId);
+            if ($targetOwner !== null) {
+                $targetUsername = (string) ($targetOwner['username'] ?? '');
+            }
         }
+
         if ($mode !== 'assets') {
+            $targetUser = $this->users->findById($targetUserId);
+            $quota = (int) ($targetUser['quota_bytes'] ?? 0);
+            if ($quota > 0 && (int) ($targetUser['used_bytes'] ?? 0) + $size > $quota) {
+                throw new HttpException(413, 'QUOTA_EXCEEDED', 'El almacenamiento del propietario de la carpeta no tiene espacio suficiente.', [
+                    'quota_bytes' => $quota,
+                    'used_bytes'  => (int) ($targetUser['used_bytes'] ?? 0),
+                ]);
+            }
+
             $name = PathHelper::uniqueName(
                 $name,
-                fn (string $n): bool => $this->files->existsByName($userId, $folderId, $n)
+                fn (string $n): bool => $this->files->existsByName($targetUserId, $folderId, $n)
             );
         }
 
         $uploadId = bin2hex(random_bytes(16));
         $dir = $this->uploadsDir($userId);
         file_put_contents("$dir/$uploadId.json", json_encode([
-            'user_id'     => $userId,
-            'name'        => $name,
-            'folder_id'   => $folderId,
-            'folder_path' => $folderPath,
-            'mode'        => $mode,
-            'target_path' => $targetPath,
-            'role'        => $role,
-            'size'        => $size,
-            'mime'        => $mime,
-            'created_at'  => time(),
+            'user_id'         => $userId,
+            'target_user_id'  => $targetUserId,
+            'target_username' => $targetUsername,
+            'name'            => $name,
+            'folder_id'       => $folderId,
+            'folder_path'     => $folderPath,
+            'mode'            => $mode,
+            'target_path'     => $targetPath,
+            'role'            => $role,
+            'size'            => $size,
+            'mime'            => $mime,
+            'created_at'      => time(),
         ]));
         file_put_contents("$dir/$uploadId.part", '');
 
@@ -202,13 +218,16 @@ final class UploadService
         // MIME real del contenido (no confiamos en el declarado por el cliente).
         $mime = (new finfo(FILEINFO_MIME_TYPE))->file($partPath) ?: 'application/octet-stream';
 
-        // Revalida cuota (por si cambió durante la subida).
-        $user = $this->users->findById($userId);
-        if ($user !== null && (int) $user['quota_bytes'] > 0
-            && (int) $user['used_bytes'] + $actual > (int) $user['quota_bytes']) {
+        $targetUserId = (int) ($meta['target_user_id'] ?? $userId);
+        $targetUsername = (string) ($meta['target_username'] ?? $username);
+
+        // Revalida cuota del propietario destino (por si cambió durante la subida).
+        $targetUser = $this->users->findById($targetUserId);
+        if ($targetUser !== null && (int) $targetUser['quota_bytes'] > 0
+            && (int) $targetUser['used_bytes'] + $actual > (int) $targetUser['quota_bytes']) {
             @unlink($partPath);
             @unlink($this->metaPath($userId, $uploadId));
-            throw new HttpException(413, 'QUOTA_EXCEEDED', 'No tienes espacio suficiente.');
+            throw new HttpException(413, 'QUOTA_EXCEEDED', 'El espacio en disco del propietario no es suficiente.');
         }
 
         $folderId = $meta['folder_id'] !== null ? (int) $meta['folder_id'] : null;
@@ -216,8 +235,8 @@ final class UploadService
         $path = PathHelper::join((string) $meta['folder_path'], $name);
 
         $newId = 0;
-        $this->transaction(function () use ($userId, $username, $folderId, $name, $path, $partPath, $actual, $mime, &$newId) {
-            $dst = $this->fs->abs($username, $path);
+        $this->transaction(function () use ($targetUserId, $targetUsername, $folderId, $name, $path, $partPath, $actual, $mime, &$newId) {
+            $dst = $this->fs->abs($targetUsername, $path);
             $this->fs->ensureDir(dirname($dst));
             if (file_exists($dst)) {
                 throw new HttpException(409, 'NAME_EXISTS', 'Ya existe un archivo con ese nombre.');
@@ -225,13 +244,13 @@ final class UploadService
             if (!@rename($partPath, $dst)) {
                 throw new HttpException(500, 'FS_ERROR', 'No se pudo guardar el archivo.');
             }
-            $newId = $this->files->create($userId, $folderId, $name, $path, $actual, $mime, PathHelper::extension($name));
-            $this->users->addUsedBytes($userId, $actual);
+            $newId = $this->files->create($targetUserId, $folderId, $name, $path, $actual, $mime, PathHelper::extension($name));
+            $this->users->addUsedBytes($targetUserId, $actual);
         });
 
         @unlink($this->metaPath($userId, $uploadId));
 
-        return $this->files->find($newId, $userId) ?? [];
+        return $this->files->find($newId, $targetUserId) ?? [];
     }
 
     /** Cancela y limpia una sesión de subida. */

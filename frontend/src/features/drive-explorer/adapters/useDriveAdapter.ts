@@ -19,7 +19,7 @@ export function useDriveAdapter(): IExplorerAdapter {
       canShare: true,
     },
 
-    loadContents: async (folderId, sort, signal, offset, limit, _q, type, date) => {
+    loadContents: async (folderId, sort, signal, offset, limit, _q, type, date, ownerId) => {
       const res = await driveApi.contents(folderId, {
         signal,
         limit,
@@ -28,6 +28,7 @@ export function useDriveAdapter(): IExplorerAdapter {
         order: sort.dir,
         type,
         date,
+        owner_id: ownerId,
       })
       return res
     },

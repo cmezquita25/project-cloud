@@ -322,20 +322,40 @@ final class AdminController
     {
         $period = $request->input('period', '7d');
         $userId = $request->input('user_id');
-        $dateFilter = match($period) {
-            'today' => 'CURDATE()',
-            '30d' => 'DATE_FORMAT(CURDATE(), "%Y-%m-01")', // First day of current month
-            default => 'DATE_SUB(CURDATE(), INTERVAL 7 DAY)',
-        };
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
+
+        if ($period === 'custom' && !empty($dateFrom) && !empty($dateTo)) {
+            $safeFrom = date('Y-m-d', strtotime((string)$dateFrom));
+            $safeTo = date('Y-m-d', strtotime((string)$dateTo));
+            $dateFilterClause = "created_at >= '{$safeFrom} 00:00:00' AND created_at <= '{$safeTo} 23:59:59'";
+            $cutoffDate = $safeFrom;
+            $endDateStr = $safeTo;
+        } else {
+            $dateFilterClause = match($period) {
+                'today' => "created_at >= CURDATE()",
+                '30d' => "created_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01')",
+                default => "created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)",
+            };
+            $cutoffDate = match($period) {
+                'today' => date('Y-m-d'),
+                '30d' => date('Y-m-01'),
+                default => date('Y-m-d', strtotime('-7 days')),
+            };
+            $endDateStr = match($period) {
+                'today' => date('Y-m-d'),
+                '30d' => date('Y-m-t'),
+                default => date('Y-m-d')
+            };
+        }
         
         $pdo = \ProjectCloud\Core\Database::pdo();
-        
         $whereUser = $userId && $userId !== 'all' ? " AND user_id = " . (int)$userId : "";
         
         $stmt = $pdo->prepare("
             SELECT DATE(created_at) as `date`, SUM(size_bytes) as total_bytes
             FROM files
-            WHERE deleted_at IS NULL AND created_at >= $dateFilter $whereUser
+            WHERE deleted_at IS NULL AND $dateFilterClause $whereUser
             GROUP BY DATE(created_at)
             ORDER BY `date` ASC
         ");
@@ -347,17 +367,6 @@ final class AdminController
         foreach ($dbHistory as $row) {
             $historyMap[$row['date']] = (int) $row['total_bytes'];
         }
-
-        $cutoffDate = match($period) {
-            'today' => date('Y-m-d'),
-            '30d' => date('Y-m-01'),
-            default => date('Y-m-d', strtotime('-7 days')),
-        };
-        $endDateStr = match($period) {
-            'today' => date('Y-m-d'),
-            '30d' => date('Y-m-t'),
-            default => date('Y-m-d')
-        };
 
         $currentDate = new \DateTime($cutoffDate);
         $endDate = new \DateTime($endDateStr);
@@ -379,18 +388,33 @@ final class AdminController
     {
         $period = $request->input('period', '7d');
         $userId = $request->input('user_id');
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
         $whereUser = $userId && $userId !== 'all' ? " AND user_id = " . (int)$userId : "";
         
-        $cutoffDate = match($period) {
-            'today' => date('Y-m-d'),
-            '30d' => date('Y-m-01'), // First day of current month
-            default => date('Y-m-d', strtotime('-7 days')),
-        };
-        $dateFilter = match($period) {
-            'today' => 'CURDATE()',
-            '30d' => 'DATE_FORMAT(CURDATE(), "%Y-%m-01")',
-            default => 'DATE_SUB(CURDATE(), INTERVAL 7 DAY)',
-        };
+        if ($period === 'custom' && !empty($dateFrom) && !empty($dateTo)) {
+            $safeFrom = date('Y-m-d', strtotime((string)$dateFrom));
+            $safeTo = date('Y-m-d', strtotime((string)$dateTo));
+            $dateFilterClause = "created_at >= '{$safeFrom} 00:00:00' AND created_at <= '{$safeTo} 23:59:59'";
+            $cutoffDate = $safeFrom;
+            $endDateStr = $safeTo;
+        } else {
+            $dateFilterClause = match($period) {
+                'today' => "created_at >= CURDATE()",
+                '30d' => "created_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01')",
+                default => "created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)",
+            };
+            $cutoffDate = match($period) {
+                'today' => date('Y-m-d'),
+                '30d' => date('Y-m-01'),
+                default => date('Y-m-d', strtotime('-7 days')),
+            };
+            $endDateStr = match($period) {
+                'today' => date('Y-m-d'),
+                '30d' => date('Y-m-t'),
+                default => date('Y-m-d')
+            };
+        }
 
         $pdo = \ProjectCloud\Core\Database::pdo();
         
@@ -400,7 +424,7 @@ final class AdminController
                 COALESCE(NULLIF(SUBSTRING_INDEX(mime_type, '/', 1), ''), 'unknown') as type,
                 SUM(size_bytes) as total_bytes
             FROM files
-            WHERE deleted_at IS NULL AND created_at >= $dateFilter $whereUser
+            WHERE deleted_at IS NULL AND $dateFilterClause $whereUser
             GROUP BY type
             ORDER BY total_bytes DESC
         ");
@@ -412,7 +436,7 @@ final class AdminController
         $stmtUser = $pdo->prepare("
             SELECT u.username, u.display_name, COALESCE(SUM(f.size_bytes), 0) as total_bytes
             FROM users u
-            LEFT JOIN files f ON f.user_id = u.id AND f.deleted_at IS NULL
+            LEFT JOIN files f ON f.user_id = u.id AND f.deleted_at IS NULL AND $dateFilterClause
             WHERE 1=1 $whereUserJoin
             GROUP BY u.id
             ORDER BY total_bytes DESC
@@ -425,7 +449,7 @@ final class AdminController
             SELECT f.size_bytes, f.created_at, u.username, u.display_name, u.id as user_id
             FROM files f
             JOIN users u ON f.user_id = u.id
-            WHERE f.deleted_at IS NULL $whereUser
+            WHERE f.deleted_at IS NULL AND $dateFilterClause $whereUser
         ");
         $stmtFiles->execute();
         $files = $stmtFiles->fetchAll(\PDO::FETCH_ASSOC);
@@ -450,11 +474,6 @@ final class AdminController
 
         $byUserHistory = [];
         $currentDate = new \DateTime($cutoffDate);
-        $endDateStr = match($period) {
-            'today' => date('Y-m-d'),
-            '30d' => date('Y-m-t'),
-            default => date('Y-m-d')
-        };
         $endDate = new \DateTime($endDateStr);
         
         while ($currentDate <= $endDate) {

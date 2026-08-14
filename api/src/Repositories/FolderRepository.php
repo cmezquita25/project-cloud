@@ -30,6 +30,15 @@ class FolderRepository
         return $stmt->fetch() ?: null;
     }
 
+    /** Busca una carpeta viva por id sin acotar por usuario (para accesos compartidos). */
+    public function findAnyById(int $id): ?array
+    {
+        $stmt = $this->pdo->prepare('SELECT * FROM folders WHERE id = ? AND deleted_at IS NULL LIMIT 1');
+        $stmt->execute([$id]);
+        return $stmt->fetch() ?: null;
+    }
+
+
     /** @return array<int,array<string,mixed>> Subcarpetas directas (vivas). */
     public function children(int $userId, ?int $parentId, string $sort = 'name', string $order = 'asc', ?int $limit = null, int $offset = 0, ?string $type = null, ?string $date = null): array
     {

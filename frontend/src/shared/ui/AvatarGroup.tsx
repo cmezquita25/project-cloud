@@ -4,8 +4,9 @@ import { cn } from '@shared/lib/cn'
 
 export interface AvatarGroupProps {
   owners?: {
-    username: string
+    username?: string
     display_name: string
+    email?: string
     avatar_url: string | null
   }[]
   max?: number
@@ -23,7 +24,8 @@ export function AvatarGroup({ owners = [], max = 4, size = 28, overlap = true, c
   return (
     <div className={cn('flex items-center', !overlap && 'flex-wrap gap-2', className)}>
       {visibleOwners.map((owner, idx) => (
-        <Tooltip key={owner.username} content={owner.display_name}>
+        <Tooltip key={owner.username || owner.email || idx} content={owner.display_name}>
+
           <div
             className={cn(
               'relative rounded-full ring-2 ring-surface transition-transform hover:z-10 hover:scale-110',

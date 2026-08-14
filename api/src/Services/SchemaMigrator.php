@@ -72,5 +72,45 @@ final class SchemaMigrator
         } catch (\Exception $e) {
             // La tabla podría no existir aún o haber otro error, ignorar silenciosamente
         }
+
+        // Crear tabla shared_access si no existe
+        try {
+            $stmt = $pdo->query("SHOW TABLES LIKE 'shared_access'");
+            if ($stmt && $stmt->rowCount() === 0) {
+                $pdo->exec("
+                    CREATE TABLE IF NOT EXISTS `shared_access` (
+                        `id`               BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                        `owner_id`         BIGINT UNSIGNED NOT NULL,
+                        `invited_user_id`  BIGINT UNSIGNED NOT NULL,
+                        `target_type`      ENUM('unit', 'folder', 'file') NOT NULL,
+                        `target_id`        BIGINT UNSIGNED NULL DEFAULT NULL,
+                        `permission_level` ENUM('read', 'full') NOT NULL DEFAULT 'read',
+                        `created_at`       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        `updated_at`       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                        PRIMARY KEY (`id`),
+                        UNIQUE KEY `uq_shared_target` (`owner_id`, `invited_user_id`, `target_type`, `target_id`),
+                        KEY `idx_shared_invited` (`invited_user_id`),
+                        KEY `idx_shared_owner` (`owner_id`),
+                        CONSTRAINT `fk_shared_owner`   FOREIGN KEY (`owner_id`)       REFERENCES `users` (`id`) ON DELETE CASCADE,
+                        CONSTRAINT `fk_shared_invited` FOREIGN KEY (`invited_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+                ");
+            }
+        } catch (\Exception $e) {
+            // Ignorar si falla
+        }
+
+        // Eliminar FKs conflictivas fk_shared_folder y fk_shared_file en instalaciones existentes
+        try {
+            $pdo->exec("ALTER TABLE `shared_access` DROP FOREIGN KEY `fk_shared_folder`");
+        } catch (\Exception $e) {
+            // Ignorar si no existe
+        }
+        try {
+            $pdo->exec("ALTER TABLE `shared_access` DROP FOREIGN KEY `fk_shared_file`");
+        } catch (\Exception $e) {
+            // Ignorar si no existe
+        }
     }
+
 }

@@ -2,7 +2,8 @@ import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { cn } from '@shared/lib/cn'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, FolderInput, Copy, Trash2, Download, Info, type LucideIcon } from 'lucide-react'
+import { X, FolderInput, Copy, Trash2, Download, Info, Link as LinkIcon, type LucideIcon } from 'lucide-react'
+import { PublicUrlsModal } from '@features/drive-explorer/components/PublicUrlsModal'
 import { EmptyState, Spinner, IconButton, Menu, useToast } from '@shared/ui'
 import { usePreview } from '@features/preview'
 import { useAuth } from '@features/auth/AuthProvider'
@@ -63,6 +64,7 @@ export function ItemCollection({ items, loading, error, reload, empty, showLocat
   const [showDetails, setShowDetails] = useState(false)
   const [dialog, setDialog] = useState<DialogState>(null)
   const [ctxMenu, setCtxMenu] = useState<{ item: DriveItem; x: number; y: number } | null>(null)
+  const [urlsModalItems, setUrlsModalItems] = useState<DriveItem[] | null>(null)
   const driveAdapter = useDriveAdapter()
 
   const [sort, setSort] = useSortState()
@@ -299,7 +301,11 @@ export function ItemCollection({ items, loading, error, reload, empty, showLocat
               transition={{ duration: 0.2 }}
               className="fixed inset-y-0 right-0 z-50 w-80 shrink-0 overflow-hidden border-l border-border bg-surface shadow-elevation-3 lg:static lg:ml-4 lg:rounded-drive lg:border lg:shadow-none lg:block"
             >
-              <DetailsPanel items={selectedItems} onClose={() => setShowDetails(false)} />
+              <DetailsPanel
+                items={selectedItems}
+                onClose={() => setShowDetails(false)}
+                onOpenPublicUrls={(files) => setUrlsModalItems(files)}
+              />
             </motion.div>
           </>
         )}
@@ -340,6 +346,14 @@ export function ItemCollection({ items, loading, error, reload, empty, showLocat
           items={
             selectedItems.length > 1 && selected.has(key(ctxMenu.item))
               ? [
+                  ...(selectedItems.filter((i) => i.type === 'file').length > 0
+                    ? [{
+                        id: 'publicUrls',
+                        label: 'Obtener URLs públicas',
+                        icon: LinkIcon,
+                        onSelect: () => setUrlsModalItems(selectedItems.filter((i) => i.type === 'file')),
+                      }]
+                    : []),
                   { id: 'move', label: `Mover ${selectedItems.length} elementos`, icon: FolderInput, onSelect: () => setDialog({ kind: 'move', mode: 'move', items: selectedItems }) },
                   { id: 'copy', label: 'Copiar a', icon: Copy, onSelect: () => setDialog({ kind: 'move', mode: 'copy', items: selectedItems }) },
                   { id: 'delete', label: 'Enviar a la papelera', icon: Trash2, danger: true, divider: true, onSelect: () => setDialog({ kind: 'delete', items: selectedItems }) },
@@ -348,6 +362,18 @@ export function ItemCollection({ items, loading, error, reload, empty, showLocat
           }
         />
       )}
+
+      <PublicUrlsModal
+        open={Boolean(urlsModalItems)}
+        onClose={() => setUrlsModalItems(null)}
+        items={(urlsModalItems || []).map((i) => ({
+          id: i.id,
+          name: i.name,
+          size_bytes: i.type === 'file' ? i.size_bytes : undefined,
+          mime_type: i.type === 'file' ? i.mime_type : null,
+          url: (i as any).url,
+        }))}
+      />
     </div>
   )
 }

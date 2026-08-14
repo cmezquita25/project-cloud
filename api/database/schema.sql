@@ -191,4 +191,25 @@ CREATE TABLE IF NOT EXISTS `storage_history` (
     PRIMARY KEY (`date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- --------------------------------------------------------------------------
+--  shared_access — permisos de acceso compartido a carpetas, archivos y unidades de usuarios
+-- --------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `shared_access` (
+    `id`               BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `owner_id`         BIGINT UNSIGNED NOT NULL,
+    `invited_user_id`  BIGINT UNSIGNED NOT NULL,
+    `target_type`      ENUM('unit', 'folder', 'file') NOT NULL,
+    `target_id`        BIGINT UNSIGNED NULL DEFAULT NULL,
+    `permission_level` ENUM('read', 'full') NOT NULL DEFAULT 'read',
+    `created_at`       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_shared_target` (`owner_id`, `invited_user_id`, `target_type`, `target_id`),
+    KEY `idx_shared_invited` (`invited_user_id`),
+    KEY `idx_shared_owner` (`owner_id`),
+    CONSTRAINT `fk_shared_owner`   FOREIGN KEY (`owner_id`)       REFERENCES `users` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_shared_invited` FOREIGN KEY (`invited_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 SET FOREIGN_KEY_CHECKS = 1;
+

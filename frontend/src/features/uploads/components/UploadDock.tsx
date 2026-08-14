@@ -7,12 +7,14 @@ import {
   AlertCircle,
   RotateCw,
   Loader2,
+  Link as LinkIcon,
 } from 'lucide-react'
 import { cn } from '@shared/lib/cn'
 import { formatBytes } from '@shared/lib/formatBytes'
 import { getFileIcon } from '@shared/lib/fileIcons'
 import { IconButton } from '@shared/ui'
 import { useUploads, type UploadTask } from '../UploadProvider'
+import { PublicUrlsModal, type PublicUrlItem } from '@features/drive-explorer/components/PublicUrlsModal'
 
 function TaskRow({ task, onCancel, onRetry }: { task: UploadTask; onCancel: () => void; onRetry: () => void }) {
   const { icon: Icon, className } = getFileIcon(task.name)
@@ -54,6 +56,7 @@ function TaskRow({ task, onCancel, onRetry }: { task: UploadTask; onCancel: () =
 export function UploadDock() {
   const { tasks, cancel, retry, clearFinished, dismissAll } = useUploads()
   const [minimized, setMinimized] = useState(false)
+  const [showUrlsModal, setShowUrlsModal] = useState(false)
 
   if (tasks.length === 0) return null
 
@@ -68,57 +71,89 @@ export function UploadDock() {
         ? `${done} completado(s), ${errors} con error`
         : `${done} completado${done > 1 ? 's' : ''}`
 
+  const urlItems: PublicUrlItem[] = tasks.map((t) => ({
+    id: t.id,
+    name: t.name,
+    size_bytes: t.size,
+    mime_type: t.file.type || null,
+    url: t.url,
+    status: t.status,
+  }))
+
   return (
-    <div className="fixed inset-x-0 bottom-0 z-toast flex justify-center px-0 sm:inset-x-auto sm:bottom-6 sm:right-6 sm:px-0">
-      <div className="w-full overflow-hidden rounded-t-2xl bg-surface shadow-elevation-3 sm:w-96 sm:rounded-2xl">
-        {/* Cabecera */}
-        <div className="flex items-center gap-2 border-b border-border bg-surface-container px-4 py-3 text-content-primary">
-          <div className="flex items-center gap-2">
-            {active > 0 ? (
-              <Loader2 size={18} className="animate-spin text-primary" />
-            ) : errors > 0 ? (
-              <AlertCircle size={18} className="text-danger" />
-            ) : (
-              <CheckCircle2 size={18} className="text-success" />
-            )}
-            <span className="text-sm font-medium">{title}</span>
+    <>
+      <div className="fixed inset-x-0 bottom-0 z-toast flex justify-center px-0 sm:inset-x-auto sm:bottom-6 sm:right-6 sm:px-0">
+        <div className="w-full overflow-hidden rounded-t-2xl bg-surface shadow-elevation-3 sm:w-96 sm:rounded-2xl border border-border/80">
+          {/* Cabecera */}
+          <div className="flex items-center gap-2 border-b border-border bg-surface-container px-4 py-3 text-content-primary">
+            <div className="flex items-center gap-2 min-w-0">
+              {active > 0 ? (
+                <Loader2 size={18} className="animate-spin text-primary shrink-0" />
+              ) : errors > 0 ? (
+                <AlertCircle size={18} className="text-danger shrink-0" />
+              ) : (
+                <CheckCircle2 size={18} className="text-success shrink-0" />
+              )}
+              <span className="text-sm font-medium truncate">{title}</span>
+            </div>
+            <div className="ml-auto flex items-center gap-1 shrink-0">
+              {tasks.length > 1 && (
+                <button
+                  onClick={() => setShowUrlsModal(true)}
+                  className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-primary hover:bg-surface-hover transition-colors"
+                  title="Listado de URLs"
+                >
+                  <LinkIcon size={14} />
+                  <span>Listado de urls</span>
+                </button>
+              )}
+              <button
+                onClick={() => setMinimized((m) => !m)}
+                className="rounded-full p-1 text-content-secondary hover:bg-surface-hover"
+                aria-label={minimized ? 'Expandir' : 'Minimizar'}
+              >
+                {minimized ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+              </button>
+              <button
+                onClick={() => (active > 0 ? clearFinished() : dismissAll())}
+                className="rounded-full p-1 text-content-secondary hover:bg-surface-hover"
+                aria-label="Cerrar"
+              >
+                <X size={18} />
+              </button>
+            </div>
           </div>
-          <div className="ml-auto flex items-center gap-1">
-            <button
-              onClick={() => setMinimized((m) => !m)}
-              className="rounded-full p-1 text-content-secondary hover:bg-surface-hover"
-              aria-label={minimized ? 'Expandir' : 'Minimizar'}
-            >
-              {minimized ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-            </button>
-            <button
-              onClick={() => (active > 0 ? clearFinished() : dismissAll())}
-              className="rounded-full p-1 text-content-secondary hover:bg-surface-hover"
-              aria-label="Cerrar"
-            >
-              <X size={18} />
-            </button>
-          </div>
+
+          {/* Lista */}
+          {!minimized && (
+            <div className="max-h-72 divide-y divide-border overflow-y-auto">
+              {tasks.map((task) => (
+                <TaskRow key={task.id} task={task} onCancel={() => cancel(task.id)} onRetry={() => retry(task.id)} />
+              ))}
+            </div>
+          )}
+
+          {!minimized && (
+            <div className="flex items-center justify-between border-t border-border px-4 py-2 text-xs text-content-tertiary">
+              <span>{formatBytes(tasks.reduce((s, t) => s + (t.status === 'done' ? t.size : 0), 0))} subidos</span>
+              <div className="flex items-center gap-3">
+                {(active === 0 || done > 0) && (
+                  <button onClick={clearFinished} className="font-medium text-primary hover:underline">
+                    Limpiar completados
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
-
-        {/* Lista */}
-        {!minimized && (
-          <div className="max-h-72 divide-y divide-border overflow-y-auto">
-            {tasks.map((task) => (
-              <TaskRow key={task.id} task={task} onCancel={() => cancel(task.id)} onRetry={() => retry(task.id)} />
-            ))}
-          </div>
-        )}
-
-        {!minimized && (active === 0 || done > 0) && (
-          <div className="flex items-center justify-between border-t border-border px-4 py-2 text-xs text-content-tertiary">
-            <span>{formatBytes(tasks.reduce((s, t) => s + (t.status === 'done' ? t.size : 0), 0))} subidos</span>
-            <button onClick={clearFinished} className="font-medium text-primary hover:underline">
-              Limpiar completados
-            </button>
-          </div>
-        )}
       </div>
-    </div>
+
+      <PublicUrlsModal
+        open={showUrlsModal}
+        onClose={() => setShowUrlsModal(false)}
+        items={urlItems}
+        title="URLs de archivos subidos"
+      />
+    </>
   )
 }

@@ -26,7 +26,8 @@ export interface IExplorerAdapter {
     limit?: number,
     q?: string,
     type?: string,
-    date?: string
+    date?: string,
+    ownerId?: number
   ) => Promise<FolderContents & { has_more?: boolean }>
   
   createFolder: (parentId: FolderRef, name: string) => Promise<void>

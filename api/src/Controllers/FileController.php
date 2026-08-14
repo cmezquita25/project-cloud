@@ -84,16 +84,27 @@ final class FileController
     public function url(Request $request): Response
     {
         $userId = (int) $request->userId();
-        $username = (string) $request->user()['username'];
-        $file = (new FileRepository())->find((int) $request->param('id'), $userId);
+        $fileId = (int) $request->param('id');
+        $file = (new FileRepository())->findAnyById($fileId);
+
         if ($file === null) {
             throw HttpException::notFound('Archivo no encontrado');
         }
+
+        $permService = new \ProjectCloud\Services\SharePermissionService();
+        if (!$permService->canAccessFile($userId, $fileId, 'read')) {
+            throw HttpException::forbidden('No tienes acceso a este archivo.');
+        }
+
+        $owner = (new UserRepository())->findById((int) $file['user_id']);
+        $ownerUsername = (string) ($owner['username'] ?? '');
+
         return Response::success([
-            'url'  => FileService::publicUrl($username, (string) $file['path']),
+            'url'  => FileService::publicUrl($ownerUsername, (string) $file['path']),
             'name' => (string) $file['name'],
         ]);
     }
+
 
     /** GET /files/{id}/thumb — miniatura de imagen (pública, como la URL del archivo). */
     public function thumb(Request $request): void

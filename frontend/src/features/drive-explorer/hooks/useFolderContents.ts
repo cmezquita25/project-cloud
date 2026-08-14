@@ -10,7 +10,8 @@ export function useFolderContents(
   adapter: IExplorerAdapter, 
   q?: string, 
   type?: string, 
-  date?: string
+  date?: string,
+  ownerId?: number
 ) {
   const limit = 10
 
@@ -23,9 +24,9 @@ export function useFolderContents(
     refetch,
     error
   } = useInfiniteQuery({
-    queryKey: ['explorer', adapter.cacheKey, folderId, sortState.field, sortState.dir, q, type, date],
+    queryKey: ['explorer', adapter.cacheKey, folderId, sortState.field, sortState.dir, q, type, date, ownerId],
     queryFn: ({ pageParam = 0, signal }) => {
-      return adapter.loadContents(folderId, sortState, signal, pageParam as number, limit, q, type, date)
+      return adapter.loadContents(folderId, sortState, signal, pageParam as number, limit, q, type, date, ownerId)
     },
     getNextPageParam: (lastPage, allPages) => {
       if (lastPage.has_more) {

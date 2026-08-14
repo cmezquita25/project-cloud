@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { cn } from '@shared/lib/cn'
 
 interface AvatarProps {
@@ -33,15 +33,17 @@ function hashIndex(str: string, mod: number): number {
 
 /** Avatar de usuario: imagen si existe, si no iniciales con color determinista. */
 export function Avatar({ name, src, size = 32, className }: AvatarProps) {
+  const [imgError, setImgError] = useState(false)
   const bg = useMemo(() => BG_COLORS[hashIndex(name, BG_COLORS.length)], [name])
 
-  if (src) {
+  if (src && !imgError) {
     return (
       <img
         src={src}
         alt={name}
         width={size}
         height={size}
+        onError={() => setImgError(true)}
         className={cn('rounded-full object-cover shrink-0', className)}
         style={{ width: size, height: size }}
       />

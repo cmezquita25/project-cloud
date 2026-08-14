@@ -5,7 +5,7 @@ const ref = (id: FolderRef): string => (id === null || id === undefined ? 'root'
 
 /** Cliente del explorador (carpetas y archivos). */
 export const driveApi = {
-  contents: (folderId: FolderRef, opts?: { signal?: AbortSignal, limit?: number, offset?: number, sort?: string, order?: string, type?: string, date?: string }) => {
+  contents: (folderId: FolderRef, opts?: { signal?: AbortSignal, limit?: number, offset?: number, sort?: string, order?: string, type?: string, date?: string, owner_id?: number }) => {
     const params = new URLSearchParams()
     if (opts?.limit !== undefined) params.set('limit', String(opts.limit))
     if (opts?.offset !== undefined) params.set('offset', String(opts.offset))
@@ -13,6 +13,7 @@ export const driveApi = {
     if (opts?.order) params.set('order', opts.order)
     if (opts?.type) params.set('type', opts.type)
     if (opts?.date) params.set('date', opts.date)
+    if (opts?.owner_id !== undefined) params.set('owner_id', String(opts.owner_id))
     const qs = params.toString()
     const url = `/folders/${ref(folderId)}/children${qs ? '?' + qs : ''}`
     return api.get<FolderContents>(url, { signal: opts?.signal })

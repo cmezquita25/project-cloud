@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace ProjectCloud\Controllers;
 
+use ProjectCloud\Core\Database;
 use ProjectCloud\Core\HttpException;
 use ProjectCloud\Core\Request;
 use ProjectCloud\Core\Response;
@@ -24,20 +25,35 @@ final class FolderController
     public function children(Request $request): Response
     {
         $userId = (int) $request->userId();
-        $username = (string) $request->user()['username'];
         $folderId = $this->resolveId($request->param('id'));
+        $permService = new \ProjectCloud\Services\SharePermissionService();
 
         $folders = new FolderRepository();
         $files = new FileRepository();
 
         $current = null;
         $breadcrumbs = [];
+        $targetUserId = $userId;
+
         if ($folderId !== null) {
-            $current = $folders->find($folderId, $userId);
+            $current = $folders->findAnyById($folderId);
             if ($current === null) {
                 throw HttpException::notFound('Carpeta no encontrada');
             }
-            $breadcrumbs = $folders->breadcrumbs($userId, $folderId);
+            if (!$permService->canAccessFolder($userId, $folderId, 'read')) {
+                throw HttpException::forbidden('No tienes acceso a esta carpeta.');
+            }
+            $targetUserId = (int) $current['user_id'];
+            $breadcrumbs = $folders->breadcrumbs($targetUserId, $folderId);
+        } else {
+            $ownerIdParam = $request->input('owner_id');
+            if ($ownerIdParam !== null && $ownerIdParam !== '') {
+                $requestedOwnerId = (int) $ownerIdParam;
+                if (!$permService->canAccessUnit($userId, $requestedOwnerId, 'read')) {
+                    throw HttpException::forbidden('No tienes acceso a esta unidad compartida.');
+                }
+                $targetUserId = $requestedOwnerId;
+            }
         }
 
         $limit = (int) $request->input('limit', 0);
@@ -52,13 +68,13 @@ final class FolderController
         $hasMore = false;
 
         if ($limit > 0) {
-            $totalFolders = $folders->countChildren($userId, $folderId, $type, $date);
-            $totalFiles = $files->countInFolder($userId, $folderId, $type, $date);
+            $totalFolders = $folders->countChildren($targetUserId, $folderId, $type, $date);
+            $totalFiles = $files->countInFolder($targetUserId, $folderId, $type, $date);
             
             $remainingLimit = $limit;
             
             if ($offset < $totalFolders) {
-                $foldersList = $folders->children($userId, $folderId, $sort, $order, $remainingLimit, $offset, $type, $date);
+                $foldersList = $folders->children($targetUserId, $folderId, $sort, $order, $remainingLimit, $offset, $type, $date);
                 $remainingLimit -= count($foldersList);
                 $filesOffset = 0;
             } else {
@@ -66,32 +82,33 @@ final class FolderController
             }
             
             if ($remainingLimit > 0 && $filesOffset < $totalFiles) {
-                $filesList = $files->inFolder($userId, $folderId, $sort, $order, $remainingLimit, $filesOffset, $type, $date);
+                $filesList = $files->inFolder($targetUserId, $folderId, $sort, $order, $remainingLimit, $filesOffset, $type, $date);
             }
             
             $hasMore = ($offset + $limit) < ($totalFolders + $totalFiles);
         } else {
-            $foldersList = $folders->children($userId, $folderId, $sort, $order, null, 0, $type, $date);
-            $filesList = $files->inFolder($userId, $folderId, $sort, $order, null, 0, $type, $date);
+            $foldersList = $folders->children($targetUserId, $folderId, $sort, $order, null, 0, $type, $date);
+            $filesList = $files->inFolder($targetUserId, $folderId, $sort, $order, null, 0, $type, $date);
         }
 
         $subfolders = array_map(
-            fn (array $f) => $this->folderPublic($f, $request->user()),
+            fn (array $f) => $this->folderPublic($f, $permService),
             $foldersList
         );
         $folderFiles = array_map(
-            fn (array $f) => $this->filePublic($f, $request->user()),
+            fn (array $f) => $this->filePublic($f, $permService),
             $filesList
         );
 
         return Response::success([
-            'folder'      => $current !== null ? $this->folderPublic($current, $request->user()) : null,
+            'folder'      => $current !== null ? $this->folderPublic($current, $permService) : null,
             'breadcrumbs' => $breadcrumbs,
             'folders'     => $subfolders,
             'files'       => $folderFiles,
             'has_more'    => $hasMore,
         ]);
     }
+
 
     /** POST /folders — crea una carpeta. */
     public function create(Request $request): Response
@@ -107,7 +124,9 @@ final class FolderController
             (string) $data['name'],
         );
 
-        return Response::created($this->folderPublic($folder, $request->user()));
+        ActivityLogger::log($request, 'create', 'folder', (int) $folder['id'], ['name' => $folder['name']]);
+
+        return Response::created($this->folderPublic($folder));
     }
 
     /** PATCH /folders/{id} — renombrar, mover o destacar. */
@@ -133,7 +152,7 @@ final class FolderController
             throw HttpException::badRequest('Nada que actualizar.');
         }
 
-        return Response::success($this->folderPublic($result, $request->user()));
+        return Response::success($this->folderPublic($result));
     }
 
     /** POST /folders/{id}/copy — copia recursiva a otra carpeta. */
@@ -145,7 +164,7 @@ final class FolderController
             (int) $request->param('id'),
             $this->resolveId((string) $request->input('target_parent_id', 'root')),
         );
-        return Response::created($this->folderPublic($folder, $request->user()));
+        return Response::created($this->folderPublic($folder));
     }
 
     /** DELETE /folders/{id} — mueve a la papelera. */
@@ -178,46 +197,130 @@ final class FolderController
     }
 
     /** @param array<string,mixed> $f */
-    private function folderPublic(array $f, array $user): array
+    private function folderPublic(array $f, ?\ProjectCloud\Services\SharePermissionService $permService = null): array
     {
+        $permService = $permService ?? new \ProjectCloud\Services\SharePermissionService();
+        $ownerId = (int) $f['user_id'];
+        $collaborators = $permService->getCollaborators('folder', (int)$f['id'], $ownerId);
+
+        $owners = array_map(static fn($c) => [
+            'id' => $c['id'],
+            'display_name' => $c['display_name'],
+            'email' => $c['email'],
+            'avatar_url' => $c['avatar_url'],
+            'role' => $c['role'] ?? 'invited',
+            'permission_level' => $c['permission_level'] ?? 'full',
+        ], $collaborators);
+
+        $createdBy = null;
+        try {
+            $stmtCreator = Database::pdo()->prepare("
+                SELECT u.id, u.display_name, u.email
+                FROM activity_log al
+                JOIN users u ON u.id = al.user_id
+                WHERE al.entity_type = 'folder' AND al.entity_id = :id AND al.action IN ('create', 'assets.create')
+                ORDER BY al.id ASC LIMIT 1
+            ");
+            $stmtCreator->execute(['id' => (int)$f['id']]);
+            $creatorRow = $stmtCreator->fetch(PDO::FETCH_ASSOC);
+            if ($creatorRow) {
+                $createdBy = [
+                    'id' => (int) $creatorRow['id'],
+                    'display_name' => (string) $creatorRow['display_name'],
+                    'email' => (string) $creatorRow['email'],
+                    'avatar_url' => \ProjectCloud\Services\AvatarService::urlFor((int) $creatorRow['id']),
+                ];
+            }
+        } catch (\Throwable) {}
+
+        if ($createdBy === null && !empty($owners[0])) {
+            $createdBy = $owners[0];
+        }
+
         return [
-            'type'       => 'folder',
-            'id'         => (int) $f['id'],
-            'parent_id'  => $f['parent_id'] !== null ? (int) $f['parent_id'] : null,
-            'name'       => (string) $f['name'],
-            'path'       => (string) $f['path'],
-            'is_starred' => (bool) $f['is_starred'],
-            'created_at' => $f['created_at'] ?? null,
-            'updated_at' => $f['updated_at'] ?? null,
-            'owners'     => [[
-                'username' => $user['username'] ?? '',
-                'display_name' => $user['display_name'] ?? '',
-                'avatar_url' => \ProjectCloud\Services\AvatarService::urlFor((int) $user['id']),
-            ]],
+            'type'          => 'folder',
+            'id'            => (int) $f['id'],
+            'parent_id'     => $f['parent_id'] !== null ? (int) $f['parent_id'] : null,
+            'name'          => (string) $f['name'],
+            'path'          => (string) $f['path'],
+            'is_starred'    => (bool) $f['is_starred'],
+            'owner'         => $owners[0]['display_name'] ?? null,
+            'created_by'    => $createdBy,
+            'created_at'    => $f['created_at'] ?? null,
+            'updated_at'    => $f['updated_at'] ?? null,
+            'owners'        => $owners,
+            'collaborators' => $collaborators,
         ];
     }
 
     /** @param array<string,mixed> $f */
-    private function filePublic(array $f, array $user): array
+    private function filePublic(array $f, ?\ProjectCloud\Services\SharePermissionService $permService = null): array
     {
+        $permService = $permService ?? new \ProjectCloud\Services\SharePermissionService();
+        $ownerId = (int) $f['user_id'];
+        $collaborators = $permService->getCollaborators('file', (int)$f['id'], $ownerId);
+
+        $owners = array_map(static fn($c) => [
+            'id' => $c['id'],
+            'display_name' => $c['display_name'],
+            'email' => $c['email'],
+            'avatar_url' => $c['avatar_url'],
+            'role' => $c['role'] ?? 'invited',
+            'permission_level' => $c['permission_level'] ?? 'full',
+        ], $collaborators);
+
+        $createdBy = null;
+        try {
+            $stmtCreator = Database::pdo()->prepare("
+                SELECT u.id, u.display_name, u.email
+                FROM activity_log al
+                JOIN users u ON u.id = al.user_id
+                WHERE (
+                    (al.entity_type = 'file' AND al.entity_id = :id)
+                    OR (al.action IN ('upload', 'assets.upload') AND al.details LIKE :name_pattern)
+                )
+                ORDER BY al.id ASC LIMIT 1
+            ");
+            $namePattern = '%"name":"' . addcslashes((string)$f['name'], '%_\\"') . '"%';
+            $stmtCreator->execute(['id' => (int)$f['id'], 'name_pattern' => $namePattern]);
+            $creatorRow = $stmtCreator->fetch(PDO::FETCH_ASSOC);
+            if ($creatorRow) {
+                $createdBy = [
+                    'id' => (int) $creatorRow['id'],
+                    'display_name' => (string) $creatorRow['display_name'],
+                    'email' => (string) $creatorRow['email'],
+                    'avatar_url' => \ProjectCloud\Services\AvatarService::urlFor((int) $creatorRow['id']),
+                ];
+            }
+        } catch (\Throwable) {}
+
+        if ($createdBy === null && !empty($owners[0])) {
+            $createdBy = $owners[0];
+        }
+
+        // Obtener el username del dueño para la URL del archivo
+        $stmtUser = Database::pdo()->prepare("SELECT username FROM users WHERE id = :id");
+        $stmtUser->execute(['id' => $ownerId]);
+        $ownerUsername = (string) ($stmtUser->fetchColumn() ?: '');
+
         return [
-            'type'       => 'file',
-            'id'         => (int) $f['id'],
-            'folder_id'  => $f['folder_id'] !== null ? (int) $f['folder_id'] : null,
-            'name'       => (string) $f['name'],
-            'path'       => (string) $f['path'],
-            'size_bytes' => (int) $f['size_bytes'],
-            'mime_type'  => $f['mime_type'] !== null ? (string) $f['mime_type'] : null,
-            'extension'  => $f['extension'] !== null ? (string) $f['extension'] : null,
-            'is_starred' => (bool) $f['is_starred'],
-            'url'        => FileService::publicUrl($user['username'], (string) $f['path']),
-            'created_at' => $f['created_at'] ?? null,
-            'updated_at' => $f['updated_at'] ?? null,
-            'owners'     => [[
-                'username' => $user['username'] ?? '',
-                'display_name' => $user['display_name'] ?? '',
-                'avatar_url' => \ProjectCloud\Services\AvatarService::urlFor((int) $user['id']),
-            ]],
+            'type'          => 'file',
+            'id'            => (int) $f['id'],
+            'folder_id'     => $f['folder_id'] !== null ? (int) $f['folder_id'] : null,
+            'name'          => (string) $f['name'],
+            'path'          => (string) $f['path'],
+            'size_bytes'    => (int) $f['size_bytes'],
+            'mime_type'     => $f['mime_type'] !== null ? (string) $f['mime_type'] : null,
+            'extension'     => $f['extension'] !== null ? (string) $f['extension'] : null,
+            'is_starred'    => (bool) $f['is_starred'],
+            'owner'         => $owners[0]['display_name'] ?? null,
+            'created_by'    => $createdBy,
+            'url'           => FileService::publicUrl($ownerUsername, (string) $f['path']),
+            'created_at'    => $f['created_at'] ?? null,
+            'updated_at'    => $f['updated_at'] ?? null,
+            'owners'        => $owners,
+            'collaborators' => $collaborators,
         ];
     }
 }
+

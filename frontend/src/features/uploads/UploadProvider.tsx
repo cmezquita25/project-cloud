@@ -26,6 +26,7 @@ export interface UploadTask {
   relativeDir: string // subruta de carpeta (para subir carpetas), '' si raíz del destino
   file: File
   mode?: 'drive' | 'assets'
+  url?: string
 }
 
 interface UploadContextValue {
@@ -132,8 +133,8 @@ export function UploadProvider({ children }: { children: ReactNode }) {
             patch(task.id, { loaded: offset })
           }
 
-          await uploadApi.complete(init.upload_id)
-          patch(task.id, { status: 'done', loaded: task.size })
+          const completed = await uploadApi.complete(init.upload_id)
+          patch(task.id, { status: 'done', loaded: task.size, url: completed.url })
           setCompletion((c) => ({
             tick: c.tick + 1,
             folderIds: new Set(c.folderIds).add(String(task.folderId)),
@@ -162,8 +163,8 @@ export function UploadProvider({ children }: { children: ReactNode }) {
           patch(task.id, { loaded: offset })
         }
 
-        await uploadApi.complete(init.upload_id)
-        patch(task.id, { status: 'done', loaded: task.size })
+        const completed = await uploadApi.complete(init.upload_id)
+        patch(task.id, { status: 'done', loaded: task.size, url: completed.url })
         // Notifica para recargar la carpeta y refrescar la cuota.
         setCompletion((c) => ({
           tick: c.tick + 1,

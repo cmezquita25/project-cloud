@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from 'react'
-import { Plus, FolderPlus, FileUp, FolderUp } from 'lucide-react'
+import { Plus, FolderPlus, FileUp, FolderUp, Folder, HardDrive as HardDriveIcon } from 'lucide-react'
 import { NavLink, useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { cn } from '@shared/lib/cn'
 import { Button, Menu, type MenuItem, IconButton } from '@shared/ui'
@@ -9,6 +9,7 @@ import { StorageIndicator } from '@features/storage-quota/components/StorageIndi
 import { useAuth } from '@features/auth/AuthProvider'
 import { useAssetsAccess } from '@features/assets/hooks/useAssetsAccess'
 import { useUploadPicker } from '@features/uploads/hooks/useUploadPicker'
+import { useSharedItems } from '@features/drive-explorer/hooks/useSharedItems'
 import { NAV_GROUPS, type NavItem } from '../navigation'
 
 function SidebarItem({ item, onNavigate }: { item: NavItem, onNavigate?: () => void }) {
@@ -72,14 +73,17 @@ function SidebarItem({ item, onNavigate }: { item: NavItem, onNavigate?: () => v
       to={item.to!}
       end={item.end}
       onClick={onNavigate}
-      className={({ isActive }) =>
-        cn(
+      className={({ isActive }) => {
+        const isMyUnit = item.to === '/'
+        const isViewingSharedUnit = location.search.includes('owner_id=')
+        const active = isMyUnit ? (isActive && !isViewingSharedUnit) : isActive
+        return cn(
           'flex items-center gap-4 rounded-pill px-4 py-2.5 text-sm font-medium transition-colors',
-          isActive
+          active
             ? 'bg-primary-subtle text-primary'
             : 'text-content-secondary hover:bg-surface-hover'
         )
-      }
+      }}
     >
       <Icon size={20} />
       <span>{item.label}</span>
@@ -96,6 +100,7 @@ interface SidebarProps {
 export function Sidebar({ onNavigate }: SidebarProps) {
   const { user, isAdmin } = useAuth()
   const { access } = useAssetsAccess()
+  const sharedItems = useSharedItems()
   const location = useLocation()
   const params = useParams()
   
@@ -211,9 +216,67 @@ export function Sidebar({ onNavigate }: SidebarProps) {
             {group.items.map((item) => (
               <SidebarItem key={item.label} item={item} onNavigate={onNavigate} />
             ))}
+
+            {/* Ítems dinámicos compartidos con el usuario */}
+            {group.label === 'Compartido' && (
+              <div className="space-y-1 pt-1">
+                {sharedItems.units.map((unit) => {
+                  const isUnitActive = location.pathname === '/' && location.search.includes(`owner_id=${unit.owner_id}`)
+                  return (
+                    <NavLink
+                      key={`unit-${unit.share_id}`}
+                      to={`/?owner_id=${unit.owner_id}`}
+                      onClick={onNavigate}
+                      className={
+                        cn(
+                          'flex items-center gap-4 rounded-pill px-4 py-2 text-sm font-medium transition-colors text-content-secondary hover:bg-surface-hover',
+                          isUnitActive && 'bg-primary-subtle text-primary'
+                        )
+                      }
+                    >
+                      <HardDriveIcon size={18} className="text-primary shrink-0" />
+                      <span className="truncate">{unit.name}</span>
+                    </NavLink>
+                  )
+                })}
+                {sharedItems.folders.map((folder) => (
+                  <NavLink
+                    key={`folder-${folder.id}`}
+                    to={`/folder/${folder.id}`}
+                    onClick={onNavigate}
+                    className={({ isActive }) =>
+                      cn(
+                        'flex items-center gap-4 rounded-pill px-4 py-2 text-sm font-medium transition-colors text-content-secondary hover:bg-surface-hover',
+                        isActive && 'bg-primary-subtle text-primary'
+                      )
+                    }
+                  >
+                    <Folder size={18} className="text-primary shrink-0" />
+                    <span className="truncate">{folder.name}</span>
+                  </NavLink>
+                ))}
+                {sharedItems.files.map((file) => (
+                  <NavLink
+                    key={`file-${file.id}`}
+                    to={file.folder_id ? `/folder/${file.folder_id}` : `/?owner_id=${file.owner_id}`}
+                    onClick={onNavigate}
+                    className={({ isActive }) =>
+                      cn(
+                        'flex items-center gap-4 rounded-pill px-4 py-2 text-sm font-medium transition-colors text-content-secondary hover:bg-surface-hover',
+                        isActive && 'bg-primary-subtle text-primary'
+                      )
+                    }
+                  >
+                    <Folder size={18} className="text-primary shrink-0" />
+                    <span className="truncate">{file.parent_folder_name || file.name}</span>
+                  </NavLink>
+                ))}
+              </div>
+            )}
           </div>
         ))}
       </nav>
+
 
       <div className="px-3 pb-3 pt-2">
         <StorageIndicator

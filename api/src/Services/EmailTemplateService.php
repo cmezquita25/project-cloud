@@ -19,9 +19,11 @@ final class EmailTemplateService
     public const PASSWORD_RESET = 'password_reset';
     public const QUOTA_WARNING = 'quota_warning';
     public const SUPPORT_REPORT = 'support_report';
+    public const ITEM_SHARED = 'item_shared';
 
     /** @var list<string> */
-    public const KEYS = [self::WELCOME, self::PASSWORD_RESET, self::QUOTA_WARNING, self::SUPPORT_REPORT];
+    public const KEYS = [self::WELCOME, self::PASSWORD_RESET, self::QUOTA_WARNING, self::SUPPORT_REPORT, self::ITEM_SHARED];
+
 
     private PDO $pdo;
 
@@ -186,6 +188,11 @@ final class EmailTemplateService
             'description' => 'Se envía al administrador (correo de soporte) cuando un usuario manda un reporte desde el footer.',
             'variables'   => ['sender_name', 'sender_email', 'report_type', 'report_message', 'org_name'],
         ],
+        self::ITEM_SHARED => [
+            'label'       => 'Notificación de Recurso Compartido',
+            'description' => 'Se envía a un usuario cuando otro usuario comparte una carpeta, archivo o unidad completa con él.',
+            'variables'   => ['invited_name', 'owner_name', 'item_name', 'target_label', 'permission_label', 'org_name'],
+        ],
     ];
 
     /** @return array<string,array{subject:string,body_html:string}> */
@@ -269,6 +276,26 @@ final class EmailTemplateService
                     . '</td></tr>'
                     . '</table>',
             ],
+            self::ITEM_SHARED => [
+                'subject'   => '{{owner_name}} te ha compartido {{target_label}} en {{org_name}}',
+                'body_html' =>
+                    '<h2 style="margin:0 0 20px;font-size:22px;color:#1e293b;font-weight:600;font-family:Helvetica,Arial,sans-serif;">¡Hola, {{invited_name}}!</h2>'
+                    . '<p style="margin:0 0 24px;color:#475569;font-size:16px;line-height:1.6;font-family:Helvetica,Arial,sans-serif;">'
+                    . 'El usuario <strong>{{owner_name}}</strong> ha compartido contigo {{target_label}} <strong>"{{item_name}}"</strong> en <strong>{{org_name}}</strong>.</p>'
+                    . '<table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color:#f1f5f9;border-radius:8px;margin-bottom:24px;">'
+                    . '<tr><td style="padding:20px;">'
+                    . '<table border="0" cellpadding="0" cellspacing="0" width="100%">'
+                    . '<tr><td style="padding-bottom:12px;color:#64748b;font-size:14px;font-family:Helvetica,Arial,sans-serif;">Recurso:</td>'
+                    . '<td style="padding-bottom:12px;color:#0f172a;font-size:16px;font-weight:600;font-family:Helvetica,Arial,sans-serif;">{{item_name}}</td></tr>'
+                    . '<tr><td style="color:#64748b;font-size:14px;font-family:Helvetica,Arial,sans-serif;">Nivel de permiso:</td>'
+                    . '<td style="color:#0f172a;font-size:16px;font-weight:600;font-family:Helvetica,Arial,sans-serif;">{{permission_label}}</td></tr>'
+                    . '</table>'
+                    . '</td></tr>'
+                    . '</table>'
+                    . '<p style="margin:0;color:#475569;font-size:16px;line-height:1.6;font-family:Helvetica,Arial,sans-serif;">'
+                    . 'Ya puedes acceder a este contenido ingresando a tu cuenta en la sección "Compartido".</p>',
+            ],
         ];
     }
+
 }

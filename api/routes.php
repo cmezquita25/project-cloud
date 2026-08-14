@@ -26,6 +26,7 @@ use ProjectCloud\Controllers\TrashController;
 use ProjectCloud\Controllers\LibraryController;
 use ProjectCloud\Controllers\AssetsController;
 use ProjectCloud\Controllers\DatabaseController;
+use ProjectCloud\Controllers\ShareController;
 use ProjectCloud\Middleware\AuthMiddleware;
 use ProjectCloud\Middleware\AdminOnly;
 use ProjectCloud\Middleware\RateLimit;
@@ -106,6 +107,15 @@ return static function (Router $router): void {
     $router->post('/v1/assets/move',    [AssetsController::class, 'move'], $auth);
     $router->post('/v1/assets/rename',  [AssetsController::class, 'rename'], $auth);
     $router->delete('/v1/assets',       [AssetsController::class, 'delete'], $auth);
+
+    // --- Permisos de Compartición (Mi Unidad) ---
+    $router->get('/v1/users/search',           [ShareController::class, 'searchUsers'], $auth);
+    $router->post('/v1/shares',                [ShareController::class, 'create'], $auth);
+    $router->get('/v1/shares',                 [ShareController::class, 'listByTarget'], $auth);
+    $router->get('/v1/shares/shared-with-me',  [ShareController::class, 'listSharedWithMe'], $auth);
+    $router->patch('/v1/shares/{id}',          [ShareController::class, 'update'], $auth);
+    $router->delete('/v1/shares/{id}',         [ShareController::class, 'delete'], $auth);
+
 
     // --- Fase 7: Papelera ---
     $router->get('/v1/trash',                      [TrashController::class, 'index'], $auth);

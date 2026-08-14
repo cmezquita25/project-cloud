@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import Chart from 'react-apexcharts'
+import { Calendar } from 'lucide-react'
 import { api } from '@shared/api'
 import { formatBytes } from '@shared/lib/formatBytes'
 import { useTheme } from '@app/providers/ThemeProvider'
-import { Spinner, Select } from '@shared/ui'
+import { Spinner, Select, Dialog, Button, Input } from '@shared/ui'
 import { useQuery } from '@tanstack/react-query'
 import { USER_COLORS } from './UserContributionChart'
 
@@ -18,6 +19,29 @@ export function AdminCharts({ source }: AdminChartsProps) {
   const [userId, setUserId] = useState('all')
   const [hiddenUsers, setHiddenUsers] = useState<Set<string>>(new Set())
 
+  // Rango personalizado
+  const [customOpen, setCustomOpen] = useState(false)
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  const [appliedCustom, setAppliedCustom] = useState<{ from: string; to: string } | null>(null)
+
+  const handlePeriodChange = (val: string) => {
+    if (val === 'custom') {
+      setPeriod('custom')
+      setCustomOpen(true)
+    } else {
+      setPeriod(val)
+      setAppliedCustom(null)
+    }
+  }
+
+  const applyCustomDates = () => {
+    if (dateFrom && dateTo) {
+      setAppliedCustom({ from: dateFrom, to: dateTo })
+      setCustomOpen(false)
+    }
+  }
+
   const toggleUser = (name: string) => {
     setHiddenUsers(prev => {
       const next = new Set(prev)
@@ -27,29 +51,31 @@ export function AdminCharts({ source }: AdminChartsProps) {
     })
   }
 
+  const customParam = period === 'custom' && appliedCustom ? `&date_from=${appliedCustom.from}&date_to=${appliedCustom.to}` : ''
+
   const { data: usersData } = useQuery({
     queryKey: ['admin', 'users'],
     queryFn: () => api.get<any>('/admin/users')
   })
 
   const { data: historyRes, isLoading: historyLoading } = useQuery({
-    queryKey: ['admin', 'charts', 'history', period, source, userId],
+    queryKey: ['admin', 'charts', 'history', period, source, userId, appliedCustom],
     queryFn: async () => {
       const uParam = userId !== 'all' ? `&user_id=${userId}` : ''
       if (source === 'workspace') {
-        const res = await api.get<any>(`/admin/charts/workspace?period=${period}${uParam}`)
+        const res = await api.get<any>(`/admin/charts/workspace?period=${period}${uParam}${customParam}`)
         return { history: res.history, distribution: res }
       }
-      return api.get<any>(`/admin/charts/storage-history?period=${period}${uParam}`)
+      return api.get<any>(`/admin/charts/storage-history?period=${period}${uParam}${customParam}`)
     }
   })
 
   const { data: distRes, isLoading: distLoading } = useQuery({
-    queryKey: ['admin', 'charts', 'distribution', period, source, userId],
+    queryKey: ['admin', 'charts', 'distribution', period, source, userId, appliedCustom],
     queryFn: async () => {
       if (source === 'workspace') return null // Included in the history call for workspace
       const uParam = userId !== 'all' ? `&user_id=${userId}` : ''
-      return api.get<any>(`/admin/charts/storage-distribution?period=${period}${uParam}`)
+      return api.get<any>(`/admin/charts/storage-distribution?period=${period}${uParam}${customParam}`)
     }
   })
 
@@ -231,12 +257,13 @@ export function AdminCharts({ source }: AdminChartsProps) {
           />
           <Select 
             value={period}
-            onChange={(val) => setPeriod(String(val))}
+            onChange={(val) => handlePeriodChange(String(val))}
             className="rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-content-primary focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
             options={[
               { value: 'today', label: 'Hoy' },
               { value: '7d', label: 'Últimos 7 días' },
-              { value: '30d', label: 'Este Mes' }
+              { value: '30d', label: 'Este Mes' },
+              { value: 'custom', label: 'Personalizado...' },
             ]}
           />
         </div>
@@ -323,6 +350,38 @@ export function AdminCharts({ source }: AdminChartsProps) {
           )}
         </div>
       </div>
+
+      {/* Modal de Rango de Fechas Personalizado */}
+      <Dialog
+        open={customOpen}
+        onClose={() => setCustomOpen(false)}
+        title="Consultar Rango de Fechas Personalizado"
+        description="Especifica la fecha de inicio y fin para filtrar los gráficos de estadísticas."
+        size="sm"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setCustomOpen(false)}>Cancelar</Button>
+            <Button onClick={applyCustomDates} disabled={!dateFrom || !dateTo}>Aplicar Filtro</Button>
+          </>
+        }
+      >
+        <div className="space-y-4 pt-1">
+          <Input
+            label="Fecha de Inicio"
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            leftIcon={Calendar}
+          />
+          <Input
+            label="Fecha de Fin"
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            leftIcon={Calendar}
+          />
+        </div>
+      </Dialog>
     </div>
   )
 }

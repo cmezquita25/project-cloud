@@ -12,6 +12,7 @@ import {
   Trash2,
   Lock,
   Undo2,
+  UserPlus,
 } from 'lucide-react'
 import type { MenuItem } from '@shared/ui'
 import type { DriveItem, ItemAction } from '../types'
@@ -52,12 +53,22 @@ export function buildItemMenu(item: DriveItem, act: (a: ItemAction) => void, cap
     onSelect: () => act('open'),
   })
 
+  if (caps.canShare !== false) {
+    items.push({
+      id: 'share',
+      label: 'Compartir acceso',
+      icon: UserPlus,
+      onSelect: () => act('share'),
+    })
+  }
+
   if (isFile) {
     if (caps.canDownload) {
       items.push({ id: 'download', label: 'Descargar', icon: Download, onSelect: () => act('download') })
       items.push({ id: 'copyUrl', label: 'Copiar URL pública', icon: LinkIcon, onSelect: () => act('copyUrl') })
     }
   }
+
 
   if (caps.canRename) {
     items.push({ id: 'rename', label: 'Cambiar nombre', icon: Pencil, onSelect: () => act('rename'), divider: true })

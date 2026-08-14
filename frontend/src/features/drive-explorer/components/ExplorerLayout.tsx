@@ -15,6 +15,7 @@ import {
   Search,
   Download,
   Info,
+  UserPlus,
 } from 'lucide-react'
 import { Button, EmptyState, Spinner, IconButton, Menu, useToast, type MenuItem } from '@shared/ui'
 import { useUploads } from '@features/uploads/UploadProvider'
@@ -37,9 +38,13 @@ import { NamePromptDialog } from './dialogs/NamePromptDialog'
 import { DeleteDialog } from './dialogs/DeleteDialog'
 import { MoveDialog } from './dialogs/MoveDialog'
 import { BlockActionsDialog } from '@features/assets/components/BlockActionsDialog'
+import { ShareDialog } from './ShareDialog'
 import { buildItemMenu } from './itemMenu'
+import { useSharedItems } from '../hooks/useSharedItems'
 import { useMarqueeSelection } from '../hooks/useMarqueeSelection'
 import { dragState, isInternalDrag, PC_DND_MIME } from '../services/dragState'
+import { PublicUrlsModal } from './PublicUrlsModal'
+import { Link as LinkIcon } from 'lucide-react'
 import type { DriveItem, FolderItem, FolderRef, ItemAction, ItemInteractions, ViewMode } from '../types'
 
 const key = (i: DriveItem) => `${i.type}-${i.id}`
@@ -50,7 +55,10 @@ type DialogState =
   | { kind: 'move'; mode: 'move' | 'copy'; items: DriveItem[] }
   | { kind: 'delete'; items: DriveItem[] }
   | { kind: 'block'; item: DriveItem }
+  | { kind: 'share'; item: DriveItem }
+  | { kind: 'shareUnit' }
   | null
+
 
 interface ExplorerLayoutProps {
   folderId: FolderRef
@@ -64,10 +72,11 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
   const q = searchParams.get('q') ?? undefined
   const typeFilter = searchParams.get('type') ?? ''
   const dateFilter = searchParams.get('date') ?? ''
+  const ownerIdParam = searchParams.get('owner_id') ? Number(searchParams.get('owner_id')) : undefined
   const toast = useToast()
 
   const [sort, setSort] = useSortState()
-  const { data, loading, error, reload, loadingMore, hasMore, loadMore } = useFolderContents(folderId, sort, adapter, q, typeFilter, dateFilter)
+  const { data, loading, error, reload, loadingMore, hasMore, loadMore } = useFolderContents(folderId, sort, adapter, q, typeFilter, dateFilter, ownerIdParam)
 
   const [view, setView] = useState<ViewMode>(
     () => (localStorage.getItem('pc-view') as ViewMode) || 'list'
@@ -75,7 +84,6 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [isSelectMode, setIsSelectMode] = useState(false)
   const [showDetails, setShowDetails] = useState(false)
-  const [dialog, setDialog] = useState<DialogState>(null)
   const [dragging, setDragging] = useState(false)
   const dragCounter = useRef(0)
   // Selección con teclado/ratón (ancla para rangos con Shift).
@@ -83,11 +91,13 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
   // Arrastre interno (mover) y menú contextual.
   const [dropTargetKey, setDropTargetKey] = useState<string | null>(null)
   const [ctxMenu, setCtxMenu] = useState<{ item: DriveItem | null; x: number; y: number } | null>(null)
-
+  const [dialog, setDialog] = useState<DialogState>(null)
+  const [urlsModalItems, setUrlsModalItems] = useState<DriveItem[] | null>(null)
   const { enqueue, completion } = useUploads()
   const { pickFiles, pickFolder } = useUploadPicker(folderId, adapter.mode)
   const preview = usePreview()
   const { access: assetsAccess } = useAssetsAccess()
+  const sharedItems = useSharedItems()
   const settings = usePlatformSettings()
   const { user } = useAuth()
   const atRoot = folderId === 'root'
@@ -349,6 +359,8 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
     switch (action) {
       case 'open':
         return openItem(item)
+      case 'share':
+        return setDialog({ kind: 'share', item })
       case 'details':
         return setShowDetails(true)
       case 'download':
@@ -553,18 +565,49 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
             </div>
           )}
 
-          {atRoot && adapter.mode === 'drive' && assetsAccess?.allowed && (
-            <button
-              onClick={() => navigate('/assets')}
-              className="group mb-4 flex w-full items-center gap-3 rounded-xl border border-border bg-surface px-3 py-3 text-left transition-colors hover:bg-surface-hover sm:max-w-xs"
-            >
-              <FolderSymlink size={22} className="shrink-0 text-primary" />
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-content-primary">Unidad compartida</p>
-                <p className="truncate text-xs text-content-tertiary">Carpeta compartida de la organización</p>
-              </div>
-            </button>
+          {atRoot && adapter.mode === 'drive' && (
+            <div className="mb-6 flex flex-wrap gap-3">
+              {assetsAccess?.allowed && (
+                <button
+                  onClick={() => navigate('/assets')}
+                  className="group flex flex-1 min-w-[220px] max-w-xs items-center gap-3 rounded-xl border border-border bg-surface px-3.5 py-3 text-left transition-colors hover:bg-surface-hover"
+                >
+                  <FolderSymlink size={22} className="shrink-0 text-primary" />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-content-primary">Unidad compartida</p>
+                    <p className="truncate text-xs text-content-tertiary">Carpeta de la organización</p>
+                  </div>
+                </button>
+              )}
+              {sharedItems.folders.map((folder) => (
+                <button
+                  key={`shortcut-folder-${folder.id}`}
+                  onClick={() => navigate(`/folder/${folder.id}`)}
+                  className="group flex flex-1 min-w-[220px] max-w-xs items-center gap-3 rounded-xl border border-border bg-surface px-3.5 py-3 text-left transition-colors hover:bg-surface-hover"
+                >
+                  <FolderSymlink size={22} className="shrink-0 text-primary" />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-content-primary">{folder.name}</p>
+                    <p className="truncate text-xs text-content-tertiary">Compartida por {folder.owner_name}</p>
+                  </div>
+                </button>
+              ))}
+              {sharedItems.files.map((file) => (
+                <button
+                  key={`shortcut-file-${file.id}`}
+                  onClick={() => navigate(file.folder_id ? `/folder/${file.folder_id}` : '/')}
+                  className="group flex flex-1 min-w-[220px] max-w-xs items-center gap-3 rounded-xl border border-border bg-surface px-3.5 py-3 text-left transition-colors hover:bg-surface-hover"
+                >
+                  <FolderSymlink size={22} className="shrink-0 text-primary" />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-content-primary">{file.parent_folder_name || file.name}</p>
+                    <p className="truncate text-xs text-content-tertiary">Compartido por {file.owner_name}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
           )}
+
 
           {loading ? (
             <div className="flex h-64 items-center justify-center text-content-tertiary">
@@ -645,7 +688,11 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
               transition={{ duration: 0.2 }}
               className="fixed inset-y-0 right-0 z-50 w-[85vw] max-w-[320px] shrink-0 overflow-hidden border-l border-border bg-surface shadow-elevation-3 sm:w-80 lg:static lg:ml-4 lg:rounded-drive lg:border lg:shadow-none lg:block"
             >
-              <DetailsPanel items={selectedItems} onClose={() => setShowDetails(false)} />
+              <DetailsPanel
+                items={selectedItems}
+                onClose={() => setShowDetails(false)}
+                onOpenPublicUrls={(files) => setUrlsModalItems(files)}
+              />
             </motion.div>
           </>
         )}
@@ -689,6 +736,28 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
         onClose={() => setDialog(null)}
         onSuccess={() => reload()}
       />
+      {dialog?.kind === 'share' && (
+        <ShareDialog
+          open
+          onClose={() => setDialog(null)}
+          targetType={dialog.item.type}
+          targetId={dialog.item.id}
+          targetName={dialog.item.name}
+          onShareSuccess={() => reload()}
+        />
+      )}
+      {dialog?.kind === 'shareUnit' && (
+        <ShareDialog
+          open
+          onClose={() => setDialog(null)}
+          targetType="unit"
+          targetId={null}
+          targetName="Mi Unidad"
+          onShareSuccess={() => reload()}
+        />
+      )}
+
+
 
       {ctxMenu && (
         <Menu
@@ -698,9 +767,28 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
           title={ctxMenu.item ? ctxMenu.item.name : 'Nuevo'}
           items={
             ctxMenu.item === null
-              ? newMenuItems
+              ? [
+                  ...newMenuItems,
+                  ...(atRoot && adapter.mode === 'drive'
+                    ? [
+                        {
+                          id: 'shareUnit',
+                          label: 'Compartir mi unidad completa',
+                          icon: UserPlus,
+                          divider: true,
+                          onSelect: () => setDialog({ kind: 'shareUnit' }),
+                        },
+                      ]
+                    : []),
+                ]
               : selectedItems.length > 1 && selected.has(key(ctxMenu.item))
                 ? [
+                  ...(selectedItems.filter((i) => i.type === 'file').length > 0 ? [{
+                    id: 'publicUrls',
+                    label: 'Obtener URLs públicas',
+                    icon: LinkIcon,
+                    onSelect: () => setUrlsModalItems(selectedItems.filter((i) => i.type === 'file')),
+                  }] : []),
                   ...(adapter.capabilities.canMove ? [{
                     id: 'move',
                     label: `Mover ${selectedItems.length} elementos`,
@@ -726,6 +814,18 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
           }
         />
       )}
+
+      <PublicUrlsModal
+        open={Boolean(urlsModalItems)}
+        onClose={() => setUrlsModalItems(null)}
+        items={(urlsModalItems || []).map((i) => ({
+          id: i.id,
+          name: i.name,
+          size_bytes: i.type === 'file' ? i.size_bytes : undefined,
+          mime_type: i.type === 'file' ? i.mime_type : null,
+          url: (i as any).url,
+        }))}
+      />
     </div>
   )
 }
