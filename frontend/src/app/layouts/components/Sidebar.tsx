@@ -15,7 +15,8 @@ import { NAV_GROUPS, type NavItem } from '../navigation'
 function SidebarItem({ item, onNavigate }: { item: NavItem, onNavigate?: () => void }) {
   const [open, setOpen] = useState(false)
   const location = useLocation()
-  
+  const { access } = useAssetsAccess()
+
   useEffect(() => {
     if (item.subItems?.some(s => location.pathname === s.to || location.pathname.startsWith(s.to + '/'))) {
       setOpen(true)
@@ -23,7 +24,8 @@ function SidebarItem({ item, onNavigate }: { item: NavItem, onNavigate?: () => v
   }, [location.pathname, item.subItems])
 
   const Icon = item.icon
-  
+  const displayLabel = item.to === '/assets' && access?.folder_alias ? access.folder_alias : item.label
+
   if (item.subItems) {
     return (
       <div className="flex flex-col">
@@ -35,7 +37,7 @@ function SidebarItem({ item, onNavigate }: { item: NavItem, onNavigate?: () => v
           )}
         >
           <Icon size={20} />
-          <span className="flex-1">{item.label}</span>
+          <span className="flex-1">{displayLabel}</span>
           {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
         </button>
         {open && (
@@ -85,8 +87,8 @@ function SidebarItem({ item, onNavigate }: { item: NavItem, onNavigate?: () => v
         )
       }}
     >
-      <Icon size={20} />
-      <span>{item.label}</span>
+      <Icon size={20} className="shrink-0" />
+      <span className="truncate">{displayLabel}</span>
     </NavLink>
   )
 }

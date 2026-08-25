@@ -311,15 +311,25 @@ final class FolderController
                 SELECT u.id, u.display_name, u.email
                 FROM activity_log al
                 JOIN users u ON u.id = al.user_id
-                WHERE (
-                    (al.entity_type = 'file' AND al.entity_id = :id)
-                    OR (al.action IN ('upload', 'assets.upload') AND al.details LIKE :name_pattern)
-                )
-                ORDER BY al.id ASC LIMIT 1
+                WHERE al.entity_type = 'file' AND al.entity_id = :id
+                ORDER BY al.id DESC LIMIT 1
             ");
-            $namePattern = '%"name":"' . addcslashes((string)$f['name'], '%_\\"') . '"%';
-            $stmtCreator->execute(['id' => (int)$f['id'], 'name_pattern' => $namePattern]);
+            $stmtCreator->execute(['id' => (int)$f['id']]);
             $creatorRow = $stmtCreator->fetch(PDO::FETCH_ASSOC);
+
+            if (!$creatorRow) {
+                $stmtCreator2 = Database::pdo()->prepare("
+                    SELECT u.id, u.display_name, u.email
+                    FROM activity_log al
+                    JOIN users u ON u.id = al.user_id
+                    WHERE al.action IN ('upload', 'assets.upload') AND al.details LIKE :name_pattern
+                    ORDER BY al.id DESC LIMIT 1
+                ");
+                $namePattern = '%"name":"' . addcslashes((string)$f['name'], '%_\\"') . '"%';
+                $stmtCreator2->execute(['name_pattern' => $namePattern]);
+                $creatorRow = $stmtCreator2->fetch(PDO::FETCH_ASSOC);
+            }
+
             if ($creatorRow) {
                 $createdBy = [
                     'id' => (int) $creatorRow['id'],

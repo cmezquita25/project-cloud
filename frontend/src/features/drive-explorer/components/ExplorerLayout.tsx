@@ -514,7 +514,7 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
           ) : (
             <Breadcrumbs
               crumbs={data?.breadcrumbs ?? []}
-              rootLabel={adapter.mode === 'assets' ? 'Unidad compartida' : 'Mi unidad'}
+              rootLabel={adapter.mode === 'assets' ? (assetsAccess?.folder_alias || 'Unidad compartida') : 'Mi unidad'}
               onNavigate={(id: FolderRef) => navigate(adapter.mode === 'assets' ? (id === 'root' ? '/assets' : `/assets/${id}`) : (id === 'root' ? '/' : `/folder/${id}`))}
             />
           )}
@@ -541,7 +541,7 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
           {atRoot && (
             <div className="mb-8 flex flex-col items-center px-2 pt-4 text-center sm:pt-8">
               <h1 className="mb-6 text-2xl font-normal text-content-primary sm:text-[28px]">
-                {adapter.mode === 'assets' ? 'Unidad compartida' : `Te damos la bienvenida a ${settings?.organization_name || 'Drive'}`}
+                {adapter.mode === 'assets' ? (assetsAccess?.folder_alias || 'Unidad compartida') : `Te damos la bienvenida a ${settings?.organization_name || 'Drive'}`}
               </h1>
               {adapter.mode === 'assets' && q && (
                 <div className="mb-4 text-sm text-content-secondary">
@@ -561,7 +561,7 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
                     type="search"
                     value={heroTerm}
                     onChange={(e) => setHeroTerm(e.target.value)}
-                    placeholder={adapter.mode === 'assets' ? 'Buscar en Unidad compartida...' : 'Busca en tu unidad (ej. "factura")'}
+                    placeholder={adapter.mode === 'assets' ? `Buscar en ${assetsAccess?.folder_alias || 'Unidad compartida'}...` : 'Busca en tu unidad (ej. "factura")'}
                     className="flex-1 bg-transparent text-sm text-content-primary placeholder:text-content-tertiary focus:outline-none"
                   />
               </form>
@@ -587,7 +587,7 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
                 >
                   <FolderSymlink size={22} className="shrink-0 text-primary" />
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-content-primary">Unidad compartida</p>
+                    <p className="truncate text-sm font-medium text-content-primary">{assetsAccess?.folder_alias || 'Unidad compartida'}</p>
                     <p className="truncate text-xs text-content-tertiary">Carpeta de la organización</p>
                   </div>
                 </button>

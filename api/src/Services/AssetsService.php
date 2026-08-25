@@ -66,6 +66,19 @@ final class AssetsService
         return empty($name) ? 'assets' : $name;
     }
 
+    public function getFolderAlias(): string
+    {
+        $alias = trim((string) $this->settings->get('assets_folder_alias', ''));
+        if ($alias !== '') {
+            return $alias;
+        }
+        $orgName = trim((string) ($this->settings->get('organization_name') ?: $this->settings->get('org_name', '')));
+        if ($orgName !== '') {
+            return $orgName . ' Workspace';
+        }
+        return 'Unidad compartida';
+    }
+
     public function isActive(): bool
     {
         return is_dir($this->root);

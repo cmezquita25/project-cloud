@@ -12,7 +12,9 @@ export function WorkspaceSettings() {
   const [permOpen, setPermOpen] = useState(false)
   const { access, loading } = useAssetsAccess()
   const [folderName, setFolderName] = useState('')
+  const [folderAlias, setFolderAlias] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+  const [isSavingAlias, setIsSavingAlias] = useState(false)
   const [isActivating, setIsActivating] = useState(false)
   const toast = useToast()
   const queryClient = useQueryClient()
@@ -21,19 +23,33 @@ export function WorkspaceSettings() {
     if (access?.folder_name) {
       setFolderName(access.folder_name)
     }
-  }, [access?.folder_name])
+    setFolderAlias(access?.custom_alias ?? '')
+  }, [access?.folder_name, access?.custom_alias])
 
   const handleSaveFolderName = async () => {
     if (!folderName.trim()) return
     setIsSaving(true)
     try {
-      await assetsApi.setFolderName(folderName)
+      await assetsApi.setFolderName(folderName, folderAlias)
       toast.success('Ruta de la unidad actualizada')
       queryClient.invalidateQueries({ queryKey: ['assets'] })
     } catch (e: any) {
       toast.error(e.message || 'Error al actualizar ruta')
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  const handleSaveFolderAlias = async () => {
+    setIsSavingAlias(true)
+    try {
+      await assetsApi.setFolderName(folderName, folderAlias)
+      toast.success('Alias de la unidad actualizado')
+      queryClient.invalidateQueries({ queryKey: ['assets'] })
+    } catch (e: any) {
+      toast.error(e.message || 'Error al actualizar alias')
+    } finally {
+      setIsSavingAlias(false)
     }
   }
 
@@ -57,16 +73,37 @@ export function WorkspaceSettings() {
       <div>
         <h2 className="mb-1 text-lg font-medium text-content-primary">Espacio de trabajo</h2>
         <p className="text-sm text-content-secondary">
-          Configuración de la unidad compartida y quiénes pueden acceder a ella.
+          Configuración de la unidad compartida, su nombre/alias público y quiénes pueden acceder a ella.
         </p>
       </div>
 
       <div className="space-y-2 rounded-drive border border-border bg-surface p-4">
         <label className="text-sm font-medium text-content-primary block">
-          Raíz de la carpeta compartida
+          Alias de la unidad compartida (Apodo visual)
         </label>
         <p className="text-xs text-content-tertiary mb-3">
-          El nombre de la carpeta (dentro de storage) que actúa como raíz. Cambiar esto no eliminará la unidad anterior, solo apuntará a una nueva ubicación.
+          El nombre visible de esta carpeta compartida para todos los usuarios en la navegación lateral y accesos directos. Por defecto usará «Nombre de la Organización + Workspace» o «Unidad compartida».
+        </p>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={folderAlias}
+            onChange={(e) => setFolderAlias(e.target.value)}
+            className="w-full max-w-sm rounded-lg border border-border bg-transparent px-3 py-2 text-sm text-content-primary outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            placeholder={access?.folder_alias || 'Ej: Techmaleon Workspace'}
+          />
+          <Button leftIcon={Save} onClick={handleSaveFolderAlias} disabled={isSavingAlias || folderAlias === (access?.custom_alias ?? '')}>
+            {isSavingAlias ? 'Guardando...' : 'Guardar Alias'}
+          </Button>
+        </div>
+      </div>
+
+      <div className="space-y-2 rounded-drive border border-border bg-surface p-4">
+        <label className="text-sm font-medium text-content-primary block">
+          Raíz de la carpeta compartida (Ruta física)
+        </label>
+        <p className="text-xs text-content-tertiary mb-3">
+          El nombre de la carpeta (dentro de storage) que actúa como raíz en el servidor. Cambiar esto no eliminará la unidad anterior, solo apuntará a una nueva ubicación física.
         </p>
         <div className="flex gap-2">
           <input
@@ -77,7 +114,7 @@ export function WorkspaceSettings() {
             placeholder="Ej: assets"
           />
           <Button leftIcon={Save} onClick={handleSaveFolderName} disabled={isSaving || !folderName.trim() || folderName === access?.folder_name}>
-            {isSaving ? 'Guardando...' : 'Guardar'}
+            {isSaving ? 'Guardando...' : 'Guardar Ruta'}
           </Button>
         </div>
       </div>

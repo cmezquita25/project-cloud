@@ -25,12 +25,15 @@ final class AssetsController
         $role = (string) ($request->user()['role'] ?? 'user');
         $svc = $this->service();
         $allowed = $svc->canAccess((int) $request->userId(), $role);
+        $settingsRepo = new \ProjectCloud\Repositories\SettingsRepository();
         $res = Response::success([
-            'allowed'   => $allowed,
-            'is_admin'  => $role === 'admin',
-            'can_write' => $allowed, // acceso = ver + interactuar
-            'active'    => $svc->isActive(),
-            'folder_name' => $svc->getFolderName(),
+            'allowed'      => $allowed,
+            'is_admin'     => $role === 'admin',
+            'can_write'    => $allowed, // acceso = ver + interactuar
+            'active'       => $svc->isActive(),
+            'folder_name'  => $svc->getFolderName(),
+            'folder_alias' => $svc->getFolderAlias(),
+            'custom_alias' => (string) ($settingsRepo->get('assets_folder_alias', '')),
         ]);
         // Evita el uso de caché agresivo del ETag en esta petición, pues queremos siempre
         // el estado real de la carpeta.
@@ -196,22 +199,39 @@ final class AssetsController
         return Response::success(['ok' => true]);
     }
 
-    /** PUT /admin/assets/folder-name — cambia el nombre esperado de la raíz de assets. */
+    /** PUT /admin/assets/folder-name — cambia la carpeta raíz o el alias de la unidad compartida. */
     public function setFolderName(Request $request): Response
     {
         $body = $request->json();
-        $name = (string) ($body['folder_name'] ?? '');
-        if ($name === '' || preg_match('/[^a-zA-Z0-9_-]/', $name)) {
-            throw HttpException::badRequest('Nombre de carpeta inválido.');
-        }
         $settings = new \ProjectCloud\Repositories\SettingsRepository();
-        $settings->set('assets_folder_name', $name);
-        
-        // Ensure the physical folder is created immediately if it doesn't exist
-        (new AssetsService())->createRoot();
-        
-        ActivityLogger::log($request, 'assets.folder_name', 'setting', null, ['folder_name' => $name]);
-        return Response::success(['folder_name' => $name]);
+
+        if (array_key_exists('folder_name', $body)) {
+            $name = trim((string) $body['folder_name']);
+            if ($name !== '') {
+                if (preg_match('/[^a-zA-Z0-9_-]/', $name)) {
+                    throw HttpException::badRequest('Nombre de carpeta inválido.');
+                }
+                $settings->set('assets_folder_name', $name);
+                (new AssetsService())->createRoot();
+            }
+        }
+
+        if (array_key_exists('folder_alias', $body)) {
+            $alias = trim((string) $body['folder_alias']);
+            $settings->set('assets_folder_alias', $alias);
+        }
+
+        $svc = new AssetsService();
+        ActivityLogger::log($request, 'assets.folder_name', 'setting', null, [
+            'folder_name'  => $svc->getFolderName(),
+            'folder_alias' => $svc->getFolderAlias(),
+        ]);
+
+        return Response::success([
+            'folder_name'  => $svc->getFolderName(),
+            'folder_alias' => $svc->getFolderAlias(),
+            'custom_alias' => (string) $settings->get('assets_folder_alias', ''),
+        ]);
     }
 
     // --- Helpers ---

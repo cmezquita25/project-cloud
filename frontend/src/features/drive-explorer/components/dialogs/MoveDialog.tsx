@@ -4,6 +4,7 @@ import { Dialog, Button, Spinner } from '@shared/ui'
 import { cn } from '@shared/lib/cn'
 import { driveApi } from '../../services/driveApi'
 import { assetsApi } from '@features/assets/services/assetsApi'
+import { useAssetsAccess } from '@features/assets/hooks/useAssetsAccess'
 import type { Breadcrumb, DriveItem, FolderItem, FolderRef } from '../../types'
 
 interface MoveDialogProps {
@@ -17,6 +18,7 @@ interface MoveDialogProps {
 
 /** Selector de carpeta destino para mover o copiar. */
 export function MoveDialog({ open, mode, sourceMode = 'drive', items, onClose, onConfirm }: MoveDialogProps) {
+  const { access } = useAssetsAccess()
   const [current, setCurrent] = useState<FolderRef>('root')
   const [folders, setFolders] = useState<FolderItem[]>([])
   const [crumbs, setCrumbs] = useState<Breadcrumb[]>([])
@@ -96,7 +98,7 @@ export function MoveDialog({ open, mode, sourceMode = 'drive', items, onClose, o
           )}
           <HardDrive size={16} className="text-content-tertiary" />
           <span className="truncate text-sm font-medium text-content-primary">
-            {crumbs.length === 0 ? (sourceMode === 'assets' ? 'Unidad compartida' : 'Mi unidad') : crumbs[crumbs.length - 1]!.name}
+            {crumbs.length === 0 ? (sourceMode === 'assets' ? (access?.folder_alias || 'Unidad compartida') : 'Mi unidad') : crumbs[crumbs.length - 1]!.name}
           </span>
         </div>
 

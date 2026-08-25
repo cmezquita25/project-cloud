@@ -32,6 +32,8 @@ export interface AssetsAccess {
   can_write: boolean
   active?: boolean
   folder_name?: string
+  folder_alias?: string
+  custom_alias?: string
 }
 
 export interface AssetPermissionUser {
@@ -102,6 +104,10 @@ export const assetsApi = {
   setPermissions: (userIds: number[]) =>
     api.put<{ user_ids: number[] }>('/admin/assets/permissions', { user_ids: userIds }),
   activate: () => api.post<{ ok: boolean }>('/admin/assets/activate'),
-  setFolderName: (folderName: string) => api.put<{ folder_name: string }>('/admin/assets/folder-name', { folder_name: folderName }),
+  setFolderName: (folderName?: string, folderAlias?: string) =>
+    api.put<{ folder_name: string; folder_alias: string; custom_alias: string }>('/admin/assets/folder-name', {
+      folder_name: folderName,
+      folder_alias: folderAlias,
+    }),
   setBlockedActions: (path: string, actions: string) => api.put<{ ok: boolean }>('/admin/assets/block-actions', { path, blocked_actions: actions }),
 }
