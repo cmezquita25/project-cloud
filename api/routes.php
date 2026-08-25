@@ -27,6 +27,7 @@ use ProjectCloud\Controllers\LibraryController;
 use ProjectCloud\Controllers\AssetsController;
 use ProjectCloud\Controllers\DatabaseController;
 use ProjectCloud\Controllers\ShareController;
+use ProjectCloud\Controllers\NotificationController;
 use ProjectCloud\Middleware\AuthMiddleware;
 use ProjectCloud\Middleware\AdminOnly;
 use ProjectCloud\Middleware\RateLimit;
@@ -167,6 +168,20 @@ return static function (Router $router): void {
     $router->delete('/v1/admin/database/backups/{filename}',  [\ProjectCloud\Controllers\DatabaseController::class, 'deleteBackup'], $admin);
     $router->post('/v1/admin/database/backups/{filename}/restore', [\ProjectCloud\Controllers\DatabaseController::class, 'restoreBackup'], $admin);
     $router->get('/v1/admin/database/backups/{filename}/download', [\ProjectCloud\Controllers\DatabaseController::class, 'downloadBackup'], $admin);
+
+    // Tareas Cron de Administración
+    $router->get('/v1/admin/cron',     [AdminController::class, 'cronStatus'], $admin);
+    $router->post('/v1/admin/cron/run', [AdminController::class, 'runCron'], $admin);
+
+    // Notificaciones de Usuario
+    $router->get('/v1/notifications',              [NotificationController::class, 'list'], $auth);
+    $router->get('/v1/notifications/unread-count', [NotificationController::class, 'unreadCount'], $auth);
+    $router->patch('/v1/notifications/{id}/read',  [NotificationController::class, 'markRead'], $auth);
+    $router->post('/v1/notifications/read-all',    [NotificationController::class, 'markAllRead'], $auth);
+    $router->post('/v1/notifications/bulk-read',   [NotificationController::class, 'bulkRead'], $auth);
+    $router->post('/v1/notifications/bulk-delete', [NotificationController::class, 'bulkDelete'], $auth);
+    $router->delete('/v1/notifications/all',       [NotificationController::class, 'deleteAll'], $auth);
+    $router->delete('/v1/notifications/{id}',      [NotificationController::class, 'delete'], $auth);
 
     // Soporte y Reportes
     $router->post('/v1/support/report', [\ProjectCloud\Controllers\SupportController::class, 'report'], $auth);

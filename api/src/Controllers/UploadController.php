@@ -74,6 +74,8 @@ final class UploadController
             (string) $request->param('id'),
         );
 
+        $userId = (int) $request->userId();
+
         if (isset($file['type']) && $file['type'] === 'file' && !isset($file['id'])) {
             // Es un elemento de la Unidad Compartida (Assets)
             ActivityLogger::log($request, 'assets.upload', 'asset', null, ['path' => $file['path'] ?? '']);
@@ -85,15 +87,31 @@ final class UploadController
             'size' => $file['size_bytes'] ?? null,
         ]);
 
+        // Si se subió dentro de una carpeta en Mi Unidad, notificar a los participantes si la carpeta o unidad está compartida
+        $folderId = isset($file['folder_id']) ? (int) $file['folder_id'] : null;
+        if ($folderId && $folderId > 0) {
+            try {
+                (new \ProjectCloud\Services\NotificationService())->notifySharedFolderUpload(
+                    $userId,
+                    (string) ($file['name'] ?? 'archivo'),
+                    $folderId
+                );
+            } catch (\Throwable) {}
+        }
+
         // Aviso por correo si el usuario cruza el 90% de su cuota (no rompe la subida).
         try {
             (new QuotaService(new UserRepository(), new FileRepository()))
-                ->checkQuotaWarning((int) $request->userId());
+                ->checkQuotaWarning($userId);
         } catch (\Throwable) {
             // El aviso nunca debe tumbar la subida.
         }
 
-        return Response::created($this->filePublic($file, $username));
+        $fileOwnerId = (int) ($file['user_id'] ?? $userId);
+        $fileOwnerUser = (new UserRepository())->findById($fileOwnerId);
+        $fileOwnerUsername = $fileOwnerUser ? (string) $fileOwnerUser['username'] : $username;
+
+        return Response::created($this->filePublic($file, $fileOwnerUsername));
     }
 
     /** DELETE /uploads/{id} — cancela una subida. */

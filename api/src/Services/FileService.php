@@ -31,7 +31,11 @@ final class FileService
 
     public function rename(int $userId, string $username, int $id, string $rawName): array
     {
-        $file = $this->require($id, $userId);
+        $file = $this->require($id, $userId, 'full');
+        $ownerUserId = (int) $file['user_id'];
+        $ownerUser = (new UserRepository())->findById($ownerUserId);
+        $ownerUsername = $ownerUser !== null ? (string) $ownerUser['username'] : $username;
+
         $name = $this->fs->sanitizeName($rawName);
         if ($this->fs->isBlockedExtension($name)) {
             throw new HttpException(422, 'BLOCKED_EXTENSION', 'Ese tipo de archivo no está permitido.');
@@ -41,29 +45,33 @@ final class FileService
         }
 
         $folderId = $file['folder_id'] !== null ? (int) $file['folder_id'] : null;
-        if ($this->files->existsByName($userId, $folderId, $name, $id)) {
+        if ($this->files->existsByName($ownerUserId, $folderId, $name, $id)) {
             throw new HttpException(409, 'NAME_EXISTS', 'Ya existe un archivo con ese nombre.');
         }
 
         $oldPath = (string) $file['path'];
         $newPath = PathHelper::join(PathHelper::parent($oldPath), $name);
 
-        $this->transaction(function () use ($id, $username, $name, $oldPath, $newPath) {
+        $this->transaction(function () use ($id, $ownerUsername, $name, $oldPath, $newPath) {
             $this->files->updateNameAndPath($id, $name, $newPath, PathHelper::extension($name));
-            $this->fs->move($username, $oldPath, $newPath);
+            $this->fs->move($ownerUsername, $oldPath, $newPath);
         });
 
-        return $this->files->find($id, $userId) ?? [];
+        return $this->files->findAnyById($id) ?? [];
     }
 
     public function move(int $userId, string $username, int $id, ?int $targetFolderId): array
     {
-        $file = $this->require($id, $userId);
+        $file = $this->require($id, $userId, 'full');
+        $ownerUserId = (int) $file['user_id'];
+        $ownerUser = (new UserRepository())->findById($ownerUserId);
+        $ownerUsername = $ownerUser !== null ? (string) $ownerUser['username'] : $username;
+
         $name = (string) $file['name'];
         $oldPath = (string) $file['path'];
 
         $targetPath = $this->folderPath($userId, $targetFolderId);
-        if ($this->files->existsByName($userId, $targetFolderId, $name, $id)) {
+        if ($this->files->existsByName($ownerUserId, $targetFolderId, $name, $id)) {
             throw new HttpException(409, 'NAME_EXISTS', 'Ya existe un archivo con ese nombre en el destino.');
         }
         $newPath = PathHelper::join($targetPath, $name);
@@ -71,31 +79,35 @@ final class FileService
             return $file;
         }
 
-        $this->transaction(function () use ($id, $username, $targetFolderId, $oldPath, $newPath) {
+        $this->transaction(function () use ($id, $ownerUsername, $targetFolderId, $oldPath, $newPath) {
             $this->files->updateFolderAndPath($id, $targetFolderId, $newPath);
-            $this->fs->move($username, $oldPath, $newPath);
+            $this->fs->move($ownerUsername, $oldPath, $newPath);
         });
 
-        return $this->files->find($id, $userId) ?? [];
+        return $this->files->findAnyById($id) ?? [];
     }
 
     public function duplicate(int $userId, string $username, int $id): array
     {
-        $file = $this->require($id, $userId);
+        $file = $this->require($id, $userId, 'read');
+        $ownerUserId = (int) $file['user_id'];
+        $ownerUser = (new UserRepository())->findById($ownerUserId);
+        $ownerUsername = $ownerUser !== null ? (string) $ownerUser['username'] : $username;
+
         $folderId = $file['folder_id'] !== null ? (int) $file['folder_id'] : null;
         $parentPath = PathHelper::parent((string) $file['path']);
 
         $newName = PathHelper::uniqueName(
             (string) $file['name'],
-            fn (string $n): bool => $this->files->existsByName($userId, $folderId, $n)
+            fn (string $n): bool => $this->files->existsByName($ownerUserId, $folderId, $n)
         );
         $newPath = PathHelper::join($parentPath, $newName);
 
         $newId = 0;
-        $this->transaction(function () use ($userId, $username, $file, $folderId, $newName, $newPath, &$newId) {
-            $this->fs->copy($username, (string) $file['path'], $newPath);
+        $this->transaction(function () use ($ownerUserId, $ownerUsername, $file, $folderId, $newName, $newPath, &$newId) {
+            $this->fs->copy($ownerUsername, (string) $file['path'], $newPath);
             $newId = $this->files->create(
-                $userId,
+                $ownerUserId,
                 $folderId,
                 $newName,
                 $newPath,
@@ -103,27 +115,31 @@ final class FileService
                 $file['mime_type'] !== null ? (string) $file['mime_type'] : null,
                 PathHelper::extension($newName),
             );
-            (new UserRepository())->addUsedBytes($userId, (int) $file['size_bytes']);
+            (new UserRepository())->addUsedBytes($ownerUserId, (int) $file['size_bytes']);
         });
 
-        return $this->files->find($newId, $userId) ?? [];
+        return $this->files->findAnyById($newId) ?? [];
     }
 
     public function copy(int $userId, string $username, int $id, ?int $targetFolderId): array
     {
-        $file = $this->require($id, $userId);
+        $file = $this->require($id, $userId, 'read');
+        $ownerUserId = (int) $file['user_id'];
+        $ownerUser = (new UserRepository())->findById($ownerUserId);
+        $ownerUsername = $ownerUser !== null ? (string) $ownerUser['username'] : $username;
+
         $targetPath = $this->folderPath($userId, $targetFolderId);
         $newName = PathHelper::uniqueName(
             (string) $file['name'],
-            fn (string $n): bool => $this->files->existsByName($userId, $targetFolderId, $n)
+            fn (string $n): bool => $this->files->existsByName($ownerUserId, $targetFolderId, $n)
         );
         $newPath = PathHelper::join($targetPath, $newName);
 
         $newId = 0;
-        $this->transaction(function () use ($userId, $username, $file, $targetFolderId, $newName, $newPath, &$newId) {
-            $this->fs->copy($username, (string) $file['path'], $newPath);
+        $this->transaction(function () use ($ownerUserId, $ownerUsername, $file, $targetFolderId, $newName, $newPath, &$newId) {
+            $this->fs->copy($ownerUsername, (string) $file['path'], $newPath);
             $newId = $this->files->create(
-                $userId,
+                $ownerUserId,
                 $targetFolderId,
                 $newName,
                 $newPath,
@@ -131,27 +147,31 @@ final class FileService
                 $file['mime_type'] !== null ? (string) $file['mime_type'] : null,
                 PathHelper::extension($newName),
             );
-            (new UserRepository())->addUsedBytes($userId, (int) $file['size_bytes']);
+            (new UserRepository())->addUsedBytes($ownerUserId, (int) $file['size_bytes']);
         });
 
-        return $this->files->find($newId, $userId) ?? [];
+        return $this->files->findAnyById($newId) ?? [];
     }
 
     public function delete(int $userId, string $username, int $id): void
     {
-        $file = $this->require($id, $userId);
-        $this->transaction(function () use ($id, $userId, $username, $file) {
+        $file = $this->require($id, $userId, 'full');
+        $ownerUserId = (int) $file['user_id'];
+        $ownerUser = (new UserRepository())->findById($ownerUserId);
+        $ownerUsername = $ownerUser !== null ? (string) $ownerUser['username'] : $username;
+
+        $this->transaction(function () use ($id, $ownerUserId, $ownerUsername, $file) {
             $this->files->softDelete($id);
-            $this->fs->moveToTrash($username, (string) $file['path'], 'f' . $id);
-            (new UserRepository())->addUsedBytes($userId, -(int) $file['size_bytes']);
+            $this->fs->moveToTrash($ownerUsername, (string) $file['path'], 'f' . $id);
+            (new UserRepository())->addUsedBytes($ownerUserId, -(int) $file['size_bytes']);
         });
     }
 
     public function setStarred(int $userId, int $id, bool $starred): array
     {
-        $this->require($id, $userId);
+        $file = $this->require($id, $userId, 'read');
         $this->files->setStarred($id, $userId, $starred);
-        return $this->files->find($id, $userId) ?? [];
+        return $this->files->findAnyById($id) ?? [];
     }
 
     /** URL pública directa del archivo. */
@@ -164,13 +184,22 @@ final class FileService
 
     // --- Helpers ---
 
-    private function require(int $id, int $userId): array
+    private function require(int $id, int $userId, string $requiredPermission = 'read'): array
     {
         $file = $this->files->find($id, $userId);
-        if ($file === null) {
-            throw HttpException::notFound('Archivo no encontrado');
+        if ($file !== null) {
+            return $file;
         }
-        return $file;
+
+        $file = $this->files->findAnyById($id);
+        if ($file !== null) {
+            $permService = new SharePermissionService($this->pdo);
+            if ($permService->canAccessFile($userId, $id, $requiredPermission)) {
+                return $file;
+            }
+        }
+
+        throw HttpException::notFound('Archivo no encontrado');
     }
 
     private function folderPath(int $userId, ?int $folderId): string
@@ -179,10 +208,19 @@ final class FileService
             return '';
         }
         $folder = $this->folders->find($folderId, $userId);
-        if ($folder === null) {
-            throw new HttpException(422, 'INVALID_FOLDER', 'La carpeta destino no existe.');
+        if ($folder !== null) {
+            return (string) $folder['path'];
         }
-        return (string) $folder['path'];
+
+        $folder = $this->folders->findAnyById($folderId);
+        if ($folder !== null) {
+            $permService = new SharePermissionService($this->pdo);
+            if ($permService->canAccessFolder($userId, $folderId, 'read')) {
+                return (string) $folder['path'];
+            }
+        }
+
+        throw new HttpException(422, 'INVALID_FOLDER', 'La carpeta destino no existe.');
     }
 
     private function transaction(callable $fn): void

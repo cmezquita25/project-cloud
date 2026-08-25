@@ -12,6 +12,43 @@ interface Draft {
   body_html: string
 }
 
+function formatHTMLString(html: string): string {
+  if (!html) return ''
+  try {
+    const tab = '  '
+    let result = ''
+    let indent = ''
+    
+    const cleanHtml = html.replace(/(>)\s*(<)(\/*)/g, '$1\n$2$3')
+    const lines = cleanHtml.split('\n')
+    
+    for (const rawLine of lines) {
+      const line = rawLine.trim()
+      if (!line) continue
+
+      if (line.match(/^<\/\w/)) {
+        if (indent.length >= tab.length) {
+          indent = indent.substring(tab.length)
+        }
+      }
+
+      result += indent + line + '\n'
+
+      if (
+        line.match(/^<\w[^>]*[^\/]>$/) &&
+        !line.match(/<\w+.*<\/\w+>/) &&
+        !line.match(/<(img|hr|br|input|meta|link)/i)
+      ) {
+        indent += tab
+      }
+    }
+
+    return result.trim()
+  } catch (e) {
+    return html
+  }
+}
+
 export function EmailTemplateEditor() {
   const { key } = useParams<{ key: string }>()
   const toast = useToast()
@@ -37,7 +74,10 @@ export function EmailTemplateEditor() {
       const found = templates.find(t => t.key === key)
       if (found) {
         setTemplate(found)
-        setDraft({ subject: found.subject, body_html: found.body_html })
+        setDraft({
+          subject: found.subject,
+          body_html: formatHTMLString(found.body_html),
+        })
         setSeeded(true)
       } else {
         toast.error('Plantilla no encontrada')
@@ -83,26 +123,8 @@ export function EmailTemplateEditor() {
 
   const handleFormatHTML = () => {
     try {
-      const tab = '  '
-      let result = ''
-      let indent = ''
-      
-      const lines = draft.body_html.replace(/(>)\s*(<)(\/*)/g, '$1\n$2$3').split('\n')
-      for (const rawLine of lines) {
-        const line = rawLine.trim()
-        if (!line) continue
-
-        if (line.match(/^<\/\w/)) {
-          if (indent.length >= tab.length) indent = indent.substring(tab.length)
-        }
-
-        result += indent + line + '\n'
-
-        if (line.match(/^<\w[^>]*[^\/]>$/) && !line.match(/<\w+.*<\/\w+>/) && !line.match(/<(img|hr|br|input|meta|link)/i)) {
-          indent += tab
-        }
-      }
-      setDraft(d => ({ ...d, body_html: result.trim() }))
+      const formatted = formatHTMLString(draft.body_html)
+      setDraft((d) => ({ ...d, body_html: formatted }))
       toast.success('HTML formateado')
     } catch (e) {
       toast.error('No se pudo formatear el código')
@@ -129,7 +151,10 @@ export function EmailTemplateEditor() {
     try {
       const res = await adminApi.resetEmailTemplate(key)
       queryClient.invalidateQueries({ queryKey: ['admin', 'email-templates'] })
-      setDraft({ subject: res.subject, body_html: res.body_html })
+      setDraft({
+        subject: res.subject,
+        body_html: formatHTMLString(res.body_html),
+      })
       toast.success('Plantilla restaurada al valor por defecto')
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : 'No se pudo restaurar la plantilla')

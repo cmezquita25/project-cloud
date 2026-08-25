@@ -20,9 +20,10 @@ final class EmailTemplateService
     public const QUOTA_WARNING = 'quota_warning';
     public const SUPPORT_REPORT = 'support_report';
     public const ITEM_SHARED = 'item_shared';
+    public const ITEM_NEW_FILE = 'item_new_file';
 
     /** @var list<string> */
-    public const KEYS = [self::WELCOME, self::PASSWORD_RESET, self::QUOTA_WARNING, self::SUPPORT_REPORT, self::ITEM_SHARED];
+    public const KEYS = [self::WELCOME, self::PASSWORD_RESET, self::QUOTA_WARNING, self::SUPPORT_REPORT, self::ITEM_SHARED, self::ITEM_NEW_FILE];
 
 
     private PDO $pdo;
@@ -139,6 +140,14 @@ final class EmailTemplateService
                 'report_type'    => 'Reporte de Error',
                 'report_message' => 'El sistema muestra un error 404 al abrir mis archivos.',
             ],
+            self::ITEM_SHARED => $common + [
+                'invited_name'     => 'Carlos Gómez',
+                'owner_name'       => 'María López',
+                'item_name'        => 'Documentos de Proyecto',
+                'target_label'     => 'la carpeta',
+                'permission_label' => 'Solo lectura',
+                'item_url'         => 'https://tu-dominio/folder/12',
+            ],
             default => $common,
         };
     }
@@ -191,7 +200,12 @@ final class EmailTemplateService
         self::ITEM_SHARED => [
             'label'       => 'Notificación de Recurso Compartido',
             'description' => 'Se envía a un usuario cuando otro usuario comparte una carpeta, archivo o unidad completa con él.',
-            'variables'   => ['invited_name', 'owner_name', 'item_name', 'target_label', 'permission_label', 'org_name'],
+            'variables'   => ['invited_name', 'owner_name', 'item_name', 'target_label', 'permission_label', 'item_url', 'org_name'],
+        ],
+        self::ITEM_NEW_FILE => [
+            'label'       => 'Nuevo Archivo en Recurso Compartido',
+            'description' => 'Se envía a los integrantes de un recurso compartido cuando alguien sube un nuevo archivo.',
+            'variables'   => ['uploader_name', 'file_name', 'target_name', 'target_label', 'item_url', 'org_name'],
         ],
     ];
 
@@ -292,8 +306,20 @@ final class EmailTemplateService
                     . '</table>'
                     . '</td></tr>'
                     . '</table>'
-                    . '<p style="margin:0;color:#475569;font-size:16px;line-height:1.6;font-family:Helvetica,Arial,sans-serif;">'
-                    . 'Ya puedes acceder a este contenido ingresando a tu cuenta en la sección "Compartido".</p>',
+                    . '<div style="margin-bottom:32px;">' . $btn('{{item_url}}', 'Acceder al recurso compartido') . '</div>'
+                    . '<p style="margin:0;color:#94a3b8;font-size:14px;line-height:1.5;font-family:Helvetica,Arial,sans-serif;">'
+                    . 'También puedes acceder directamente copiando y pegando el siguiente enlace en tu navegador:<br>'
+                    . '<a href="{{item_url}}" style="color:#2563eb;text-decoration:none;word-break:break-all;">{{item_url}}</a></p>',
+            ],
+            self::ITEM_NEW_FILE => [
+                'subject'   => 'Nuevo archivo subido en {{target_name}} - {{org_name}}',
+                'body_html' =>
+                    '<h2 style="margin:0 0 20px;font-size:22px;color:#1e293b;font-weight:600;font-family:Helvetica,Arial,sans-serif;">¡Nuevo archivo disponible!</h2>'
+                    . '<p style="margin:0 0 24px;color:#475569;font-size:16px;line-height:1.6;font-family:Helvetica,Arial,sans-serif;">'
+                    . 'El usuario <strong>{{uploader_name}}</strong> ha subido un nuevo archivo denominado <strong>"{{file_name}}"</strong> en {{target_label}} <strong>"{{target_name}}"</strong>.</p>'
+                    . '<div style="margin-bottom:32px;">' . $btn('{{item_url}}', 'Ver recurso compartido') . '</div>'
+                    . '<p style="margin:0;color:#94a3b8;font-size:14px;line-height:1.5;font-family:Helvetica,Arial,sans-serif;">'
+                    . 'Puedes abrir directamente la ubicación del recurso accediendo a: <a href="{{item_url}}" style="color:#2563eb;text-decoration:none;">{{item_url}}</a></p>',
             ],
         ];
     }

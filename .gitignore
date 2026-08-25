@@ -30,3 +30,7 @@ Thumbs.db
 # Agents
 .claude
 graphify-out
+
+#Folders Prueba
+app-assets/
+thumbs/

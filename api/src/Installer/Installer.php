@@ -263,6 +263,13 @@ final class Installer
                 'public_url' => $url,
                 'chunk_size' => 4 * 1024 * 1024,
             ],
+            'php' => [
+                'memory_limit'        => '512M',
+                'max_execution_time'  => 300,
+                'max_input_time'      => 300,
+                'post_max_size'       => '2048M',
+                'upload_max_filesize' => '2048M',
+            ],
             'env' => 'production',
         ];
 

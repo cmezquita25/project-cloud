@@ -37,6 +37,15 @@ return [
         'chunk_size' => 4 * 1024 * 1024, // 4 MB
     ],
 
+    // Límites de ejecución y subida de PHP.
+    'php' => [
+        'memory_limit'        => '512M',
+        'max_execution_time'  => 300,
+        'max_input_time'      => 300,
+        'post_max_size'       => '2048M',
+        'upload_max_filesize' => '2048M',
+    ],
+
     // Entorno: 'production' oculta detalles de error.
     'env' => 'production',
 ];

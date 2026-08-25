@@ -1,7 +1,10 @@
-import { MonitorDot, CheckCircle2, AlertTriangle, AlertCircle, Pencil } from 'lucide-react'
-import { Button } from '@shared/ui'
+import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { MonitorDot, CheckCircle2, AlertTriangle, AlertCircle, Pencil, Info } from 'lucide-react'
+import { Button, Dialog, Input, useToast } from '@shared/ui'
 import { formatBytes } from '@shared/lib/formatBytes'
 import { cn } from '@shared/lib/cn'
+import { adminApi } from '../services/adminApi'
 import {
   SERVER_LIMITS,
   isPostSmallerThanUpload,
@@ -60,9 +63,19 @@ function ServerInfoCard({
   )
 }
 
+/** Normaliza entradas como "256" a "256M" o "100" a "100M" si no tienen unidad. */
+function ensureUnit(val: string, defaultUnit = 'M'): string {
+  const trimmed = val.trim()
+  if (!trimmed) return ''
+  if (/^\d+$/.test(trimmed)) {
+    return `${trimmed}${defaultUnit}`
+  }
+  return trimmed
+}
+
 /**
- * Tarjetas de rendimiento y límites de PHP. Presentacional: recibe el mapa de
- * `server-info` y evalúa cada límite con los umbrales de `lib/serverLimits`.
+ * Tarjetas de rendimiento y límites de PHP.
+ * Permite editar la configuración desde el panel admin y persistirla en config/config.php.
  */
 export function ServerLimits({
   serverInfo,
@@ -73,6 +86,56 @@ export function ServerLimits({
   chunkSizeBytes?: number
   onEditChunk?: () => void
 }) {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  const [form, setForm] = useState({
+    memory_limit: serverInfo.memory_limit ?? '512M',
+    upload_max_filesize: serverInfo.upload_max_filesize ?? '2048M',
+    post_max_size: serverInfo.post_max_size ?? '2048M',
+    max_execution_time: serverInfo.max_execution_time ?? '300',
+    max_input_time: serverInfo.max_input_time ?? '300',
+  })
+
+  const openModal = () => {
+    setForm({
+      memory_limit: serverInfo.memory_limit ?? '512M',
+      upload_max_filesize: serverInfo.upload_max_filesize ?? '2048M',
+      post_max_size: serverInfo.post_max_size ?? '2048M',
+      max_execution_time: serverInfo.max_execution_time ?? '300',
+      max_input_time: serverInfo.max_input_time ?? '300',
+    })
+    setShowEditModal(true)
+  }
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      const memory_limit = ensureUnit(form.memory_limit)
+      const upload_max_filesize = ensureUnit(form.upload_max_filesize)
+      const post_max_size = ensureUnit(form.post_max_size)
+
+      await adminApi.updatePhpLimits({
+        memory_limit,
+        upload_max_filesize,
+        post_max_size,
+        max_execution_time: parseInt(form.max_execution_time, 10) || 300,
+        max_input_time: parseInt(form.max_input_time, 10) || 300,
+      })
+      toast.success('Configuración guardada en config.php exitosamente')
+      queryClient.invalidateQueries({ queryKey: ['admin', 'server-info'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] })
+      setShowEditModal(false)
+    } catch (err: any) {
+      toast.error(err?.message || 'No se pudo guardar la configuración en config.php')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const postTooSmall = isPostSmallerThanUpload(
     serverInfo.post_max_size ?? 'N/A',
     serverInfo.upload_max_filesize ?? 'N/A',
@@ -83,8 +146,17 @@ export function ServerLimits({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-content-primary">
           <MonitorDot size={20} className="text-primary" />
-          <h2 className="text-lg font-medium">Rendimiento y límites del servidor (PHP)</h2>
+          <h2 className="text-lg font-medium">Configuraciones del servidor</h2>
         </div>
+        <Button
+          size="sm"
+          variant="secondary"
+          leftIcon={Pencil}
+          onClick={openModal}
+          className="h-8 text-xs px-3"
+        >
+          Modificar
+        </Button>
       </div>
 
       {postTooSmall && (
@@ -129,6 +201,82 @@ export function ServerLimits({
           }
         />
       </div>
+
+      <Dialog
+        open={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        title="Modificar Configuraciones de la Plataforma (config.php)"
+        size="lg"
+      >
+        <form onSubmit={handleSave} className="space-y-4 mt-2">
+          <div className="rounded-drive border border-primary/20 bg-primary/5 p-4 text-xs text-content-secondary space-y-2">
+            <div className="flex items-center gap-2 font-medium text-sm text-primary">
+              <Info size={18} />
+              <span>Configuración Independiente de la Plataforma (config.php)</span>
+            </div>
+            <p className="leading-relaxed">
+              Esta configuración se almacena en el archivo de entorno propio de la aplicación (<code>config/config.php</code>), permitiendo controlar los límites operativos de la plataforma de manera independiente.
+            </p>
+            <p className="leading-relaxed text-content-tertiary">
+              <strong className="text-content-secondary">Nota del servidor:</strong> Asegúrate de verificar los límites reales asignados por tu proveedor de alojamiento (Plesk, cPanel o el php.ini raíz del VPS), ya que el servidor siempre aplicará la cota física más restrictiva.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+            <Input
+              label="Límite de memoria (memory_limit)"
+              placeholder="512M, 1024M, 2048M"
+              value={form.memory_limit}
+              onChange={(e) => setForm((f) => ({ ...f, memory_limit: e.target.value }))}
+              hint="Ej: 256M, 512M o 1024M"
+              required
+            />
+            <Input
+              label="Subida máx. (upload_max_filesize)"
+              placeholder="100M, 2048M"
+              value={form.upload_max_filesize}
+              onChange={(e) => setForm((f) => ({ ...f, upload_max_filesize: e.target.value }))}
+              hint="Ej: 100M o 2048M"
+              required
+            />
+            <Input
+              label="POST máx. (post_max_size)"
+              placeholder="100M, 2048M"
+              value={form.post_max_size}
+              onChange={(e) => setForm((f) => ({ ...f, post_max_size: e.target.value }))}
+              hint="Debe ser ≥ upload_max_filesize"
+              required
+            />
+            <Input
+              label="Tiempo máx. ejecución (seg.)"
+              type="number"
+              placeholder="300"
+              value={form.max_execution_time}
+              onChange={(e) => setForm((f) => ({ ...f, max_execution_time: e.target.value }))}
+              hint="Ej: 300 (5 min) o 600 (10 min)"
+              required
+            />
+            <Input
+              label="Tiempo máx. entrada (seg.)"
+              type="number"
+              placeholder="300"
+              value={form.max_input_time}
+              onChange={(e) => setForm((f) => ({ ...f, max_input_time: e.target.value }))}
+              hint="Ej: 300 o -1 (sin límite)"
+              required
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-border">
+            <Button variant="ghost" type="button" onClick={() => setShowEditModal(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit" loading={saving}>
+              Guardar en config.php
+            </Button>
+          </div>
+        </form>
+      </Dialog>
     </div>
   )
 }

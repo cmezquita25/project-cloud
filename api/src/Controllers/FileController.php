@@ -142,6 +142,15 @@ final class FileController
     /** @param array<string,mixed> $f */
     private function filePublic(array $f, string $username): array
     {
+        $ownerId = (int) ($f['user_id'] ?? 0);
+        $ownerUsername = $username;
+        if ($ownerId > 0) {
+            $ownerUser = (new UserRepository())->findById($ownerId);
+            if ($ownerUser !== null) {
+                $ownerUsername = (string) $ownerUser['username'];
+            }
+        }
+
         return [
             'type'       => 'file',
             'id'         => (int) $f['id'],
@@ -152,7 +161,7 @@ final class FileController
             'mime_type'  => $f['mime_type'] !== null ? (string) $f['mime_type'] : null,
             'extension'  => $f['extension'] !== null ? (string) $f['extension'] : null,
             'is_starred' => (bool) $f['is_starred'],
-            'url'        => FileService::publicUrl($username, (string) $f['path']),
+            'url'        => FileService::publicUrl($ownerUsername, (string) $f['path']),
             'created_at' => $f['created_at'] ?? null,
             'updated_at' => $f['updated_at'] ?? null,
         ];

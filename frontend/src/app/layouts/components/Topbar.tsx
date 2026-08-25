@@ -4,6 +4,7 @@ import { Menu as MenuIcon, Search, X, LogOut, User, Shield } from 'lucide-react'
 import { IconButton, Avatar, Menu, type MenuItem } from '@shared/ui'
 import { useDisclosure } from '@shared/hooks/useDisclosure'
 import { ThemeToggle } from '@features/settings/components/ThemeToggle'
+import { NotificationBell } from '@features/notifications/components/NotificationBell'
 import { useAuth } from '@features/auth/AuthProvider'
 import { usePlatformSettings } from '@shared/hooks/usePlatformSettings'
 import { useTheme } from '@app/providers/ThemeProvider'
@@ -141,6 +142,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
       <div className="flex-1 md:hidden" />
 
       <div className="flex items-center gap-1">
+        <NotificationBell />
         <ThemeToggle />
         <div ref={anchor} className="relative ml-1">
           <button

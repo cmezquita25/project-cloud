@@ -103,13 +103,37 @@ final class SchemaMigrator
         // Eliminar FKs conflictivas fk_shared_folder y fk_shared_file en instalaciones existentes
         try {
             $pdo->exec("ALTER TABLE `shared_access` DROP FOREIGN KEY `fk_shared_folder`");
-        } catch (\Exception $e) {
-            // Ignorar si no existe
-        }
+        } catch (\Exception $e) {}
         try {
             $pdo->exec("ALTER TABLE `shared_access` DROP FOREIGN KEY `fk_shared_file`");
+        } catch (\Exception $e) {}
+
+        // Crear tabla notifications si no existe
+        try {
+            $stmt = $pdo->query("SHOW TABLES LIKE 'notifications'");
+            if ($stmt && $stmt->rowCount() === 0) {
+                $pdo->exec("
+                    CREATE TABLE IF NOT EXISTS `notifications` (
+                        `id`         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                        `user_id`    BIGINT UNSIGNED NOT NULL,
+                        `actor_id`   BIGINT UNSIGNED NULL DEFAULT NULL,
+                        `type`       VARCHAR(64) NOT NULL,
+                        `title`      VARCHAR(255) NOT NULL,
+                        `message`    TEXT NOT NULL,
+                        `target_url` VARCHAR(500) NULL DEFAULT NULL,
+                        `is_read`    TINYINT(1) NOT NULL DEFAULT 0,
+                        `read_at`    DATETIME NULL DEFAULT NULL,
+                        `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        PRIMARY KEY (`id`),
+                        KEY `idx_notif_user_read` (`user_id`, `is_read`, `created_at`),
+                        KEY `idx_notif_user_created` (`user_id`, `created_at`),
+                        CONSTRAINT `fk_notif_user`  FOREIGN KEY (`user_id`)  REFERENCES `users` (`id`) ON DELETE CASCADE,
+                        CONSTRAINT `fk_notif_actor` FOREIGN KEY (`actor_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+                ");
+            }
         } catch (\Exception $e) {
-            // Ignorar si no existe
+            // Ignorar si falla
         }
     }
 

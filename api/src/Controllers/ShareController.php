@@ -13,6 +13,7 @@ use ProjectCloud\Services\ActivityLogger;
 use ProjectCloud\Services\EmailTemplateService;
 use ProjectCloud\Services\MailService;
 use ProjectCloud\Services\SharePermissionService;
+use ProjectCloud\Services\UrlBuilder;
 
 final class ShareController
 {
@@ -149,6 +150,7 @@ final class ShareController
                 default => 'un recurso',
             };
             $permLabel = $permissionLevel === 'full' ? 'Control total' : 'Solo lectura';
+            $itemUrl = UrlBuilder::sharedResourceLink($targetType, $targetId, (int) $user['id']);
 
             $rendered = $emailTplService->render(EmailTemplateService::ITEM_SHARED, [
                 'invited_name' => (string) $targetUser['display_name'],
@@ -156,13 +158,35 @@ final class ShareController
                 'item_name' => $itemName,
                 'target_label' => $targetLabel,
                 'permission_label' => $permLabel,
-                'org_name' => 'Project Cloud',
+                'item_url' => $itemUrl,
+                'org_name' => $mailService->organizationName(),
             ]);
 
             $mailService->send((string) $targetUser['email'], (string) $targetUser['display_name'], $rendered['subject'], $rendered['html']);
         } catch (\Throwable $e) {
             // Silenciosamente ignorar fallo de mail en entorno dev/local si SMTP no está configurado
         }
+
+        // Registrar notificación web interna en la plataforma
+        try {
+            $notifRepo = new \ProjectCloud\Repositories\NotificationRepository();
+            $notifTitle = "Recurso compartido";
+            $notifMsg = "{$user['display_name']} te ha compartido {$targetLabel} \"{$itemName}\".";
+            $notifUrl = match ($targetType) {
+                'unit' => "/?owner_id={$ownerId}",
+                'folder' => "/folder/{$targetId}",
+                'file' => "/folder/root?fileId={$targetId}",
+                default => "/",
+            };
+            $notifRepo->create(
+                $invitedUserId,
+                $ownerId,
+                'item_shared',
+                $notifTitle,
+                $notifMsg,
+                $notifUrl
+            );
+        } catch (\Throwable) {}
 
         ActivityLogger::log($request, 'share_create', $targetType, $targetId ?? 0, [
             'invited_user_id' => $invitedUserId,

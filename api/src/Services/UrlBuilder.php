@@ -38,4 +38,20 @@ final class UrlBuilder
     {
         return self::base() . '/login';
     }
+
+    public static function sharedResourceLink(string $targetType, ?int $targetId, ?int $ownerId = null): string
+    {
+        $base = self::base();
+        return match ($targetType) {
+            'unit' => $ownerId !== null ? "{$base}/?owner_id={$ownerId}" : "{$base}/",
+            'folder' => $targetId !== null ? "{$base}/folder/{$targetId}" : "{$base}/",
+            'file' => $targetId !== null ? "{$base}/folder/root?fileId={$targetId}" : "{$base}/",
+            default => "{$base}/",
+        };
+    }
+
+    public static function fullUrl(string $path): string
+    {
+        return self::base() . '/' . ltrim($path, '/');
+    }
 }

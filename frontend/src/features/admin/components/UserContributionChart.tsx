@@ -14,20 +14,23 @@ export const USER_COLORS = [
 
 interface UserContributionChartProps {
   period: string
+  appliedCustom?: { from: string; to: string } | null
 }
 
-export function UserContributionChart({ period }: UserContributionChartProps) {
+export function UserContributionChart({ period, appliedCustom }: UserContributionChartProps) {
   const { resolved: theme } = useTheme()
   const isDark = theme === 'dark'
 
+  const customParam = period === 'custom' && appliedCustom ? `&date_from=${appliedCustom.from}&date_to=${appliedCustom.to}` : ''
+
   const { data: privateData, isLoading: loadingPrivate } = useQuery({
-    queryKey: ['admin', 'charts', 'distribution', period, 'private'],
-    queryFn: () => api.get<any>(`/admin/charts/storage-distribution?period=${period}`)
+    queryKey: ['admin', 'charts', 'distribution', period, 'private', appliedCustom],
+    queryFn: () => api.get<any>(`/admin/charts/storage-distribution?period=${period}${customParam}`)
   })
 
   const { data: workspaceData, isLoading: loadingWorkspace } = useQuery({
-    queryKey: ['admin', 'charts', 'history', period, 'workspace'],
-    queryFn: () => api.get<any>(`/admin/charts/workspace?period=${period}`)
+    queryKey: ['admin', 'charts', 'history', period, 'workspace', appliedCustom],
+    queryFn: () => api.get<any>(`/admin/charts/workspace?period=${period}${customParam}`)
   })
 
   if (loadingPrivate || loadingWorkspace) return (
@@ -41,11 +44,23 @@ export function UserContributionChart({ period }: UserContributionChartProps) {
 
   const processUserList = (list: any[]) => {
     for (const u of list || []) {
-      const nameKey = u.display_name || u.username || 'system'
-      if (!combined[nameKey]) {
-        combined[nameKey] = { username: u.username, display_name: u.display_name, total_bytes: 0 }
+      if (!u) continue
+      const rawUser = String(u.username || '').trim()
+      const rawDisplay = String(u.display_name || '').trim()
+      const key = (rawUser || rawDisplay || 'system').toLowerCase()
+      if (!key) continue
+
+      if (!combined[key]) {
+        combined[key] = {
+          username: rawUser || key,
+          display_name: rawDisplay || rawUser || 'Usuario',
+          total_bytes: 0
+        }
       }
-      combined[nameKey].total_bytes += (u.total_bytes || 0)
+      if (rawDisplay && (!combined[key].display_name || combined[key].display_name === combined[key].username)) {
+        combined[key].display_name = rawDisplay
+      }
+      combined[key].total_bytes += (Number(u.total_bytes) || 0)
     }
   }
 

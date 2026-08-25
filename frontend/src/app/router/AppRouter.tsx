@@ -13,6 +13,8 @@ import { AdminPage } from '@features/admin/AdminPage'
 import { SettingsLayout } from '@features/admin/settings/SettingsLayout'
 import { GeneralSettings } from '@features/admin/settings/pages/GeneralSettings'
 import { AppearanceSettings } from '@features/admin/settings/pages/AppearanceSettings'
+import { IntegrationsSettings } from '@features/admin/settings/pages/IntegrationsSettings'
+import { CronSettings } from '@features/admin/settings/pages/CronSettings'
 import { EmailSettings } from '@features/admin/settings/pages/EmailSettings'
 import { EmailTemplatesSettings } from '@features/admin/settings/pages/EmailTemplatesSettings'
 import { EmailTemplateEditor } from '@features/admin/settings/pages/EmailTemplateEditor'
@@ -20,6 +22,7 @@ import { WorkspaceSettings } from '@features/admin/settings/pages/WorkspaceSetti
 import { DatabaseSettings } from '@features/admin/settings/pages/DatabaseSettings'
 import { StoragePage } from '@features/storage-quota/StoragePage'
 import { ProfilePage } from '@features/profile/ProfilePage'
+import { NotificationsPage } from '@features/notifications/pages/NotificationsPage'
 import { AssetsPage } from '@features/assets/AssetsPage'
 import { LoginPage } from '@features/auth/LoginPage'
 import { ForgotPasswordPage } from '@features/auth/ForgotPasswordPage'
@@ -65,6 +68,7 @@ const router = createBrowserRouter([
               { path: 'search', element: <SearchPage /> },
               { path: 'quota', element: <StoragePage /> },
               { path: 'profile', element: <ProfilePage /> },
+              { path: 'notifications', element: <NotificationsPage /> },
               { path: 'assets/*', element: <AssetsPage /> },
               // Solo administradores. Cada sección de administración es su
               // propia ruta (accesible desde el sidebar), todas sobre AdminPage.
@@ -81,6 +85,8 @@ const router = createBrowserRouter([
                     children: [
                       { index: true, element: <GeneralSettings /> },
                       { path: 'appearance', element: <AppearanceSettings /> },
+                      { path: 'integrations', element: <IntegrationsSettings /> },
+                      { path: 'cron', element: <CronSettings /> },
                       { path: 'email', element: <EmailSettings /> },
                       { path: 'email-templates', element: <EmailTemplatesSettings /> },
                       { path: 'email-templates/:key', element: <EmailTemplateEditor /> },

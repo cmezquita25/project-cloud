@@ -206,9 +206,29 @@ CREATE TABLE IF NOT EXISTS `shared_access` (
     PRIMARY KEY (`id`),
     UNIQUE KEY `uq_shared_target` (`owner_id`, `invited_user_id`, `target_type`, `target_id`),
     KEY `idx_shared_invited` (`invited_user_id`),
-    KEY `idx_shared_owner` (`owner_id`),
     CONSTRAINT `fk_shared_owner`   FOREIGN KEY (`owner_id`)       REFERENCES `users` (`id`) ON DELETE CASCADE,
     CONSTRAINT `fk_shared_invited` FOREIGN KEY (`invited_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------------------------
+--  notifications — notificaciones internas del sistema y de recursos compartidos
+-- --------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `notifications` (
+    `id`         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `user_id`    BIGINT UNSIGNED NOT NULL,
+    `actor_id`   BIGINT UNSIGNED NULL DEFAULT NULL,
+    `type`       VARCHAR(64) NOT NULL,
+    `title`      VARCHAR(255) NOT NULL,
+    `message`    TEXT NOT NULL,
+    `target_url` VARCHAR(500) NULL DEFAULT NULL,
+    `is_read`    TINYINT(1) NOT NULL DEFAULT 0,
+    `read_at`    DATETIME NULL DEFAULT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_notif_user_read` (`user_id`, `is_read`, `created_at`),
+    KEY `idx_notif_user_created` (`user_id`, `created_at`),
+    CONSTRAINT `fk_notif_user`  FOREIGN KEY (`user_id`)  REFERENCES `users` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_notif_actor` FOREIGN KEY (`actor_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SET FOREIGN_KEY_CHECKS = 1;

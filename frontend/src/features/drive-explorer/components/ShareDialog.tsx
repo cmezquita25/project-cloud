@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { UserPlus, Trash2, Shield, Users, Info } from 'lucide-react'
 import { Dialog, Button, Input, Select, Avatar, Spinner, useToast } from '@shared/ui'
 import { api } from '@shared/api'
@@ -30,6 +31,7 @@ export function ShareDialog({
   onShareSuccess,
 }: ShareDialogProps) {
   const toast = useToast()
+  const queryClient = useQueryClient()
   const [email, setEmail] = useState('')
   const [permissionLevel, setPermissionLevel] = useState<'read' | 'full'>('read')
   const [collaborators, setCollaborators] = useState<Collaborator[]>([])
@@ -125,6 +127,8 @@ export function ShareDialog({
       toast.success(`Acceso concedido a ${email.trim()}.`)
       setEmail('')
       setShowSuggestions(false)
+      queryClient.invalidateQueries({ queryKey: ['explorer'] })
+      queryClient.invalidateQueries({ queryKey: ['shared-items'] })
       window.dispatchEvent(new CustomEvent('pc:shared-changed'))
       fetchCollaborators()
       if (onShareSuccess) onShareSuccess()
@@ -139,6 +143,8 @@ export function ShareDialog({
     try {
       await api.patch(`/shares/${shareId}`, { permission_level: newPerm })
       toast.success('Permiso actualizado.')
+      queryClient.invalidateQueries({ queryKey: ['explorer'] })
+      queryClient.invalidateQueries({ queryKey: ['shared-items'] })
       window.dispatchEvent(new CustomEvent('pc:shared-changed'))
       fetchCollaborators()
       if (onShareSuccess) onShareSuccess()
@@ -151,6 +157,8 @@ export function ShareDialog({
     try {
       await api.delete(`/shares/${shareId}`)
       toast.success(`Acceso revocado para ${name}.`)
+      queryClient.invalidateQueries({ queryKey: ['explorer'] })
+      queryClient.invalidateQueries({ queryKey: ['shared-items'] })
       window.dispatchEvent(new CustomEvent('pc:shared-changed'))
       fetchCollaborators()
       if (onShareSuccess) onShareSuccess()

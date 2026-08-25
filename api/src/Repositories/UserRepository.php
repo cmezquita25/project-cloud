@@ -101,41 +101,50 @@ class UserRepository
         $params = [];
 
         if (!empty($filters['search'])) {
-            $where[]  = '(username LIKE ? OR display_name LIKE ?)';
+            $where[]  = '(u.username LIKE ? OR u.display_name LIKE ?)';
             $term     = '%' . $filters['search'] . '%';
             $params[] = $term;
             $params[] = $term;
         }
 
         if (!empty($filters['status']) && in_array($filters['status'], ['active', 'suspended'], true)) {
-            $where[]  = 'status = ?';
+            $where[]  = 'u.status = ?';
             $params[] = $filters['status'];
         }
 
         if (!empty($filters['role']) && in_array($filters['role'], ['admin', 'user'], true)) {
-            $where[]  = 'role = ?';
+            $where[]  = 'u.role = ?';
             $params[] = $filters['role'];
         }
 
         if (!empty($filters['date_from'])) {
-            $where[]  = 'created_at >= ?';
+            $where[]  = 'u.created_at >= ?';
             $params[] = $filters['date_from'] . ' 00:00:00';
         }
 
         if (!empty($filters['date_to'])) {
-            $where[]  = 'created_at <= ?';
+            $where[]  = 'u.created_at <= ?';
             $params[] = $filters['date_to'] . ' 23:59:59';
         }
 
         $whereClause = $where ? ' WHERE ' . implode(' AND ', $where) : '';
 
         // --- COUNT ---
-        $countStmt = $this->pdo->prepare("SELECT COUNT(*) FROM users{$whereClause}");
+        $countStmt = $this->pdo->prepare("SELECT COUNT(*) FROM users u{$whereClause}");
         $countStmt->execute($params);
         $total = (int) $countStmt->fetchColumn();
 
         // --- SELECT ---
-        $sql  = "SELECT * FROM users{$whereClause} ORDER BY {$sortCol} {$sortDir} LIMIT ? OFFSET ?";
+        $sql  = "SELECT u.*, COALESCE(f.real_used, 0) AS used_bytes 
+                 FROM users u 
+                 LEFT JOIN (
+                     SELECT user_id, SUM(size_bytes) AS real_used 
+                     FROM files 
+                     WHERE deleted_at IS NULL 
+                     GROUP BY user_id
+                 ) f ON f.user_id = u.id
+                 {$whereClause} 
+                 ORDER BY u.{$sortCol} {$sortDir} LIMIT ? OFFSET ?";
         $stmt = $this->pdo->prepare($sql);
 
         $i = 1;

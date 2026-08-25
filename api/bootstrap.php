@@ -30,8 +30,25 @@ if ($isConfigured) {
     Config::load($configFile);
 }
 
-// --- Ajustes de entorno ---
+// --- Ajustes de entorno y ejecutor PHP ---
 date_default_timezone_set('UTC');
+
+if (Config::isLoaded()) {
+    $phpMem = Config::get('php.memory_limit');
+    if ($phpMem) {
+        @ini_set('memory_limit', (string) $phpMem);
+    }
+    $phpExec = Config::get('php.max_execution_time');
+    if ($phpExec !== null) {
+        @set_time_limit((int) $phpExec);
+        @ini_set('max_execution_time', (string) $phpExec);
+    }
+    $phpInput = Config::get('php.max_input_time');
+    if ($phpInput !== null) {
+        @ini_set('max_input_time', (string) $phpInput);
+    }
+}
+
 $isDev = Config::get('env', 'production') === 'development';
 
 // En producción no mostramos errores al cliente (se registran, no se imprimen).

@@ -1,7 +1,7 @@
 {
   "name": "project-cloud-frontend",
   "private": true,
-  "version": "1.2.2",
+  "version": "1.7.0",
   "type": "module",
   "description": "Project Cloud — clon de Google Drive auto-hosteado (frontend)",
   "scripts": {
@@ -14,6 +14,7 @@
     "@tanstack/query-sync-storage-persister": "^5.101.3",
     "@tanstack/react-query": "^5.101.3",
     "@tanstack/react-query-persist-client": "^5.101.3",
+    "agentation": "^3.0.2",
     "apexcharts": "^6.4.0",
     "clsx": "^2.1.1",
     "framer-motion": "^12.42.2",

@@ -152,8 +152,35 @@ final class SharePermissionService
             ];
         }
 
-        // 2. Invitados directos para el objetivo
-        if ($targetType === 'unit') {
+        // 2. Si el objetivo es una carpeta o archivo, buscar carpetas ascendentes para incluir comparticiones heredadas
+        $folderIds = [];
+        if ($targetType === 'folder' && $targetId !== null) {
+            $currId = $targetId;
+            while ($currId !== null && $currId > 0) {
+                $folderIds[] = $currId;
+                $stmtP = $this->pdo->prepare("SELECT parent_id FROM folders WHERE id = :id AND deleted_at IS NULL");
+                $stmtP->execute(['id' => $currId]);
+                $p = $stmtP->fetch(PDO::FETCH_ASSOC);
+                $currId = $p && $p['parent_id'] !== null ? (int)$p['parent_id'] : null;
+            }
+        } elseif ($targetType === 'file' && $targetId !== null) {
+            $stmtF = $this->pdo->prepare("SELECT folder_id FROM files WHERE id = :id AND deleted_at IS NULL");
+            $stmtF->execute(['id' => $targetId]);
+            $file = $stmtF->fetch(PDO::FETCH_ASSOC);
+            $currId = $file && $file['folder_id'] !== null ? (int)$file['folder_id'] : null;
+            while ($currId !== null && $currId > 0) {
+                $folderIds[] = $currId;
+                $stmtP = $this->pdo->prepare("SELECT parent_id FROM folders WHERE id = :id AND deleted_at IS NULL");
+                $stmtP->execute(['id' => $currId]);
+                $p = $stmtP->fetch(PDO::FETCH_ASSOC);
+                $currId = $p && $p['parent_id'] !== null ? (int)$p['parent_id'] : null;
+            }
+        }
+
+        // 3. Consultar shared_access por unidad completa, directos y ascendentes
+        $addedUserIds = [$ownerId => true];
+
+        if ($targetType === 'unit' || (empty($folderIds) && $targetType !== 'file')) {
             $stmtShares = $this->pdo->prepare("
                 SELECT sa.id as share_id, sa.permission_level, u.id, u.display_name, u.email
                 FROM shared_access sa
@@ -161,30 +188,60 @@ final class SharePermissionService
                 WHERE sa.owner_id = :owner_id AND sa.target_type = 'unit'
             ");
             $stmtShares->execute(['owner_id' => $ownerId]);
+            while ($row = $stmtShares->fetch(PDO::FETCH_ASSOC)) {
+                $uid = (int) $row['id'];
+                if (!isset($addedUserIds[$uid])) {
+                    $addedUserIds[$uid] = true;
+                    $collaborators[] = [
+                        'share_id' => (int) $row['share_id'],
+                        'id' => $uid,
+                        'display_name' => (string) $row['display_name'],
+                        'email' => (string) $row['email'],
+                        'role' => 'invited',
+                        'permission_level' => (string) $row['permission_level'],
+                        'avatar_url' => AvatarService::urlFor($uid),
+                    ];
+                }
+            }
         } else {
-            $stmtShares = $this->pdo->prepare("
+            $conditions = ["sa.target_type = 'unit'"];
+            $params = ['owner_id' => $ownerId];
+
+            if ($targetType === 'file') {
+                $conditions[] = "(sa.target_type = 'file' AND sa.target_id = :file_id)";
+                $params['file_id'] = $targetId;
+            }
+
+            if (!empty($folderIds)) {
+                $inClause = implode(',', array_map('intval', $folderIds));
+                $conditions[] = "(sa.target_type = 'folder' AND sa.target_id IN ({$inClause}))";
+            }
+
+            $sql = "
                 SELECT sa.id as share_id, sa.permission_level, u.id, u.display_name, u.email
                 FROM shared_access sa
                 JOIN users u ON u.id = sa.invited_user_id
-                WHERE sa.owner_id = :owner_id AND sa.target_type = :target_type AND sa.target_id = :target_id
-            ");
-            $stmtShares->execute([
-                'owner_id' => $ownerId,
-                'target_type' => $targetType,
-                'target_id' => $targetId
-            ]);
-        }
+                WHERE sa.owner_id = :owner_id AND (" . implode(' OR ', $conditions) . ")
+                ORDER BY sa.id ASC
+            ";
+            $stmtShares = $this->pdo->prepare($sql);
+            $stmtShares->execute($params);
 
-        while ($row = $stmtShares->fetch(PDO::FETCH_ASSOC)) {
-            $collaborators[] = [
-                'share_id' => (int) $row['share_id'],
-                'id' => (int) $row['id'],
-                'display_name' => (string) $row['display_name'],
-                'email' => (string) $row['email'],
-                'role' => 'invited',
-                'permission_level' => (string) $row['permission_level'],
-                'avatar_url' => AvatarService::urlFor((int) $row['id']),
-            ];
+            while ($row = $stmtShares->fetch(PDO::FETCH_ASSOC)) {
+                $uid = (int) $row['id'];
+                if (!isset($addedUserIds[$uid])) {
+                    $addedUserIds[$uid] = true;
+                    $collaborators[] = [
+                        'share_id' => (int) $row['share_id'],
+                        'id' => $uid,
+                        'display_name' => (string) $row['display_name'],
+                        'email' => (string) $row['email'],
+                        'role' => 'invited',
+                        'permission_level' => (string) $row['permission_level'],
+                        'avatar_url' => AvatarService::urlFor($uid),
+                    ];
+                }
+            }
         }
 
         return $collaborators;

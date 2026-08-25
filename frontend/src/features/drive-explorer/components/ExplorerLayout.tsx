@@ -16,6 +16,8 @@ import {
   Download,
   Info,
   UserPlus,
+  AlertTriangle,
+  Home,
 } from 'lucide-react'
 import { Button, EmptyState, Spinner, IconButton, Menu, useToast, type MenuItem } from '@shared/ui'
 import { useUploads } from '@features/uploads/UploadProvider'
@@ -173,6 +175,17 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
     window.addEventListener('pc:new-folder', handler)
     return () => window.removeEventListener('pc:new-folder', handler)
   }, [])
+
+  // Auto-redirección si no se tienen permisos o la carpeta no está disponible.
+  useEffect(() => {
+    if (error && (error.toLowerCase().includes('acceso') || error.toLowerCase().includes('permiso') || error.toLowerCase().includes('forbidden') || error.toLowerCase().includes('encontrad'))) {
+      const timer = setTimeout(() => {
+        toast.info('Redirigiendo a tu unidad...')
+        navigate('/')
+      }, 3500)
+      return () => clearTimeout(timer)
+    }
+  }, [error, navigate, toast])
 
   const items = useMemo<DriveItem[]>(
     () => (data ? [...data.folders, ...data.files] : []),
@@ -614,8 +627,13 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
               <Spinner size={32} />
             </div>
           ) : error ? (
-            <div className="rounded-drive border border-danger/40 bg-danger-subtle p-4 text-sm text-danger">
-              {error}
+            <div className="my-8 flex flex-col items-center justify-center rounded-drive border border-danger/30 bg-danger-subtle/30 p-8 text-center">
+              <AlertTriangle size={48} className="mb-3 text-danger shrink-0" />
+              <h2 className="mb-1 text-lg font-semibold text-content-primary">Ubicación no disponible</h2>
+              <p className="mb-4 max-w-md text-sm text-content-secondary">{error}</p>
+              <Button leftIcon={Home} onClick={() => navigate('/')}>
+                Volver a Mi unidad
+              </Button>
             </div>
           ) : items.length === 0 ? (
             <EmptyState

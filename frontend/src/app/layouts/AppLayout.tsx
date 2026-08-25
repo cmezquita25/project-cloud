@@ -9,6 +9,8 @@ import { Sidebar } from './components/Sidebar'
 import { Footer } from './components/Footer'
 import { HeaderSearchProvider } from './HeaderSearchContext'
 
+import { GoogleAnalyticsTracker } from '@shared/components/GoogleAnalyticsTracker'
+
 /**
  * Layout principal de la app autenticada (clon de Google Drive):
  *  - Escritorio: sidebar fijo + topbar + área de contenido.
@@ -38,7 +40,8 @@ export function AppLayout() {
 
   return (
     <HeaderSearchProvider>
-    <div className="flex h-full flex-col overflow-hidden">
+      <GoogleAnalyticsTracker />
+      <div className="flex h-full flex-col overflow-hidden">
       <Topbar onMenuClick={drawer.open} />
 
       <div className="flex min-h-0 flex-1">

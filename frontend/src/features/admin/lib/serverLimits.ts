@@ -13,22 +13,19 @@ const KB = 1024
 const MB = 1024 * KB
 const GB = 1024 * MB
 
-/** Convierte un valor de php.ini (p. ej. "512M", "2G", "128K", "-1") a bytes. -1 = ilimitado/desconocido. */
+/** Convierte un valor de php.ini (p. ej. "512M", "2G", "128K", "256", "-1") a bytes. -1 = ilimitado/desconocido. */
 export function parsePhpSize(val: string): number {
   if (!val || val === 'N/A') return -1
-  const num = parseInt(val, 10)
+  const trimmed = val.trim()
+  const num = parseFloat(trimmed)
   if (Number.isNaN(num)) return -1
-  const suffix = val.trim().slice(-1).toUpperCase()
-  switch (suffix) {
-    case 'G':
-      return num * GB
-    case 'M':
-      return num * MB
-    case 'K':
-      return num * KB
-    default:
-      return num
-  }
+  const suffix = trimmed.slice(-1).toUpperCase()
+  if (suffix === 'G') return num * GB
+  if (suffix === 'M') return num * MB
+  if (suffix === 'K') return num * KB
+  // Si no se incluyó sufijo y el número está entre 1 y 65536, asumir Megabytes (ej. 256 = 256MB)
+  if (num > 0 && num < 65536) return num * MB
+  return num
 }
 
 /** memory_limit — GD (miniaturas) y operaciones puntuales. 256M cómodo, 128M aceptable. */

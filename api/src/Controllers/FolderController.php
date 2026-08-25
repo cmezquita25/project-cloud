@@ -11,6 +11,7 @@ use ProjectCloud\Core\Response;
 use ProjectCloud\Core\Validator;
 use ProjectCloud\Repositories\FileRepository;
 use ProjectCloud\Repositories\FolderRepository;
+use ProjectCloud\Repositories\UserRepository;
 use ProjectCloud\Services\ActivityLogger;
 use ProjectCloud\Services\FileService;
 use ProjectCloud\Services\FileSystemService;
@@ -117,16 +118,51 @@ final class FolderController
             ->required('name')->maxLength('name', 255)
             ->validate();
 
+        $userId = (int) $request->userId();
+        $username = (string) $request->user()['username'];
+        $parentId = $this->resolveId(isset($data['parent_id']) ? (string) $data['parent_id'] : null);
+        $ownerIdParam = isset($data['owner_id']) ? (int) $data['owner_id'] : null;
+
+        $targetUserId = $userId;
+        $targetUsername = $username;
+        $permService = new \ProjectCloud\Services\SharePermissionService();
+
+        if ($parentId !== null) {
+            $parentFolder = (new FolderRepository())->findAnyById($parentId);
+            if ($parentFolder === null) {
+                throw new HttpException(422, 'INVALID_PARENT', 'La carpeta destino no existe.');
+            }
+            if (!$permService->canAccessFolder($userId, $parentId, 'full')) {
+                throw HttpException::forbidden('No tienes permisos de escritura en esta carpeta compartida.');
+            }
+            $targetUserId = (int) $parentFolder['user_id'];
+            $targetOwner = (new UserRepository())->findById($targetUserId);
+            if ($targetOwner !== null) {
+                $targetUsername = (string) $targetOwner['username'];
+            }
+        } elseif ($ownerIdParam !== null && $ownerIdParam !== $userId) {
+            if (!$permService->canAccessUnit($userId, $ownerIdParam, 'full')) {
+                throw HttpException::forbidden('No tienes permisos de escritura en esta unidad compartida.');
+            }
+            $targetUserId = $ownerIdParam;
+            $targetOwner = (new UserRepository())->findById($targetUserId);
+            if ($targetOwner !== null) {
+                $targetUsername = (string) $targetOwner['username'];
+            }
+        }
+
         $folder = $this->service()->create(
-            (int) $request->userId(),
-            (string) $request->user()['username'],
-            $this->resolveId(isset($data['parent_id']) ? (string) $data['parent_id'] : null),
+            $userId,
+            $username,
+            $parentId,
             (string) $data['name'],
+            $targetUserId,
+            $targetUsername
         );
 
         ActivityLogger::log($request, 'create', 'folder', (int) $folder['id'], ['name' => $folder['name']]);
 
-        return Response::created($this->folderPublic($folder));
+        return Response::created($this->folderPublic($folder, $permService));
     }
 
     /** PATCH /folders/{id} — renombrar, mover o destacar. */

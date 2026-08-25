@@ -182,10 +182,18 @@ export function AdminCharts({ source }: AdminChartsProps) {
   const donutSeries = typeData.map((d: any) => d.size_bytes || d.total_bytes)
 
   // 3. User Distribution (Area Stacked Chart)
-  const userData = (distribution?.by_user || []).filter((u: any) => u.total_bytes > 0)
   const userHistory = distribution?.by_user_history || []
   
-  const userNames = userData.map((u: any) => u.display_name || u.username)
+  // Extraer únicamente los nombres de usuario que registraron actividad en el periodo
+  const periodUserNamesSet = new Set<string>()
+  userHistory.forEach((day: any) => {
+    Object.keys(day).forEach(k => {
+      if (k !== 'date') periodUserNamesSet.add(k)
+    })
+  })
+  const userNames = Array.from(periodUserNamesSet)
+  const legendUsers = (distribution?.by_user || []).filter((u: any) => userNames.includes(u.display_name || u.username))
+
   // We compute active series based on hidden state
   const activeSeries = userNames
     .filter((name: string) => !hiddenUsers.has(name))
@@ -198,7 +206,7 @@ export function AdminCharts({ source }: AdminChartsProps) {
 
   const activeColors = userNames
     .map((name: string, i: number) => !hiddenUsers.has(name) ? USER_COLORS[i % USER_COLORS.length] : null)
-    .filter((c: string | null) => c !== null)
+    .filter((c): c is string => Boolean(c))
 
   const userOptions = {
     chart: { type: 'area', stacked: false, toolbar: { show: false }, background: 'transparent' },
@@ -314,15 +322,15 @@ export function AdminCharts({ source }: AdminChartsProps) {
         {/* 3. Distribución por Usuario (Area Stacked Chart) */}
         <div className="lg:col-span-3 rounded-2xl border border-border bg-surface p-6">
           <h3 className="mb-4 text-base font-medium text-content-primary">Registro Diario por Usuario (MB)</h3>
-          {userData.length > 0 ? (
+          {legendUsers.length > 0 ? (
             <div className="flex flex-col gap-4">
               <div className="h-[350px]">
                 <Chart options={userOptions as any} series={activeSeries} type="area" height="100%" />
               </div>
               
-              {/* Custom Legend */}
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-y-4 gap-x-4 mt-2 border-t border-border pt-4 max-h-[200px] overflow-y-auto custom-scrollbar">
-                {userData.map((u: any, i: number) => {
+              {/* Custom Legend Horizontal Row */}
+              <div className="flex items-center gap-3 overflow-x-auto border-t border-border pt-4 pb-1 custom-scrollbar">
+                {legendUsers.map((u: any, i: number) => {
                   const name = u.display_name || u.username
                   const isHidden = hiddenUsers.has(name)
                   const color = USER_COLORS[i % USER_COLORS.length]
@@ -331,12 +339,12 @@ export function AdminCharts({ source }: AdminChartsProps) {
                     <div 
                       key={u.username || i} 
                       onClick={() => toggleUser(name)}
-                      className={`flex items-center gap-3 text-sm cursor-pointer transition-all hover:bg-surface-hover p-2 rounded-lg -mx-2 ${isHidden ? 'opacity-40 grayscale' : 'opacity-100'}`}
+                      className={`flex shrink-0 items-center gap-2.5 text-xs cursor-pointer transition-all hover:bg-surface-hover px-3 py-1.5 rounded-xl border border-border/50 bg-surface-container/30 ${isHidden ? 'opacity-40 grayscale' : 'opacity-100'}`}
                     >
-                      <span className="h-4 w-4 shrink-0 rounded-full" style={{ backgroundColor: color }} />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-medium text-content-primary">{name}</p>
-                        <p className="text-xs text-content-tertiary">{formatBytes(u.total_bytes)}</p>
+                      <span className="h-3.5 w-3.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-content-primary max-w-[140px]">{name}</p>
+                        <p className="text-[11px] text-content-tertiary">{formatBytes(u.total_bytes)}</p>
                       </div>
                     </div>
                   )

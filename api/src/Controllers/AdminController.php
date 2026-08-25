@@ -20,6 +20,8 @@ use ProjectCloud\Services\FileSystemService;
 use ProjectCloud\Services\MailService;
 use ProjectCloud\Services\PasswordResetService;
 use ProjectCloud\Services\UrlBuilder;
+use ProjectCloud\Services\ConfigManager;
+use ProjectCloud\Core\Config;
 
 /**
  * Panel de administración: usuarios, cuotas, estadísticas y actividad.
@@ -390,19 +392,19 @@ final class AdminController
         $userId = $request->input('user_id');
         $dateFrom = $request->input('date_from');
         $dateTo = $request->input('date_to');
-        $whereUser = $userId && $userId !== 'all' ? " AND user_id = " . (int)$userId : "";
+        $whereUser = $userId && $userId !== 'all' ? " AND f.user_id = " . (int)$userId : "";
         
         if ($period === 'custom' && !empty($dateFrom) && !empty($dateTo)) {
             $safeFrom = date('Y-m-d', strtotime((string)$dateFrom));
             $safeTo = date('Y-m-d', strtotime((string)$dateTo));
-            $dateFilterClause = "created_at >= '{$safeFrom} 00:00:00' AND created_at <= '{$safeTo} 23:59:59'";
+            $dateFilterClause = "f.created_at >= '{$safeFrom} 00:00:00' AND f.created_at <= '{$safeTo} 23:59:59'";
             $cutoffDate = $safeFrom;
             $endDateStr = $safeTo;
         } else {
             $dateFilterClause = match($period) {
-                'today' => "created_at >= CURDATE()",
-                '30d' => "created_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01')",
-                default => "created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)",
+                'today' => "f.created_at >= CURDATE()",
+                '30d' => "f.created_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01')",
+                default => "f.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)",
             };
             $cutoffDate = match($period) {
                 'today' => date('Y-m-d'),
@@ -421,10 +423,10 @@ final class AdminController
         // Distribution by mime_type (type)
         $stmtMime = $pdo->prepare("
             SELECT 
-                COALESCE(NULLIF(SUBSTRING_INDEX(mime_type, '/', 1), ''), 'unknown') as type,
-                SUM(size_bytes) as total_bytes
-            FROM files
-            WHERE deleted_at IS NULL AND $dateFilterClause $whereUser
+                COALESCE(NULLIF(SUBSTRING_INDEX(f.mime_type, '/', 1), ''), 'unknown') as type,
+                SUM(f.size_bytes) as total_bytes
+            FROM files f
+            WHERE f.deleted_at IS NULL AND $dateFilterClause $whereUser
             GROUP BY type
             ORDER BY total_bytes DESC
         ");
@@ -436,7 +438,7 @@ final class AdminController
         $stmtUser = $pdo->prepare("
             SELECT u.username, u.display_name, COALESCE(SUM(f.size_bytes), 0) as total_bytes
             FROM users u
-            LEFT JOIN files f ON f.user_id = u.id AND f.deleted_at IS NULL AND $dateFilterClause
+            LEFT JOIN files f ON f.user_id = u.id AND f.deleted_at IS NULL
             WHERE 1=1 $whereUserJoin
             GROUP BY u.id
             ORDER BY total_bytes DESC
@@ -455,11 +457,8 @@ final class AdminController
         $files = $stmtFiles->fetchAll(\PDO::FETCH_ASSOC);
 
         $filesForHistory = []; // [username|display_name => [date => bytes]]
-        $userNames = []; // user_id => name
         foreach ($files as $f) {
             $name = $f['display_name'] ?: $f['username'];
-            $uid = $f['user_id'];
-            $userNames[$uid] = $name;
             $date = substr($f['created_at'], 0, 10);
             $size = (int) $f['size_bytes'];
             
@@ -472,6 +471,9 @@ final class AdminController
             $filesForHistory[$name][$date] += $size;
         }
 
+        // Obtener solo los nombres de los usuarios que interactuaron en el periodo seleccionado
+        $periodUserNames = array_values(array_unique(array_map(fn($f) => $f['display_name'] ?: $f['username'], $files)));
+
         $byUserHistory = [];
         $currentDate = new \DateTime($cutoffDate);
         $endDate = new \DateTime($endDateStr);
@@ -480,7 +482,7 @@ final class AdminController
             $dStr = $currentDate->format('Y-m-d');
             
             $dayData = ['date' => $dStr];
-            foreach ($userNames as $name) {
+            foreach ($periodUserNames as $name) {
                 $dayData[$name] = $filesForHistory[$name][$dStr] ?? 0;
             }
             $byUserHistory[] = $dayData;
@@ -499,24 +501,35 @@ final class AdminController
     {
         $period = $request->input('period', '30d');
         $userId = $request->input('user_id');
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
         $assets = new \ProjectCloud\Services\AssetsService();
         return Response::success($assets->getWorkspaceStats($period, $userId ? (int)$userId : null));
+        return Response::success($assets->getWorkspaceStats($period, $userId ? (int)$userId : null, $dateFrom, $dateTo));
     }
 
     /** GET /admin/server-info */
     public function serverInfo(Request $request): Response
     {
-        $getIni = fn ($key) => ini_get($key) !== false ? ini_get($key) : 'N/A';
+        ConfigManager::ensureConfigFile();
+        $getIni = static fn ($key) => ini_get($key) !== false ? (string) ini_get($key) : 'N/A';
+
+        $mem = (string) (Config::get('php.memory_limit') ?: $getIni('memory_limit'));
+        $exec = (string) (Config::get('php.max_execution_time') ?? $getIni('max_execution_time'));
+        $input = (string) (Config::get('php.max_input_time') ?? $getIni('max_input_time'));
+        $post = (string) (Config::get('php.post_max_size') ?: $getIni('post_max_size'));
+        $upload = (string) (Config::get('php.upload_max_filesize') ?: $getIni('upload_max_filesize'));
+
         return Response::success([
-            'memory_limit' => $getIni('memory_limit'),
-            'max_execution_time' => $getIni('max_execution_time'),
-            'max_input_time' => $getIni('max_input_time'),
-            'post_max_size' => $getIni('post_max_size'),
-            'upload_max_filesize' => $getIni('upload_max_filesize'),
+            'memory_limit'        => $mem,
+            'max_execution_time'  => $exec,
+            'max_input_time'      => $input,
+            'post_max_size'       => $post,
+            'upload_max_filesize' => $upload,
         ]);
     }
 
-    /** PATCH /admin/settings — ajusta la capacidad real del servidor. */
+    /** PATCH /admin/settings — ajusta la capacidad real del servidor y límites de PHP. */
     public function updateSettings(Request $request): Response
     {
         $body = $request->json();
@@ -524,6 +537,11 @@ final class AdminController
         $users = new UserRepository();
         $adminId = (int) $request->userId();
         $updatedUser = null;
+
+        if (array_key_exists('php_limits', $body) && is_array($body['php_limits'])) {
+            ConfigManager::updatePhpLimits($body['php_limits']);
+            ActivityLogger::log($request, 'settings.update', 'config', null, ['php_limits' => $body['php_limits']]);
+        }
 
         if (array_key_exists('server_capacity_bytes', $body) || array_key_exists('assets_quota_bytes', $body)) {
             $capacity = array_key_exists('server_capacity_bytes', $body) ? (int) $body['server_capacity_bytes'] : $settings->getInt('server_capacity_bytes', 0);
@@ -609,6 +627,22 @@ final class AdminController
                 }
                 ActivityLogger::log($request, 'settings.update', 'setting', null, [$bKey => $val]);
             }
+        }
+
+        if (array_key_exists('ga4_measurement_id', $body)) {
+            $ga4Id = strtoupper(trim((string) $body['ga4_measurement_id']));
+            if ($ga4Id === '') {
+                $settings->delete('ga4_measurement_id');
+            } else {
+                $settings->set('ga4_measurement_id', $ga4Id);
+            }
+            ActivityLogger::log($request, 'settings.update', 'setting', null, ['ga4_measurement_id' => $ga4Id]);
+        }
+
+        if (array_key_exists('ga4_enabled', $body)) {
+            $enabled = !empty($body['ga4_enabled']) && $body['ga4_enabled'] !== 'false' && $body['ga4_enabled'] !== '0' ? '1' : '0';
+            $settings->set('ga4_enabled', $enabled);
+            ActivityLogger::log($request, 'settings.update', 'setting', null, ['ga4_enabled' => $enabled]);
         }
 
         return Response::success([
@@ -732,8 +766,11 @@ final class AdminController
 
     private function effectivePhpLimit(): int
     {
-        $postMax = $this->parseIniBytes((string) ini_get('post_max_size'));
-        $uploadMax = $this->parseIniBytes((string) ini_get('upload_max_filesize'));
+        $postVal = (string) (Config::get('php.post_max_size') ?: ini_get('post_max_size'));
+        $uploadVal = (string) (Config::get('php.upload_max_filesize') ?: ini_get('upload_max_filesize'));
+
+        $postMax = $this->parseIniBytes($postVal);
+        $uploadMax = $this->parseIniBytes($uploadVal);
         if ($postMax > 0 && $uploadMax > 0) {
             return min($postMax, $uploadMax);
         }
@@ -754,5 +791,38 @@ final class AdminController
             'k' => $num * 1024,
             default => (int) $val,
         };
+    }
+
+    /** GET /admin/cron — Estado y comandos del Cron */
+    public function cronStatus(Request $request): Response
+    {
+        $settings = new SettingsRepository();
+        $cronSecret = $settings->get('cron_secret');
+        if (!$cronSecret) {
+            $cronSecret = bin2hex(random_bytes(16));
+            $settings->set('cron_secret', $cronSecret);
+        }
+
+        $cronLastRun = $settings->get('cron_last_run');
+        $cronPath = realpath(__DIR__ . '/../../cron.php') ?: (getcwd() . '/cron.php');
+
+        $cronCommand = "* * * * * php " . $cronPath . " >/dev/null 2>&1";
+        $cronUrl = \ProjectCloud\Services\UrlBuilder::fullUrl("/cron.php?token=" . $cronSecret);
+
+        return Response::success([
+            'cron_last_run' => $cronLastRun,
+            'cron_secret'   => $cronSecret,
+            'cron_command'  => $cronCommand,
+            'cron_url'      => $cronUrl,
+        ]);
+    }
+
+    /** POST /admin/cron/run — Ejecuta manualmente el Cron ahora */
+    public function runCron(Request $request): Response
+    {
+        $cronService = new \ProjectCloud\Services\CronService();
+        $result = $cronService->run();
+        ActivityLogger::log($request, 'cron.run', 'system', null, $result['tasks']);
+        return Response::success($result);
     }
 }

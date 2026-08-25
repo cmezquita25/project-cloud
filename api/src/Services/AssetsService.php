@@ -972,7 +972,7 @@ final class AssetsService
         return ['total_bytes' => (int) $stmt->fetchColumn()];
     }
 
-    public function getWorkspaceStats(string $period = '30d', ?int $userId = null): array
+    public function getWorkspaceStats(string $period = '30d', ?int $userId = null, ?string $dateFrom = null, ?string $dateTo = null): array
     {
         if (!$this->isActive()) {
             return [
@@ -989,6 +989,21 @@ final class AssetsService
             '7d' => date('Y-m-d', strtotime('-7 days')),
             default => date('Y-m-01'), // First day of the month for 30d
         };
+        if ($period === 'custom' && !empty($dateFrom) && !empty($dateTo)) {
+            $cutoffDate = date('Y-m-d', strtotime((string)$dateFrom));
+            $endDateStr = date('Y-m-d', strtotime((string)$dateTo));
+        } else {
+            $cutoffDate = match($period) {
+                'today' => date('Y-m-d'),
+                '7d'    => date('Y-m-d', strtotime('-7 days')),
+                default => date('Y-m-01'), // First day of the month for 30d
+            };
+            $endDateStr = match($period) {
+                'today' => date('Y-m-d'),
+                '7d'    => date('Y-m-d'),
+                default => date('Y-m-t') // Last day of the month
+            };
+        }
 
         $whereUser = $userId ? " WHERE m.user_id = " . (int)$userId : "";
         
@@ -999,44 +1014,58 @@ final class AssetsService
         $totalBytes = 0;
         $byType = [];
         $filesForHistory = [];
-        $byUser = [];
-        $byUserDaily = [];
-        $userInfos = [];
+        $byUserTotalBytes = [];  // All-time total bytes per user (for Aportación Total por Usuario)
+        $byUserPeriodBytes = []; // Period upload bytes per user (for Registro Diario por Usuario)
+        $byUserDaily = [];       // name => [date => bytes]
 
         foreach ($files as $f) {
-            $size = (int) $f['size_bytes'];
-            $uid = (int) $f['user_id'];
-            $date = substr($f['created_at'], 0, 10);
+            $size = (int) ($f['size_bytes'] ?? 0);
+            if ($size <= 0) {
+                continue; // Omitir elementos sin peso (carpetas)
+            }
+
+            $rawName = trim((string) ($f['display_name'] ?? ''));
+            if ($rawName === '') {
+                $rawName = trim((string) ($f['username'] ?? ''));
+            }
+            if ($rawName === '') {
+                $rawName = 'Sistema';
+            }
+            $displayName = $rawName;
+
+            $date = substr((string) ($f['created_at'] ?? date('Y-m-d')), 0, 10);
             
             $totalBytes += $size;
 
+            // 1. Acumulado TOTAL de almacenamiento histórico (para Aportación Total por Usuario)
+            if (!isset($byUserTotalBytes[$displayName])) {
+                $byUserTotalBytes[$displayName] = 0;
+            }
+            $byUserTotalBytes[$displayName] += $size;
+
+            // 2. Registro diario
             if (!isset($filesForHistory[$date])) {
                 $filesForHistory[$date] = 0;
             }
             $filesForHistory[$date] += $size;
 
-            // Track user info
-            if ($uid > 0 && !isset($userInfos[$uid])) {
-                $userInfos[$uid] = [
-                    'username' => $f['username'],
-                    'display_name' => $f['display_name']
-                ];
+            if (!isset($byUserDaily[$displayName])) {
+                $byUserDaily[$displayName] = [];
             }
-            
-            $name = $f['display_name'] ?: ($f['username'] ?: 'system');
-            
-            if (!isset($byUserDaily[$name])) $byUserDaily[$name] = [];
-            if (!isset($byUserDaily[$name][$date])) $byUserDaily[$name][$date] = 0;
-            $byUserDaily[$name][$date] += $size;
-
-            if (!isset($byUser[$uid])) {
-                $byUser[$uid] = 0;
+            if (!isset($byUserDaily[$displayName][$date])) {
+                $byUserDaily[$displayName][$date] = 0;
             }
-            $byUser[$uid] += $size;
+            $byUserDaily[$displayName][$date] += $size;
 
-            if ($date >= $cutoffDate) {
+            // 3. Filtrado por período activo (para Distribución por Tipo y Registro Diario por Usuario)
+            if ($date >= $cutoffDate && $date <= $endDateStr) {
+                if (!isset($byUserPeriodBytes[$displayName])) {
+                    $byUserPeriodBytes[$displayName] = 0;
+                }
+                $byUserPeriodBytes[$displayName] += $size;
+
                 // By Type
-                $ext = strtolower(pathinfo($f['path'], PATHINFO_EXTENSION));
+                $ext = strtolower(pathinfo((string) ($f['path'] ?? ''), PATHINFO_EXTENSION));
                 $type = 'other';
                 if (in_array($ext, ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv'])) $type = 'document';
                 elseif (in_array($ext, ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'])) $type = 'image';
@@ -1051,20 +1080,16 @@ final class AssetsService
             }
         }
 
-        // Build User list
+        // Build User list (by_user -> Aportación Total por Usuario: TODOS los usuarios almacenados)
         $userStats = [];
-        if (!empty($byUser)) {
-            foreach ($byUser as $uid => $total) {
-                if ($uid > 0 && isset($userInfos[$uid])) {
-                    $userStats[] = [
-                        'username' => $userInfos[$uid]['username'],
-                        'display_name' => $userInfos[$uid]['display_name'],
-                        'total_bytes' => $total
-                    ];
-                }
-            }
-            usort($userStats, fn($a, $b) => $b['total_bytes'] <=> $a['total_bytes']);
+        foreach ($byUserTotalBytes as $name => $total) {
+            $userStats[] = [
+                'username'     => $name,
+                'display_name' => $name,
+                'total_bytes'  => $total
+            ];
         }
+        usort($userStats, fn($a, $b) => $b['total_bytes'] <=> $a['total_bytes']);
 
         // Format by_type
         $typeStats = [];
@@ -1073,33 +1098,28 @@ final class AssetsService
         }
         usort($typeStats, fn($a, $b) => $b['total_bytes'] <=> $a['total_bytes']);
 
-        // Format history
+        // Format history (by_user_history -> Registro Diario por Usuario: Solo usuarios activos en el periodo)
         $history = [];
         $byUserHistory = [];
         $currentDate = new \DateTime($cutoffDate);
         $endDateStr = match($period) {
             'today' => date('Y-m-d'),
-            '7d' => date('Y-m-d'),
+            '7d'    => date('Y-m-d'),
             default => date('Y-m-t') // Last day of the month
         };
         $endDate = new \DateTime($endDateStr);
-        
-        // Collect all unique user names from $userInfos to ensure all users are present in daily data
-        $uniqueUserNames = [];
-        foreach ($userInfos as $info) {
-            $name = $info['display_name'] ?: $info['username'];
-            $uniqueUserNames[$name] = true;
-        }
+
+        $periodUserNames = array_keys($byUserPeriodBytes);
 
         while ($currentDate <= $endDate) {
             $dStr = $currentDate->format('Y-m-d');
             $history[] = [
-                'date' => $dStr,
+                'date'        => $dStr,
                 'total_bytes' => $filesForHistory[$dStr] ?? 0
             ];
             
             $dayData = ['date' => $dStr];
-            foreach ($uniqueUserNames as $name => $_) {
+            foreach ($periodUserNames as $name) {
                 $dayData[$name] = $byUserDaily[$name][$dStr] ?? 0;
             }
             $byUserHistory[] = $dayData;
@@ -1108,11 +1128,11 @@ final class AssetsService
         }
 
         return [
-            'total_bytes' => $totalBytes,
-            'by_type' => $typeStats,
-            'by_user' => $userStats,
+            'total_bytes'     => $totalBytes,
+            'by_type'         => $typeStats,
+            'by_user'         => $userStats,
             'by_user_history' => $byUserHistory,
-            'history' => $history
+            'history'         => $history
         ];
     }
 }

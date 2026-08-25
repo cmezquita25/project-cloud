@@ -30,10 +30,14 @@ export function RequireAdmin() {
   return <Outlet />
 }
 
-/** Para /login: si ya hay sesión, manda a la app. */
+/** Para /login: si ya hay sesión, manda al destino guardado o a la app. */
 export function RedirectIfAuth() {
   const { status } = useAuth()
+  const location = useLocation()
+  const locationState = location.state as { from?: string } | null
+  const redirectUrl = locationState?.from || new URLSearchParams(location.search).get('redirect') || '/'
+
   if (status === 'loading') return <FullScreenSpinner />
-  if (status === 'authenticated') return <Navigate to="/" replace />
+  if (status === 'authenticated') return <Navigate to={redirectUrl} replace />
   return <Outlet />
 }

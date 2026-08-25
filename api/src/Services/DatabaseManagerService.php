@@ -33,15 +33,32 @@ final class DatabaseManagerService
     {
         $pdo = Database::pdo();
         
-        // Ejecuta todas las consultas en bloque de forma nativa en lugar de dividirlas.
-        // Esto previene que inserciones de textos con punto y coma (ej. hashes, descripciones) fallen.
+        // Normaliza saltos de línea y remueve comentarios "--"
+        $sql = str_replace(["\r\n", "\r"], "\n", $sqlContent);
+        $sql = preg_replace('/--[^\n]*/', '', $sql) ?? $sql;
         
-        try {
-            $pdo->exec($sqlContent);
-            return 1; // Retorna > 0 en éxito
-        } catch (\PDOException $e) {
-            throw new \ProjectCloud\Core\HttpException(500, 'MIGRATION_ERROR', 'Error al ejecutar SQL: ' . $e->getMessage());
+        $count = 0;
+        foreach (explode(';', $sql) as $statement) {
+            $statement = trim($statement);
+            if ($statement !== '') {
+                try {
+                    $pdo->exec($statement);
+                    $count++;
+                } catch (\PDOException $e) {
+                    // Ignorar errores idempotentes "already exists" o "duplicate" para no fallar en tablas que ya existan
+                    $msg = strtolower($e->getMessage());
+                    if (
+                        !str_contains($msg, 'already exists') &&
+                        !str_contains($msg, 'duplicate column') &&
+                        !str_contains($msg, 'duplicate key') &&
+                        !str_contains($msg, 'duplicate entry')
+                    ) {
+                        throw new \ProjectCloud\Core\HttpException(500, 'MIGRATION_ERROR', 'Error al ejecutar SQL: ' . $e->getMessage());
+                    }
+                }
+            }
         }
+        return max(1, $count);
     }
 
     /**

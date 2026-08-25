@@ -13,6 +13,8 @@ interface PlatformSettings {
   btn_gradient_start?: string | null
   btn_gradient_end?: string | null
   btn_text_color?: string | null
+  ga4_measurement_id?: string | null
+  ga4_enabled?: boolean
 }
 
 const PlatformSettingsContext = createContext<PlatformSettings | null>(null)

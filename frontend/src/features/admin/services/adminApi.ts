@@ -40,6 +40,13 @@ export const adminApi = {
     }),
   updateSettings: (payload: Record<string, string | number | boolean>) =>
     api.patch<{ server_capacity_bytes?: number; user?: User | null }>('/admin/settings', payload),
+  updatePhpLimits: (payload: {
+    memory_limit?: string
+    upload_max_filesize?: string
+    post_max_size?: string
+    max_execution_time?: number
+    max_input_time?: number
+  }) => api.patch<{ ok: true }>('/admin/settings', { php_limits: payload }),
   /** Sube un logo (favicon, white, dark, mobile) */
   uploadLogo(type: 'favicon' | 'white' | 'dark' | 'mobile', file: File): Promise<{ ok: true; filename: string }> {
     const formData = new FormData()

@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Eye, EyeOff } from 'lucide-react'
 import { Button, Input, Checkbox, useLoader } from '@shared/ui'
 import { ApiError } from '@shared/api'
@@ -10,6 +10,7 @@ export function LoginPage() {
   const { login } = useAuth()
   const loader = useLoader()
   const navigate = useNavigate()
+  const location = useLocation()
 
   const [form, setForm] = useState({ login: '', password: '', remember: true })
   const [showPassword, setShowPassword] = useState(false)
@@ -28,7 +29,10 @@ export function LoginPage() {
         login({ login: form.login.trim(), password: form.password, remember: form.remember }),
         'Iniciando sesión…'
       )
-      navigate('/', { replace: true })
+      const locationState = location.state as { from?: string } | null
+      const searchParams = new URLSearchParams(location.search)
+      const targetUrl = locationState?.from || searchParams.get('redirect') || '/'
+      navigate(targetUrl, { replace: true })
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'No se pudo iniciar sesión')
     } finally {
