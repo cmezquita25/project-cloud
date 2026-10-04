@@ -16,6 +16,7 @@ export function ThemeToggle() {
       icon={isDark ? Sun : Moon}
       label={isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
       onClick={toggle}
+      className="[&>svg]:animate-theme-icon-in motion-reduce:[&>svg]:animate-none"
     />
   )
 }

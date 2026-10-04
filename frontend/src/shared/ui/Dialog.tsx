@@ -4,6 +4,7 @@ import { cn } from '@shared/lib/cn'
 import { Portal } from './Portal'
 import { IconButton } from './IconButton'
 import { useLockBodyScroll } from './useLockBodyScroll'
+import { EXIT_MS, useFrozenWhileClosing, usePresence } from './motion'
 
 interface DialogProps {
   open: boolean
@@ -46,17 +47,29 @@ export function Dialog({
     return () => document.removeEventListener('keydown', onKey)
   }, [open, onClose])
 
-  if (!open) return null
+  // Salida animada: sigue montado `EXIT_MS.dialog` con el último contenido
+  // que se vio abierto (quien lo abre suele limpiar su estado al cerrar).
+  const { mounted, closing } = usePresence(open, EXIT_MS.dialog)
+  const view = useFrozenWhileClosing({ title, description, children, footer }, open)
+
+  if (!mounted) return null
 
   return (
     <Portal>
       <div
-        className="fixed inset-0 z-modal flex items-center justify-center p-4"
+        className={cn(
+          'fixed inset-0 z-modal flex items-center justify-center p-4',
+          closing && 'pointer-events-none'
+        )}
         role="dialog"
         aria-modal="true"
+        aria-hidden={closing || undefined}
       >
         <div
-          className="absolute inset-0 animate-fade-in bg-overlay/50 backdrop-blur-md dark:bg-overlay/80"
+          className={cn(
+            'absolute inset-0 bg-overlay/50 backdrop-blur-md dark:bg-overlay/80',
+            closing ? 'animate-fade-out' : 'animate-fade-in'
+          )}
           onClick={onClose}
           aria-hidden="true"
         />
@@ -67,7 +80,8 @@ export function Dialog({
         */}
         <div
           className={cn(
-            'glass-strong relative z-10 w-full animate-scale-in rounded-2xl p-6 ring-1 ring-slate-900/5 dark:ring-white/10',
+            'glass-strong relative z-10 w-full rounded-2xl p-6 ring-1 ring-slate-900/5 dark:ring-white/10',
+            closing ? 'animate-scale-out' : 'animate-scale-in',
             SIZES[size]
           )}
         >
@@ -80,14 +94,14 @@ export function Dialog({
               className="absolute right-3 top-3"
             />
           )}
-          {title && (
-            <h2 className="pr-8 text-xl font-semibold text-content-primary">{title}</h2>
+          {view.title && (
+            <h2 className="pr-8 text-xl font-semibold text-content-primary">{view.title}</h2>
           )}
-          {description && (
-            <p className="mt-2 text-sm text-content-secondary">{description}</p>
+          {view.description && (
+            <p className="mt-2 text-sm text-content-secondary">{view.description}</p>
           )}
-          {children && <div className="mt-4">{children}</div>}
-          {footer && <div className="mt-6 flex justify-end gap-2">{footer}</div>}
+          {view.children && <div className="mt-4">{view.children}</div>}
+          {view.footer && <div className="mt-6 flex justify-end gap-2">{view.footer}</div>}
         </div>
       </div>
     </Portal>

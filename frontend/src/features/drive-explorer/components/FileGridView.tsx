@@ -43,7 +43,7 @@ export function FileGridView({
       {folders.length > 0 && (
         <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
           <h3 className="mb-3 text-sm font-medium text-content-secondary">Carpetas</h3>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="stagger-rise grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {folders.map((item) => (
               <FolderChip key={itemKey(item)} item={item} {...common} />
             ))}
@@ -54,7 +54,7 @@ export function FileGridView({
       {files.length > 0 && (
         <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, delay: 0.1 }}>
           <h3 className="mb-3 text-sm font-medium text-content-secondary">Archivos</h3>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+          <div className="stagger-rise grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
             {files.map((item) => (
               <FileCard key={itemKey(item)} item={item} {...common} />
             ))}

@@ -75,6 +75,11 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
         'focus-visible:outline-focus disabled:pointer-events-none disabled:opacity-50',
         SIZES[size],
         VARIANTS[variant],
+        // Cargando: el degradado se desplaza, como los CTA de la landing.
+        // Tres paradas (inicio → fin → inicio) para que el bucle no salte.
+        loading &&
+          variant === 'primary' &&
+          'via-gradient-end to-gradient-start bg-[length:200%_auto] animate-gradient-x',
         fullWidth && 'w-full',
         className
       )}

@@ -141,7 +141,7 @@ export function StoragePage() {
       </div>
 
       {/* Bento Grid Principal */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
+      <div className="stagger-rise grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
         
         {/* Bento Card 1: Tarjeta Principal de Resumen (2 cols en lg) */}
         <div className="lg:col-span-2 rounded-drive glass p-6 flex flex-col justify-between relative overflow-hidden">
@@ -384,7 +384,7 @@ export function StoragePage() {
             Aún no has subido archivos a tu almacenamiento.
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="stagger-rise grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {data.breakdown.map((b) => {
               const Icon = KIND_ICONS[b.kind] ?? File
               const colors = KIND_COLORS[b.kind]

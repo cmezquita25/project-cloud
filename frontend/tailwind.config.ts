@@ -164,6 +164,41 @@ export default {
           '0%': { transform: 'scale(1)', opacity: '0.9' },
           '75%, 100%': { transform: 'scale(2.4)', opacity: '0' },
         },
+        /*
+          --- Fase 7: entradas y salidas ---
+          Todas terminan en `transform: none`/`opacity: 1` y las de entrada se
+          usan con `fill-mode: backwards`: al acabar no queda NINGÚN estilo
+          aplicado. Importa porque un `transform` que se quedara en un
+          contenedor descolocaría el recuadro de selección (es `fixed`).
+        */
+        'rise-in': {
+          from: { opacity: '0', transform: 'translateY(10px)' },
+          to: { opacity: '1', transform: 'none' },
+        },
+        'scale-out': {
+          from: { opacity: '1', transform: 'scale(1)' },
+          to: { opacity: '0', transform: 'scale(0.96)' },
+        },
+        'slide-down': {
+          from: { transform: 'translateY(0)' },
+          to: { transform: 'translateY(100%)' },
+        },
+        'veil-rise': {
+          from: { opacity: '0', transform: 'translateY(1.25rem)' },
+          to: { opacity: '1', transform: 'none' },
+        },
+        'theme-icon-in': {
+          from: { opacity: '0', transform: 'rotate(-90deg) scale(0.6)' },
+          to: { opacity: '1', transform: 'none' },
+        },
+        'step-in-right': {
+          from: { opacity: '0', transform: 'translateX(24px)' },
+          to: { opacity: '1', transform: 'none' },
+        },
+        'step-in-left': {
+          from: { opacity: '0', transform: 'translateX(-24px)' },
+          to: { opacity: '1', transform: 'none' },
+        },
       },
       transitionTimingFunction: {
         'out-expo': 'cubic-bezier(0.16, 1, 0.3, 1)',
@@ -171,7 +206,8 @@ export default {
       animation: {
         'fade-in': 'fade-in 150ms ease-out',
         'fade-out': 'fade-out 150ms ease-in forwards',
-        'scale-in': 'scale-in 120ms ease-out',
+        // Afinada a la curva de la landing (antes 120ms ease-out).
+        'scale-in': 'scale-in 180ms cubic-bezier(0.16, 1, 0.3, 1)',
         'slide-up': 'slide-up 240ms cubic-bezier(0.32, 0.72, 0, 1)',
         'slide-in-right': 'slide-in-right 240ms cubic-bezier(0.32, 0.72, 0, 1)',
         'slide-in-left': 'slide-in-left 240ms cubic-bezier(0.32, 0.72, 0, 1)',
@@ -181,6 +217,15 @@ export default {
         shimmer: 'shimmer 2.5s linear infinite',
         'pulse-glow': 'pulse-glow 5s ease-in-out infinite',
         'ping-dot': 'ping-dot 1.8s cubic-bezier(0, 0, 0.2, 1) infinite',
+        // Fase 7. Salidas más cortas que las entradas.
+        'rise-in': 'rise-in 420ms cubic-bezier(0.16, 1, 0.3, 1) backwards',
+        'scale-out': 'scale-out 140ms ease-in forwards',
+        'slide-down': 'slide-down 200ms ease-in forwards',
+        'veil-rise': 'veil-rise 520ms cubic-bezier(0.16, 1, 0.3, 1) backwards',
+        'theme-icon-in': 'theme-icon-in 320ms cubic-bezier(0.16, 1, 0.3, 1) backwards',
+        'step-in-right': 'step-in-right 320ms cubic-bezier(0.16, 1, 0.3, 1) backwards',
+        'step-in-left': 'step-in-left 320ms cubic-bezier(0.16, 1, 0.3, 1) backwards',
+        'pulse-glow-once': 'pulse-glow 1.2s ease-out 1',
       },
     },
   },

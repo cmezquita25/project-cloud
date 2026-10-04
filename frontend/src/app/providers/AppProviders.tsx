@@ -1,4 +1,5 @@
 import { type ReactNode } from 'react'
+import { MotionConfig } from 'framer-motion'
 import { QueryClient } from '@tanstack/react-query'
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
 import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister'
@@ -31,6 +32,9 @@ export function AppProviders({ children }: { children: ReactNode }) {
       client={queryClient} 
       persistOptions={{ persister, maxAge: 1000 * 60 * 60 * 24 }}
     >
+      {/* Todas las animaciones de framer-motion respetan «reducir movimiento»
+          del sistema (las CSS lo hacen desde index.css). */}
+      <MotionConfig reducedMotion="user">
       <ThemeProvider>
         <LoaderProvider>
           <ToastProvider>
@@ -44,6 +48,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
           </ToastProvider>
         </LoaderProvider>
       </ThemeProvider>
+      </MotionConfig>
     </PersistQueryClientProvider>
   )
 }

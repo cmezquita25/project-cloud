@@ -13,6 +13,14 @@ const STEPS = ['Requisitos', 'Base de datos', 'Administrador', 'Configuración',
 /** Asistente de instalación de 4 pasos (estilo Google Drive). */
 export function InstallWizard() {
   const [step, setStep] = useState(0)
+  // Dirección del deslizamiento entre pasos: hacia la izquierda al avanzar y
+  // hacia la derecha al volver. Se decide al cambiar de paso (no en el
+  // render, que en modo estricto se ejecuta dos veces).
+  const [forward, setForward] = useState(true)
+  const goTo = (next: number) => {
+    setForward(next >= step)
+    setStep(next)
+  }
 
   return (
     // Sin fondo propio: el `AppBackdrop` va en -z-10 y un `bg-*` aquí lo
@@ -42,11 +50,16 @@ export function InstallWizard() {
             <Stepper steps={STEPS} current={step} />
           </div>
 
-          {step === 0 && <StepRequirements onNext={() => setStep(1)} />}
-          {step === 1 && <StepDatabase onBack={() => setStep(0)} onNext={() => setStep(2)} />}
-          {step === 2 && <StepAdmin onBack={() => setStep(1)} onDone={() => setStep(3)} />}
-          {step === 3 && <StepConfig onBack={() => setStep(2)} onDone={() => setStep(4)} />}
-          {step === 4 && <StepDone />}
+          {/* `key={step}`: cada paso ya se montaba y desmontaba por separado,
+              así que reiniciar este contenedor no cambia su comportamiento;
+              solo dispara la animación de entrada del paso nuevo. */}
+          <div key={step} className={forward ? 'animate-step-in-right' : 'animate-step-in-left'}>
+            {step === 0 && <StepRequirements onNext={() => goTo(1)} />}
+            {step === 1 && <StepDatabase onBack={() => goTo(0)} onNext={() => goTo(2)} />}
+            {step === 2 && <StepAdmin onBack={() => goTo(1)} onDone={() => goTo(3)} />}
+            {step === 3 && <StepConfig onBack={() => goTo(2)} onDone={() => goTo(4)} />}
+            {step === 4 && <StepDone />}
+          </div>
         </div>
       </div>
     </div>

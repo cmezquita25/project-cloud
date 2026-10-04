@@ -86,7 +86,10 @@ export function NotificationBell() {
       >
         <Bell size={20} />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 flex min-w-[18px] h-4 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold text-white shadow-sm animate-pulse">
+          <span className="isolate absolute -top-1 -right-1 flex min-w-[18px] h-4 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold text-white shadow-sm">
+            {/* Onda de la landing: avisa de pendientes sin hacer parpadear el
+                número (antes `animate-pulse` lo atenuaba y costaba leerlo). */}
+            <span aria-hidden="true" className="absolute inset-0 -z-10 animate-ping-dot rounded-full bg-danger" />
             {badgeText}
           </span>
         )}

@@ -103,7 +103,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                   {/* Icon Box */}
                   <div
                     className={cn(
-                      'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors',
+                      'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors animate-pulse-glow-once',
                       cfg.iconBoxClass
                     )}
                   >

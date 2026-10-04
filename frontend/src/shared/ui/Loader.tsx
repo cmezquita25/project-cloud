@@ -70,8 +70,12 @@ export function LoaderProvider({ children }: { children: ReactNode }) {
             // Velo de la landing: fondo denso + desenfoque fuerte.
             className="fixed inset-0 z-toast flex flex-col items-center justify-center gap-4 bg-canvas/80 backdrop-blur-[22px] animate-fade-in"
           >
-            <Spinner size={44} tone="brand" className="text-content-tertiary" />
-            {message && <p className="font-heading text-sm font-semibold text-content-primary">{message}</p>}
+            {/* Como el velo de la landing: el fondo aparece de una vez y lo que
+                sube es el contenido. */}
+            <div className="flex animate-veil-rise flex-col items-center gap-4">
+              <Spinner size={44} tone="brand" className="text-content-tertiary" />
+              {message && <p className="font-heading text-sm font-semibold text-content-primary">{message}</p>}
+            </div>
           </div>
         </Portal>
       )}

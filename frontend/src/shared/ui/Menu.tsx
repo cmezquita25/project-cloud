@@ -11,6 +11,7 @@ import { cn } from '@shared/lib/cn'
 import { useIsMobile } from '@shared/hooks/useMediaQuery'
 import { Portal } from './Portal'
 import { BottomSheet } from './BottomSheet'
+import { EXIT_MS, useFrozenWhileClosing, usePresence } from './motion'
 
 export interface MenuItem {
   id: string
@@ -148,14 +149,20 @@ export function Menu({ open, onClose, items, title, align = 'left', anchorRef, p
   const style = useFloatingStyle(anchorRef, position, open && !isMobile, align)
   const menuRef = useRef<HTMLDivElement>(null)
 
-  if (!open) return null
+  // Salida animada. Se congela también `position`: en los menús contextuales
+  // quien lo abre la pone a `null` al cerrar, y el panel saltaría a la rama
+  // de posicionamiento absoluto en mitad de la animación.
+  const { mounted, closing } = usePresence(open, isMobile ? EXIT_MS.sheet : EXIT_MS.menu)
+  const view = useFrozenWhileClosing({ items, children, title, position }, open)
+
+  if (!mounted) return null
 
   if (isMobile) {
     return (
-      <BottomSheet open={open} onClose={onClose} title={title}>
+      <BottomSheet open={open} onClose={onClose} title={view.title}>
         <div role="menu" className="flex flex-col">
-          {children}
-          {items.map((item) => (
+          {view.children}
+          {view.items.map((item) => (
             <ItemRow key={item.id} item={item} onClose={onClose} />
           ))}
         </div>
@@ -165,8 +172,8 @@ export function Menu({ open, onClose, items, title, align = 'left', anchorRef, p
 
   const content = (
     <>
-      {children}
-      {items.map((item) => (
+      {view.children}
+      {view.items.map((item) => (
         <ItemRow key={item.id} item={item} onClose={onClose} />
       ))}
     </>
@@ -178,12 +185,13 @@ export function Menu({ open, onClose, items, title, align = 'left', anchorRef, p
     los nombres de debajo (ver index.css). Conserva `rounded-xl`.
   */
   const panelClass = cn(
-    'glass-menu min-w-[220px] max-w-[calc(100vw-1rem)] animate-scale-in overflow-y-auto rounded-xl p-1.5',
+    'glass-menu min-w-[220px] max-w-[calc(100vw-1rem)] overflow-y-auto rounded-xl p-1.5',
+    closing ? 'pointer-events-none animate-scale-out' : 'animate-scale-in',
     className
   )
 
   // Sin ancla ni posición: comportamiento clásico (absoluto dentro de un contenedor relativo).
-  if (!anchorRef && !position) {
+  if (!anchorRef && !view.position) {
     return (
       <div className={cn('absolute top-full z-dropdown mt-1 origin-top', align === 'right' ? 'right-0' : 'left-0')}>
         <div ref={menuRef} role="menu" className={panelClass}>
@@ -198,15 +206,19 @@ export function Menu({ open, onClose, items, title, align = 'left', anchorRef, p
   // se corta contra el borde de la pantalla (incluido con zoom): hace scroll.
   return (
     <Portal>
-      <div
-        className="fixed inset-0 z-dropdown"
-        onMouseDown={onClose}
-        onContextMenu={(e) => {
-          e.preventDefault()
-          onClose()
-        }}
-        aria-hidden="true"
-      />
+      {/* Capa de cierre: se retira en cuanto empieza la salida, para que el
+          siguiente clic llegue a la página sin esperar a la animación. */}
+      {!closing && (
+        <div
+          className="fixed inset-0 z-dropdown"
+          onMouseDown={onClose}
+          onContextMenu={(e) => {
+            e.preventDefault()
+            onClose()
+          }}
+          aria-hidden="true"
+        />
+      )}
       <div ref={menuRef} role="menu" style={style} className={cn('z-dropdown origin-top', panelClass)}>
         {content}
       </div>

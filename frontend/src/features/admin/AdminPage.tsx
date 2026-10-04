@@ -303,7 +303,7 @@ export function AdminPage() {
           <div className="space-y-6 pb-12">
 
             {/* Bento Grid: Top row - Stats */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+            <div className="stagger-rise grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
               <StatCard icon={Users} label="Usuarios" value={String(stats.users)} />
               <StatCard icon={HardDrive} label="Asignado a usuarios" value={formatBytes(stats.allocated_users)} />
               <StatCard icon={HardDrive} label="Espacio total usado" value={formatBytes(stats.used + stats.assets_used_bytes)} />
@@ -312,7 +312,7 @@ export function AdminPage() {
             </div>
 
             {/* Bento Grid: Main sections */}
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            <div className="stagger-rise grid grid-cols-1 xl:grid-cols-3 gap-6">
 
               {/* Left Column - Charts (2/3 width on xl) */}
               <div className="xl:col-span-2 space-y-6 flex flex-col">

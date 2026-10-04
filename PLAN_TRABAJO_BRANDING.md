@@ -368,7 +368,26 @@ Diseño en §3.5. Tres configuraciones: **Invicter** (defecto), **Clásico** (`#
 - **Verificado:** `php -l` en ambos controladores; build sin errores; prueba real contra la API local: guardar Clásico → `/settings/public` devuelve `classic` → la app entera cambia (logo, botones, halos, vista previa) → valor inválido rechazado con 422 → se restauró Invicter. Captura del menú de cuenta abierto con `glass-menu`.
 - Pendiente anotado (fuera de alcance): `--color-primary` personalizado se escribe inline en `<html>` y anula también la variante de `.dark`.
 
-### Fase 7: Animaciones inteligentes (entrada, salida y feedback)
+### Fase 7: Animaciones inteligentes (entrada, salida y feedback) ✅ (completada)
+**Implementado**
+
+| Animación | Dónde | Cómo (y por qué no rompe nada) |
+|---|---|---|
+| Salida de capas | `Dialog`, `Menu` (incluye selects y menús contextuales), `BottomSheet` | Nuevo `usePresence` (`shared/ui/motion.ts`): siguen montados 140–200 ms con `scale-out` / `slide-down` / `fade-out` y `pointer-events-none`; la capa de cierre del menú se retira al empezar la salida, así el siguiente clic llega a la página. `useFrozenWhileClosing` conserva el último contenido (y la `position` de los menús contextuales) durante la salida. Bloqueo de scroll, Escape y foco siguen atados a `open` |
+| Entrada de capas | Mismos componentes | `scale-in` afinado a 180 ms con la curva `out-expo` de la landing |
+| Entrada de pantalla | Contenedor de páginas de `AppLayout` | `useEntranceOnChange` con Web Animations API, **sin `fill`**: fundido + 8px solo al cambiar de **sección** (no entre carpetas). No vuelve a montar nada y no deja `transform` |
+| Escalonado | Rejillas de carpetas y archivos, métricas y secciones del dashboard, tarjetas de Almacenamiento | Clase CSS `.stagger-rise`: 12 primeros hijos con 30 ms entre cada uno, `backwards`; el resto sin animación |
+| Velo de carga | `Loader` | El contenido sube (`veil-rise`) y el fondo aparece de una vez, como en la landing |
+| Onda de pendientes | Contador de la campana | `ping-dot` detrás del número (antes `animate-pulse` atenuaba el número) |
+| Actividad | `Button` primario con `loading` | El degradado se desplaza (`gradient-x`, tres paradas para un bucle sin salto) |
+| Feedback | Caja de icono de los toasts | `pulse-glow` de una sola pasada al aparecer |
+| Icono de tema | `ThemeToggle` | El icono sol/luna entra girando; se anima el `<svg>` (sin volver a montar el botón, que perdería el foco). El cambio de tema sigue siendo instantáneo |
+| Pasos del wizard | `InstallWizard` | Deslizamiento horizontal según se avance o retroceda; la dirección se decide al cambiar de paso (no en el render) |
+| Movimiento reducido | Global | `MotionConfig reducedMotion="user"` para framer-motion + todas las clases nuevas en el bloque `prefers-reduced-motion` de `index.css`; `usePresence` cierra al instante |
+
+- **Verificación automática de R1:** tras las animaciones, en `/`, `/recent` y `/admin` se recorrieron con un script todos los ancestros de las filas/tarjetas del explorador: ninguno conserva `transform`, `filter`, `backdrop-filter`, `perspective` ni `will-change` (el recuadro de selección queda intacto). Menú de ordenar verificado abierto tras el cambio de presencia. Build sin errores.
+- **Descartado a propósito:** contador animado de cifras (los valores del dashboard llegan formateados como «5.49 GB»; animarlos exigía reformatear en cada frame sin aportar información) y onda en el `UploadDock` (ya muestra spinner y progreso).
+
 > Pedido explícito: llevar a la plataforma las animaciones de la landing **con sentido**, no por decorar. Cada animación tiene que comunicar algo (qué apareció, de dónde viene, qué cambió) y nunca frenar una tarea repetitiva.
 
 **Principios**
