@@ -48,18 +48,20 @@ export function BottomSheet({ open, onClose, title, children, className }: Botto
           onClick={onClose}
           aria-hidden="true"
         />
-        {/* `glass-panel`: casi opaco, se abre encima del contenido. */}
+        {/* `glass-menu`: el mismo vidrio que los menús de escritorio (tinte
+            blanco translúcido sobre base oscura tenue y blur fuerte). */}
         <div
           className={cn(
-            'glass-panel relative z-10 max-h-[85vh] overflow-y-auto rounded-t-2xl border-x-0 border-b-0 pb-[env(safe-area-inset-bottom)]',
+            'glass-menu relative z-10 max-h-[85vh] overflow-y-auto rounded-t-2xl border-x-0 border-b-0 pb-[env(safe-area-inset-bottom)]',
             closing ? 'animate-slide-down' : 'animate-slide-up',
             className
           )}
         >
-          {/* Asa de arrastre. `bg-inherit` toma el mismo fondo del panel para
-              que, al quedarse fija arriba, tape lo que pasa por debajo. */}
-          <div className="sticky top-0 flex justify-center bg-inherit pt-3">
-            <span className="h-1 w-9 rounded-full bg-border-strong" />
+          {/* Asa de arrastre, transparente: se integra en el vidrio del panel.
+              Darle fondo propio (o desenfoque) pintaba una franja más clara
+              arriba, porque se sumaba al fondo del propio panel. */}
+          <div className="sticky top-0 z-10 flex justify-center pt-3">
+            <span className="h-1 w-9 rounded-full bg-slate-900/20 dark:bg-white/25" />
           </div>
           {view.title && (
             <h2 className="px-4 pb-2 pt-3 text-base font-medium text-content-primary">{view.title}</h2>

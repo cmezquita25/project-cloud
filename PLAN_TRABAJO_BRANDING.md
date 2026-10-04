@@ -443,6 +443,8 @@ Diseño en §3.5. Tres configuraciones: **Invicter** (defecto), **Clásico** (`#
 - [x] **Cabecera:** botones de notificaciones, tema y avatar todos circulares y con más separación (`gap-2.5`).
 - [x] **Footer en móvil:** variante `stacked` al final del scroll, sin barra de fondo, en una sola columna centrada fila por fila (como la barra inferior del footer de la landing). En escritorio sigue la barra glass fija.
 - [x] **Footer encima del contenido en móvil:** el contenedor de páginas y el explorador medían `h-full` y el contenido desbordado quedaba debajo del footer; en móvil ahora crecen con su contenido (`max-sm:h-auto`, `max-sm:min-h-full`).
+- [x] **Corrección del anterior (visto en producción, unidad compartida con muchas carpetas):** el contenedor de páginas es un hijo flex de `<main>` y por defecto se encogía (`flex-shrink: 1`) hasta su `min-h-full`, así que el contenido desbordaba y el footer quedaba a media pantalla. En móvil ahora lleva `shrink-0` (también el contenedor del footer). Verificado con una maqueta con el CSS real del build: antes el footer empezaba en 748 px con el contenido terminando en 940; después empieza en 1048.
+- [x] **Bottom sheets (menús móviles de abajo arriba):** de `glass-panel` (casi opaco) a `glass-menu`, el mismo vidrio que los menús de escritorio; asa transparente integrada en el vidrio.
 - [x] **Barra de herramientas en móvil:** de franja sólida a todo el ancho a pastilla de vidrio flotante (`.toolbar-float`, solo `< 640px`), separada del borde y pegada bajo la cabecera al hacer scroll; título/selección a la izquierda y controles a la derecha, que bajan a una segunda fila solo si no caben.
 
 ---

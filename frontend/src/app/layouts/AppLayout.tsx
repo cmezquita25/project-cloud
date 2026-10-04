@@ -90,12 +90,12 @@ export function AppLayout() {
               de cargar y desborda. */}
           <main className="min-w-0 flex-1 flex flex-col overflow-y-auto [scrollbar-gutter:stable]">
             {/* Recibe la animación de entrada (sin `fill`: no deja transform). */}
-            <div ref={pageRef} className="mx-auto h-full w-full max-w-[1600px] px-4 py-4 sm:px-6 flex flex-col max-sm:h-auto max-sm:min-h-full">
+            <div ref={pageRef} className="mx-auto h-full w-full max-w-[1600px] px-4 py-4 sm:px-6 flex flex-col max-sm:h-auto max-sm:min-h-full max-sm:shrink-0">
               <Outlet />
             </div>
 
             {/* Móvil: footer dentro del scroll (se ve al llegar al final) */}
-            <div className="mt-auto block sm:hidden">
+            <div className="mt-auto block shrink-0 sm:hidden">
               <Footer variant="stacked" />
             </div>
           </main>
