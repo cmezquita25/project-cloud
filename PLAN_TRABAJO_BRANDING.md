@@ -242,6 +242,7 @@ Si prefieres que *Clásico* sea **morado violeta** en lugar del púrpura actual 
 | R4 | Se pierde el estado **seleccionado** o **drop-target** de archivos | `FileGridView.tsx:113-143`, `FileListView.tsx:96-105` | Se mantienen `ring-2 ring-primary` y `bg-primary-subtle`; solo se recalibra el token `primary-subtle`. Validar contraste en ambos temas |
 | R5 | El white-label del admin deja de aplicarse, o el preset pisa los colores personalizados | `usePlatformSettings.tsx`, `AppearanceSettings.tsx`, `AdminController.php` | No se tocan los nombres de variable. Los colores inline siguen ganando al atributo de preset (§3.5). Probar la matriz: Invicter/Clásico × con/sin colores custom × claro/oscuro × restaurar |
 | R12 | Fondo animado bajo glass baja los FPS | Login (D4) | Animación solo en `AuthLayout`, que tiene una sola tarjeta glass. En la app los halos son estáticos (§3.4) |
+| R14 | Lag al cambiar de tema claro ↔ oscuro | Toda la app | **Resuelto:** el cambio de tema es instantáneo (`.theme-transition` apaga las transiciones en vez de interpolar 200ms) y las clases glass ya no transicionan su fondo. Con decenas de superficies con `backdrop-filter`, interpolar el fondo forzaba a recalcular cada desenfoque en cada frame |
 | R13 | Parpadeo de preset al cargar (Invicter → Clásico) | Arranque | Preset en `localStorage` y aplicado en el script anti-FOUC de `index.html` |
 | R6 | El blur anidado parpadea (*backdrop root*) | IconButtons glass dentro de Topbar glass | Lección de la landing (`glass-merged`): los hijos de una barra con blur **no** llevan su propio `backdrop-filter`, solo fondo translúcido |
 | R7 | Caída de FPS en Safari/equipos modestos | Explorer, Admin | Niveles §3.3 · halos con `radial-gradient` (no `blur`) · sin `will-change` permanente · reemplazar `blur-2xl` + `mix-blend-multiply` de `AuthLayout` |
@@ -362,13 +363,47 @@ Diseño completo en §3.5.
 - [ ] Verificar la matriz de R5: Invicter/Clásico × con/sin personalización × claro/oscuro × restaurar.
 - [ ] Detalle existente a revisar: `--color-primary` personalizado se escribe inline en `<html>` y anula también el valor de `.dark` (en oscuro queda el mismo tono que en claro). Fuera de alcance salvo que se pida; queda anotado.
 
-### Fase 7: QA y cierre
+### Fase 7: Animaciones inteligentes (entrada, salida y feedback)
+> Pedido explícito: llevar a la plataforma las animaciones de la landing **con sentido**, no por decorar. Cada animación tiene que comunicar algo (qué apareció, de dónde viene, qué cambió) y nunca frenar una tarea repetitiva.
+
+**Principios**
+1. **Rápidas y con propósito.** Entradas de 180–320 ms con la curva `out-expo` de la landing; salidas más cortas (120–200 ms) que las entradas. Nada que bloquee la interacción mientras anima.
+2. **Una sola librería por caso.** `framer-motion` (ya está en 10 archivos) para entrada/salida de componentes que se montan y desmontan (`AnimatePresence`); CSS (`transition`, keyframes de Tailwind) para hover, foco y estados.
+3. **Solo `transform` y `opacity`** (y `filter: blur` únicamente en entradas puntuales, nunca en listas). Nada de animar tamaño, `top/left` ni sombras grandes en bucle.
+4. **No animar lo que se repite por cientos.** Las tarjetas y filas del explorador no reciben animación individual al hacer scroll (como el `Reveal` de la landing): como mucho, un escalonado corto (máx. ~12 elementos, 25 ms entre cada uno) en la **primera** carga de una carpeta.
+5. **Nunca sobre la funcionalidad:** sin `transform` en contenedores de vista (R1, recuadro de selección), sin animar durante drag & drop o marquee, sin retrasar el foco de teclado ni el cierre con Escape.
+6. **`prefers-reduced-motion`:** todas las nuevas se reducen a un fundido corto o se desactivan (`MotionConfig reducedMotion="user"` de framer-motion + las reglas CSS ya existentes).
+
+**Catálogo propuesto (de la landing → dónde aplica)**
+
+| Animación de la landing | Uso en la plataforma | Detalle |
+|---|---|---|
+| **Velo de carga** (`veil-rise` / `veil-fall`) | `Loader` global y arranque (`RootGate`) | El contenido del velo sube al entrar y baja al salir; el fondo aparece de una vez |
+| **Reveal blur-in** | Entrada de pantallas (cambio de ruta) | Fundido + `translateY(8px)` + blur 6px → 0 en ~280 ms, **solo** en el contenedor de página (no en hijos repetidos). Se aplica en un wrapper que **no** contiene el recuadro de selección |
+| **Reveal fade-in-up escalonado** | Primera carga de una carpeta, tarjetas del dashboard admin, bento de Almacenamiento, tarjetas de Ajustes | Máx. ~12 elementos con 25–40 ms de escalonado; el resto aparece sin animación |
+| **Zoom suave** (`scale .96 → 1`) | `Dialog`, `Menu`, `Select`, `Tooltip` (ya usan `animate-scale-in`) | Afinar a la curva `out-expo` y añadir **salida** (hoy desaparecen de golpe) con `AnimatePresence` |
+| **Slide desde el borde** | Drawer móvil, `BottomSheet`, `DetailsPanel`, `UploadDock` | Ya existen; unificar duraciones y añadir salida donde falte |
+| **Toasts con muelle** | `Toast` (ya con framer) | Mantener; sumar la caja del icono con un `pulse-glow` de una sola pasada al aparecer |
+| **`ping-dot`** | Campana de notificaciones con pendientes; indicador "subiendo" del `UploadDock` | Punto con onda, solo mientras haya algo pendiente |
+| **`gradient-x`** (degradado que se desplaza) | Botón primario mientras está en `loading`; barra de progreso de subidas activas | Indica actividad sin spinner extra; se detiene al terminar |
+| **Hover glass** (`glass-hover`, `btn-glow`) | Ya aplicado en Fases 2–4 | Revisar coherencia de duraciones |
+| **Brillo de cursor y halos animados** | Solo login e instalador (D4, D6) | Ya aplicado |
+| **Contador animado de cifras** (estilo métricas de la landing) | Cifras del dashboard admin y de Almacenamiento | Cuenta rápida (~600 ms) solo la primera vez que se ven |
+| **Transición entre vistas** | Cuadrícula ↔ lista (ya con `AnimatePresence`), pasos del wizard de instalación | Fundido cruzado corto; en el wizard, deslizamiento horizontal según avance/retroceso |
+| **Salida del botón de tema** | `ThemeToggle` | Icono sol/luna que rota y se funde (el cambio de tema en sí sigue siendo instantáneo) |
+
+**Archivos previstos:** `tailwind.config.ts` (keyframes `veil-rise/fall`, `reveal-*`), nuevo `shared/ui/motion.ts` (variantes y duraciones compartidas), `AppProviders.tsx` (`MotionConfig`), `AppLayout.tsx` (wrapper de página **fuera** del área del marquee), `Loader`, `Dialog`, `Menu`, `Select`, `Tooltip`, `BottomSheet`, `Toast`, `NotificationBell`, `UploadDock`, `ThemeToggle`, `InstallWizard`/`Stepper`, dashboard admin, `StoragePage`.
+
+**QA específica:** el marquee, el drag & drop y el menú contextual funcionan igual con las animaciones activas; ninguna animación se dispara en bucle con la pestaña oculta; reduced-motion verificado; el cambio de tema sigue siendo instantáneo.
+
+### Fase 8: QA, cierre y versión 2.0.0
 - [ ] Recorrido completo con el checklist de §7 en **claro y oscuro**, **escritorio y móvil**, Chrome + Safari (o WebKit) + Firefox.
 - [ ] Rendimiento: explorador con 500+ elementos, scroll y marquee a ≥ 50 fps; Lighthouse sin regresión.
 - [ ] Contraste AA de textos sobre glass (sobre todo `content-tertiary` en claro).
 - [ ] `prefers-reduced-motion` activo: sin animación de halos en login ni shimmer.
 - [ ] `npm run build` (incluye `tsc -b`) sin errores.
 - [ ] Comparar con los screenshots de la Fase 0.
+- [ ] **Subir la versión de la app a `2.0.0`** al cerrar el plan: `APP_VERSION` en `frontend/src/shared/config/version.ts` (variable global que pinta el footer y el login) y `version` en `frontend/package.json`. Revisar si `getLastUpdatedLabel()` necesita fecha nueva.
 
 ---
 
@@ -429,8 +464,9 @@ Ya no quedan decisiones pendientes.
 | 4. Explorador | 1.5 días | **Alto** (R1, R4, R7) |
 | 5. Resto de features | 2 días | Bajo-medio |
 | 6. Presets + white-label (API + front) | 1–1.5 días | Medio (R5, R13) |
-| 7. QA | 1 día | — |
-| **Total** | **~9–10 días** | |
+| 7. Animaciones inteligentes | 1.5–2 días | Medio (R1, rendimiento) |
+| 8. QA + versión 2.0.0 | 1 día | — |
+| **Total** | **~11–12 días** | |
 
 ---
 

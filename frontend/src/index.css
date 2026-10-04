@@ -310,15 +310,13 @@
     background: linear-gradient(145deg, rgb(255 255 255 / 0.9), rgb(255 255 255 / 0.7));
   }
 
-  .glass,
-  .glass-strong,
-  .glass-subtle,
-  .glass-panel,
-  .glass-lite {
-    transition:
-      background 0.5s ease,
-      border-color 0.5s ease;
-  }
+  /*
+    Sin `transition` de fondo a propósito (la landing la tenía). Al cambiar de
+    tema, cada superficie con `backdrop-filter` tendría que recalcular su
+    desenfoque en cada frame mientras su fondo se interpola: con decenas de
+    ellas en pantalla el cambio claro ↔ oscuro iba a tirones. El hover sigue
+    animado vía `.glass-hover`.
+  */
 
   .dark .glass {
     border-color: rgb(255 255 255 / 0.1);
@@ -494,21 +492,21 @@
 
 @layer utilities {
   /*
-   * Transición suave del tema SOLO en fondos y bordes. El color del texto NO se
-   * anima: interpolar el color de la tipografía entre claro/oscuro pasa por
-   * tonos grises intermedios y produce un "parpadeo/lavado" visible en los
-   * textos. Snap inmediato del color = sin parpadeo.
-   */
+    Cambio de tema INSTANTÁNEO (branding 2.0; antes interpolaba 200ms fondos y
+    bordes).
+
+    Con el sistema glass hay decenas de superficies con `backdrop-filter`.
+    Interpolar 200ms el fondo y el borde de TODO el DOM obligaba a recalcular
+    cada desenfoque en cada frame, y el cambio claro ↔ oscuro se notaba con
+    lag. `ThemeProvider` sigue poniendo y quitando `.theme-transition` igual
+    que antes; lo que cambia es que durante esa ventana se APAGAN las
+    transiciones (incluidas las de hover de `.glass-hover`, `.btn-glow` o
+    `.input-glass`), así el tema salta de una vez en un solo repintado.
+  */
   .theme-transition,
-  .theme-transition * {
-    transition:
-      background-color 200ms ease,
-      border-color 200ms ease,
-      fill 200ms ease;
-  }
-  /* El texto y los iconos-color cambian al instante (sin animar). */
   .theme-transition *,
-  .theme-transition {
-    transition-property: background-color, border-color, fill;
+  .theme-transition *::before,
+  .theme-transition *::after {
+    transition: none !important;
   }
 }
