@@ -80,7 +80,7 @@ export function NotificationBell() {
         ref={buttonRef}
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="relative flex h-9 w-9 items-center justify-center rounded-xl text-content-secondary transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus bg-slate-900/[0.03] ring-1 ring-inset ring-slate-900/10 hover:bg-primary/10 hover:ring-primary/40 hover:text-primary dark:bg-white/[0.04] dark:ring-white/10 dark:hover:bg-primary/15"
+        className="relative flex h-9 w-9 items-center justify-center rounded-full text-content-secondary transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus bg-slate-900/[0.03] ring-1 ring-inset ring-slate-900/10 hover:bg-primary/10 hover:ring-primary/40 hover:text-primary dark:bg-white/[0.04] dark:ring-white/10 dark:hover:bg-primary/15"
         title="Notificaciones"
         aria-label="Ver notificaciones"
       >

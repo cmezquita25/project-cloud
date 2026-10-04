@@ -472,7 +472,7 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
 
   return (
     <div
-      className="relative flex flex-1 h-full"
+      className="relative flex flex-1 h-full max-sm:h-auto"
       onDragEnter={onDragEnter}
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
@@ -489,7 +489,7 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="sticky top-0 z-20 -mx-4 px-4 py-1.5 sm:static sm:mx-0 sm:px-0 sm:py-0 mb-1 sm:mb-4 max-sm:bg-canvas/80 max-sm:backdrop-blur-md flex flex-col sm:flex-row sm:h-10 sm:items-center justify-between gap-3 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)] sm:shadow-none">
+        <div className="toolbar-float sticky top-2 z-20 mb-3 flex flex-wrap items-center justify-between gap-x-2 gap-y-2 px-3 py-2 sm:static sm:mb-4 sm:h-10 sm:flex-nowrap sm:gap-3 sm:px-0 sm:py-0">
           {selected.size > 0 ? (
             <div className="flex min-w-0 flex-wrap items-center gap-2">
               <IconButton icon={X} label="Deseleccionar" size="sm" onClick={clearSelection} />
@@ -518,14 +518,14 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
               onNavigate={(id: FolderRef) => navigate(adapter.mode === 'assets' ? (id === 'root' ? '/assets' : `/assets/${id}`) : (id === 'root' ? '/' : `/folder/${id}`))}
             />
           )}
-          <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
+          <div className="ml-auto flex shrink-0 items-center gap-2">
             <button
               onClick={() => {
                 setIsSelectMode(!isSelectMode)
                 if (isSelectMode) clearSelection()
               }}
               className={cn(
-                'sm:hidden rounded-lg px-3 py-1.5 text-sm font-medium transition-colors',
+                'sm:hidden rounded-lg px-2.5 py-1 text-xs font-medium transition-colors',
                 isSelectMode ? 'bg-gradient-to-r from-gradient-start to-gradient-end text-btn-text' : 'bg-slate-900/[0.05] text-content-primary hover:bg-slate-900/[0.08] dark:bg-white/[0.06] dark:hover:bg-white/[0.1]'
               )}
             >

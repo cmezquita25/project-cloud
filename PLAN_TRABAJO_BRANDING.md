@@ -440,6 +440,10 @@ Diseño en §3.5. Tres configuraciones: **Invicter** (defecto), **Clásico** (`#
 - [x] **Contraste de azules en oscuro:** primario oscuro de Blizzard → `blue-300` y de Nebula → `#a8c7fa`. El primario **personalizado** ya no se escribe inline (pisaba también `.dark`): va en una hoja `<style id="pc-custom-primary">` con el color tal cual en claro y una versión aclarada (40 % hacia blanco) en oscuro. Avatares y contador de la campana con colores fijos; mensajes y badges rojos de fondo sólido (`bg-danger-subtle`) → tinte translúcido con anillo.
 - [x] **Botones de la barra superior** (notificaciones y tema) con contorno de vidrio y hover de marca.
 - [x] **Casillas marcadas en color sólido** (token `--color-check`): azul en Blizzard, morado en Nebula, el primario elegido si hay personalización; check blanco. La marca de selección de las tarjetas de estilo, igual.
+- [x] **Cabecera:** botones de notificaciones, tema y avatar todos circulares y con más separación (`gap-2.5`).
+- [x] **Footer en móvil:** variante `stacked` al final del scroll, sin barra de fondo, en una sola columna centrada fila por fila (como la barra inferior del footer de la landing). En escritorio sigue la barra glass fija.
+- [x] **Footer encima del contenido en móvil:** el contenedor de páginas y el explorador medían `h-full` y el contenido desbordado quedaba debajo del footer; en móvil ahora crecen con su contenido (`max-sm:h-auto`, `max-sm:min-h-full`).
+- [x] **Barra de herramientas en móvil:** de franja sólida a todo el ancho a pastilla de vidrio flotante (`.toolbar-float`, solo `< 640px`), separada del borde y pegada bajo la cabecera al hacer scroll; título/selección a la izquierda y controles a la derecha, que bajan a una segunda fila solo si no caben.
 
 ---
 

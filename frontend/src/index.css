@@ -403,6 +403,33 @@
       inset 0 1px 0 rgb(255 255 255 / 0.1);
   }
 
+  /*
+    Barra de herramientas flotante del explorador y las colecciones, SOLO en
+    móvil (en escritorio la barra es estática y sin fondo). Antes era una
+    franja sólida a todo el ancho; ahora es una pastilla de vidrio separada
+    del borde que flota sobre el contenido al hacer scroll. No es ancestro del
+    recuadro de selección, así que su `backdrop-filter` no le afecta.
+  */
+  @media (max-width: 639px) {
+    .toolbar-float {
+      border: 1px solid rgb(15 23 42 / 0.08);
+      border-radius: 1rem;
+      background: rgb(255 255 255 / 0.78);
+      box-shadow: 0 10px 30px -14px rgb(15 23 42 / 0.3);
+      backdrop-filter: blur(20px) saturate(1.4);
+      -webkit-backdrop-filter: blur(20px) saturate(1.4);
+    }
+    .dark .toolbar-float {
+      border-color: rgb(255 255 255 / 0.1);
+      background:
+        linear-gradient(145deg, rgb(255 255 255 / 0.08), rgb(255 255 255 / 0.03)),
+        rgb(2 6 23 / 0.6);
+      box-shadow:
+        0 14px 40px -14px rgb(2 6 23 / 0.9),
+        inset 0 1px 0 rgb(255 255 255 / 0.06);
+    }
+  }
+
   /* ---------- Campos de formulario ---------- */
   .input-glass {
     border: 1px solid rgb(15 23 42 / 0.1);

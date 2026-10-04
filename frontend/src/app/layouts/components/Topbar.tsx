@@ -147,7 +147,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
       {/* Espaciador para móvil: empuja los controles a la derecha */}
       <div className="flex-1 md:hidden" />
 
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-2.5">
         <NotificationBell />
         {/* Contorno de vidrio como el de la campana (en el login y el wizard
             el botón ya va dentro de su propio círculo glass). */}
