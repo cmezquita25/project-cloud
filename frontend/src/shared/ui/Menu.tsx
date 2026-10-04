@@ -64,7 +64,7 @@ function ItemRow({ item, onClose }: { item: MenuItem; onClose: () => void }) {
           'disabled:pointer-events-none disabled:opacity-40',
           item.danger
             ? 'text-danger hover:bg-danger/10 active:bg-danger/15'
-            : 'text-content-primary hover:bg-slate-900/[0.05] active:bg-slate-900/[0.08] dark:hover:bg-white/[0.07] dark:active:bg-white/[0.1]'
+            : 'text-content-primary hover:bg-slate-900/[0.06] active:bg-slate-900/[0.09] dark:hover:bg-white/[0.1] dark:active:bg-white/[0.14]'
         )}
       >
         {Icon && <Icon size={18} className={item.danger ? 'text-danger' : 'text-primary'} />}
@@ -173,12 +173,12 @@ export function Menu({ open, onClose, items, title, align = 'left', anchorRef, p
   )
 
   /*
-    `glass-panel`: casi opaco a propósito. El menú se abre encima de la
-    rejilla de archivos y tiene que leerse desde el primer frame; un glass
-    translúcido dejaría ver los nombres de debajo. Conserva `rounded-xl`.
+    `glass-menu`: vidrio con el tinte blanco de la landing sobre una base
+    oscura tenue, para abrirse sobre la rejilla de archivos sin dejar leer
+    los nombres de debajo (ver index.css). Conserva `rounded-xl`.
   */
   const panelClass = cn(
-    'glass-panel min-w-[220px] max-w-[calc(100vw-1rem)] animate-scale-in overflow-y-auto rounded-xl p-1.5 ring-1 ring-slate-900/5 dark:ring-white/10',
+    'glass-menu min-w-[220px] max-w-[calc(100vw-1rem)] animate-scale-in overflow-y-auto rounded-xl p-1.5',
     className
   )
 

@@ -13,8 +13,36 @@ interface PlatformSettings {
   btn_gradient_start?: string | null
   btn_gradient_end?: string | null
   btn_text_color?: string | null
+  /** Estilo base de color. Los colores personalizados de arriba van encima. */
+  theme_preset?: ThemePreset | null
   ga4_measurement_id?: string | null
   ga4_enabled?: boolean
+}
+
+export type ThemePreset = 'invicter' | 'classic'
+
+/** Clave de caché local: la lee el script anti-parpadeo de `index.html`. */
+const PRESET_STORAGE_KEY = 'pc-theme-preset'
+
+/**
+ * Aplica el estilo base de color en <html>.
+ *
+ * Invicter es el defecto de `index.css`, así que solo el Clásico necesita el
+ * atributo. Se guarda en localStorage para que `index.html` lo aplique antes
+ * del primer pintado en la próxima carga; sin eso se vería Invicter un
+ * instante y luego saltaría al Clásico al llegar la respuesta de la API.
+ */
+// eslint-disable-next-line react-refresh/only-export-components
+export function applyThemePreset(preset: ThemePreset | null | undefined) {
+  const root = document.documentElement
+  if (preset === 'classic') root.setAttribute('data-theme-preset', 'classic')
+  else root.removeAttribute('data-theme-preset')
+  try {
+    if (preset === 'classic') localStorage.setItem(PRESET_STORAGE_KEY, 'classic')
+    else localStorage.removeItem(PRESET_STORAGE_KEY)
+  } catch {
+    // Almacenamiento bloqueado: el preset igual se aplica en esta carga.
+  }
 }
 
 const PlatformSettingsContext = createContext<PlatformSettings | null>(null)
@@ -28,6 +56,7 @@ export function PlatformSettingsProvider({ children }: { children: ReactNode }) 
       .then((data) => {
         if (!active) return
         setSettings(data)
+        applyThemePreset(data.theme_preset)
 
         // Título del navegador: "<Organización> - Drive" (o el nombre por defecto).
         document.title = data.organization_name

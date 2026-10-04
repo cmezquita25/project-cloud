@@ -25,6 +25,11 @@
           var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
           var dark = stored === 'dark' || ((stored === 'system' || !stored) && prefersDark);
           if (dark) document.documentElement.classList.add('dark');
+          // Estilo de color (Invicter por defecto / Clásico): lo cachea
+          // usePlatformSettings para que no parpadee al recargar.
+          if (localStorage.getItem('pc-theme-preset') === 'classic') {
+            document.documentElement.setAttribute('data-theme-preset', 'classic');
+          }
         } catch (e) {}
       })();
     </script>

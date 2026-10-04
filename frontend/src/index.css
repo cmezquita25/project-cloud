@@ -289,9 +289,36 @@
     -webkit-backdrop-filter: blur(12px);
   }
   /*
-    Capas que se abren encima del contenido (menús, selects, bottom sheets,
-    tooltips). Casi opaca: tiene que leerse desde el primer frame, y
-    `backdrop-filter` tarda en rasterizar.
+    Menús flotantes y selects: el `glass-strong` de la landing (tinte blanco
+    translúcido + blur fuerte + brillo en el borde superior), con una base
+    oscura tenue DEBAJO del tinte en modo oscuro. La base es lo que permite
+    abrirlo sobre la rejilla de archivos sin que se lean los nombres de
+    detrás; el tinte blanco es lo que le da el contraste y la luz de la
+    landing (con `glass-panel`, casi opaco, quedaba plano y oscuro).
+  */
+  .glass-menu {
+    border: 1px solid rgb(15 23 42 / 0.1);
+    background: linear-gradient(145deg, rgb(255 255 255 / 0.94), rgb(255 255 255 / 0.84));
+    box-shadow:
+      0 18px 50px -12px rgb(15 23 42 / 0.18),
+      inset 0 1px 0 rgb(255 255 255 / 0.9);
+    backdrop-filter: blur(28px) saturate(1.4);
+    -webkit-backdrop-filter: blur(28px) saturate(1.4);
+  }
+  .dark .glass-menu {
+    border-color: rgb(255 255 255 / 0.14);
+    background:
+      linear-gradient(145deg, rgb(255 255 255 / 0.12), rgb(255 255 255 / 0.04)),
+      rgb(15 23 42 / 0.62);
+    box-shadow:
+      0 25px 80px -15px rgb(2 6 23 / 0.9),
+      inset 0 1px 0 rgb(255 255 255 / 0.1);
+  }
+
+  /*
+    Capas que se abren encima del contenido y deben leerse desde el primer
+    frame (bottom sheets, drawer móvil, tooltips). Casi opaca: `backdrop-filter`
+    tarda en rasterizar.
   */
   .glass-panel {
     border: 1px solid rgb(15 23 42 / 0.1);

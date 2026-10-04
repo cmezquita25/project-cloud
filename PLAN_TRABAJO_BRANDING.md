@@ -351,20 +351,22 @@ Cubre todas las pantallas restantes de §1.4: admin, ajustes, almacenamiento, pe
 - Quedan a propósito: sombra del drawer móvil, sombras de imagen/vídeo y fondo blanco del visor PDF.
 - **Verificado:** `npm run build` sin errores; capturas reales de Admin, Usuarios, Almacenamiento, Apariencia, Perfil y wizard (claro/oscuro).
 
-### Fase 6: Presets de estilo, white-label y pantalla de Apariencia
-Diseño completo en §3.5.
+### Fase 6: Presets de estilo, white-label y pantalla de Apariencia ✅ (completada)
+Diseño en §3.5. Tres configuraciones: **Invicter** (defecto), **Clásico** (`#1a73e8 → #9333ea`) y **Personalizado** (encima de cualquiera).
 
-- [ ] **API:** `theme_preset` en `AdminController.php` (whitelist `invicter` | `classic`) y en `SettingsController.php` (`/settings/public`).
-- [ ] **CSS:** bloques `[data-theme-preset="classic"]` (claro y oscuro) con los valores del preset Clásico.
-- [ ] **`usePlatformSettings`:** aplicar el atributo `data-theme-preset` y cachearlo en `localStorage`.
-- [ ] **`index.html`:** aplicar el preset en el script anti-FOUC (R13).
-- [ ] **`AppearanceSettings.tsx`:**
-  - Selector de preset con dos tarjetas: *Invicter* (azul → cian) y *Clásico* (azul → morado), cada una con muestra de botón, degradado y halo.
-  - Debajo, los color pickers actuales (*personalización*), que muestran los valores del preset activo cuando no hay colores propios.
-  - **Vista previa en vivo:** botón primario, card glass y halo con los valores en edición, antes de guardar.
-  - *Restaurar colores* borra solo la personalización y vuelve al preset elegido; el preset se cambia desde su selector.
-- [ ] Verificar la matriz de R5: Invicter/Clásico × con/sin personalización × claro/oscuro × restaurar.
-- [ ] Detalle existente a revisar: `--color-primary` personalizado se escribe inline en `<html>` y anula también el valor de `.dark` (en oscuro queda el mismo tono que en claro). Fuera de alcance salvo que se pida; queda anotado.
+- [x] **API:** `AdminController` acepta `theme_preset` con whitelist (`invicter` | `classic`; vacío o `invicter` borra la clave; otro valor → 422 `INVALID_THEME_PRESET`) y lo registra en auditoría. `SettingsController` lo publica en `/settings/public` (sin clave = `invicter`). Sin migración: el almacén de settings es clave-valor.
+- [x] **CSS:** bloques `[data-theme-preset='classic']` (claro/oscuro) de la Fase 1.
+- [x] **`usePlatformSettings`:** tipo `ThemePreset` + `applyThemePreset()` que pone/quita `data-theme-preset` en `<html>` y lo cachea en `localStorage` (`pc-theme-preset`).
+- [x] **`index.html`:** el script anti-FOUC aplica el preset antes del primer pintado (R13).
+- [x] **`AppearanceSettings`:**
+  - Selector de estilo con dos tarjetas (radiogroup accesible) con muestra del degradado y check en la elegida.
+  - Personalización: los mismos selectores de color; muestran el color del estilo hasta que se cambian y una etiqueta «Personalizado» cuando hay colores propios.
+  - **Cambio de comportamiento:** al guardar solo se envían los colores realmente personalizados; los demás se mandan vacíos para que los siga dando el estilo base (antes se guardaban los cuatro siempre y quedaban fijos).
+  - Vista previa en vivo (halos, tarjeta glass, texto degradado, botones, etiqueta y barra) con los tokens fijados en el contenedor, sin teñir la app antes de guardar.
+  - «Quitar personalización» borra solo los colores propios y conserva el estilo elegido.
+- [x] Menús, selects y panel de notificaciones con la nueva superficie **`glass-menu`** (tinte blanco translúcido de la landing + base oscura tenue + brillo superior), más clara y con más contraste que `glass-panel` (pedido del usuario tras comparar con la landing).
+- **Verificado:** `php -l` en ambos controladores; build sin errores; prueba real contra la API local: guardar Clásico → `/settings/public` devuelve `classic` → la app entera cambia (logo, botones, halos, vista previa) → valor inválido rechazado con 422 → se restauró Invicter. Captura del menú de cuenta abierto con `glass-menu`.
+- Pendiente anotado (fuera de alcance): `--color-primary` personalizado se escribe inline en `<html>` y anula también la variante de `.dark`.
 
 ### Fase 7: Animaciones inteligentes (entrada, salida y feedback)
 > Pedido explícito: llevar a la plataforma las animaciones de la landing **con sentido**, no por decorar. Cada animación tiene que comunicar algo (qué apareció, de dónde viene, qué cambió) y nunca frenar una tarea repetitiva.

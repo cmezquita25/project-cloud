@@ -1,36 +1,122 @@
 import { LogoUploader } from '../../components/LogoUploader'
-import { useEffect, useState } from 'react'
-import { Button, useLoader, useToast } from '@shared/ui'
-import { usePlatformSettings } from '@shared/hooks/usePlatformSettings'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { Check } from 'lucide-react'
+import { Button, ProgressBar, useLoader, useToast } from '@shared/ui'
+import { cn } from '@shared/lib/cn'
+import { usePlatformSettings, type ThemePreset } from '@shared/hooks/usePlatformSettings'
 import { adminApi } from '../../services/adminApi'
 
-/** Logos de la plataforma (favicon, claro, oscuro y móvil). */
+type ColorKey = 'primary_color' | 'btn_gradient_start' | 'btn_gradient_end' | 'btn_text_color'
+
+/**
+ * Los dos estilos base. Sus valores son los mismos que definen `index.css`
+ * (`:root` para Invicter y `[data-theme-preset='classic']` para Clásico); aquí
+ * solo se usan para mostrarlos en los selectores y en la vista previa.
+ */
+const PRESETS: Record<ThemePreset, { label: string; description: string; colors: Record<ColorKey, string> }> = {
+  invicter: {
+    label: 'Invicter',
+    description: 'Azul → cian. El estilo de marca por defecto.',
+    colors: {
+      primary_color: '#2563eb',
+      btn_gradient_start: '#2563eb',
+      btn_gradient_end: '#06b6d4',
+      btn_text_color: '#ffffff',
+    },
+  },
+  classic: {
+    label: 'Clásico',
+    description: 'Azul → morado. El estilo original de la plataforma.',
+    colors: {
+      primary_color: '#1a73e8',
+      btn_gradient_start: '#1a73e8',
+      btn_gradient_end: '#9333ea',
+      btn_text_color: '#ffffff',
+    },
+  },
+}
+
+const COLOR_FIELDS: { key: ColorKey; label: string }[] = [
+  { key: 'primary_color', label: 'Color primario (Global)' },
+  { key: 'btn_text_color', label: 'Texto del Botón' },
+  { key: 'btn_gradient_start', label: 'Botón Gradiente (Inicio)' },
+  { key: 'btn_gradient_end', label: 'Botón Gradiente (Fin)' },
+]
+
+const NO_CUSTOM: Record<ColorKey, string | null> = {
+  primary_color: null,
+  btn_gradient_start: null,
+  btn_gradient_end: null,
+  btn_text_color: null,
+}
+
+/** `#rrggbb` → `"r g b"`, el formato de los tokens de `index.css`. */
+function hexToChannels(hex: string): string {
+  const h = hex.replace('#', '')
+  if (h.length !== 6) return '0 0 0'
+  return `${parseInt(h.slice(0, 2), 16)} ${parseInt(h.slice(2, 4), 16)} ${parseInt(h.slice(4, 6), 16)}`
+}
+
+/** Estilo base, colores personalizados y logos de la plataforma. */
 export function AppearanceSettings() {
   const settings = usePlatformSettings()
   const toast = useToast()
   const loader = useLoader()
-  
-  const [primaryColor, setPrimaryColor] = useState('#1a73e8')
-  const [btnGradientStart, setBtnGradientStart] = useState('#1a73e8')
-  const [btnGradientEnd, setBtnGradientEnd] = useState('#9333ea')
-  const [btnTextColor, setBtnTextColor] = useState('#ffffff')
+
+  const [preset, setPreset] = useState<ThemePreset>('invicter')
+  // `null` = sin personalizar: se usa el color del estilo base.
+  const [custom, setCustom] = useState<Record<ColorKey, string | null>>(NO_CUSTOM)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    if (settings?.primary_color) setPrimaryColor(settings.primary_color)
-    if (settings?.btn_gradient_start) setBtnGradientStart(settings.btn_gradient_start)
-    if (settings?.btn_gradient_end) setBtnGradientEnd(settings.btn_gradient_end)
-    if (settings?.btn_text_color) setBtnTextColor(settings.btn_text_color)
+    if (!settings) return
+    setPreset(settings.theme_preset === 'classic' ? 'classic' : 'invicter')
+    setCustom({
+      primary_color: settings.primary_color || null,
+      btn_gradient_start: settings.btn_gradient_start || null,
+      btn_gradient_end: settings.btn_gradient_end || null,
+      btn_text_color: settings.btn_text_color || null,
+    })
   }, [settings])
+
+  const valueOf = (key: ColorKey) => custom[key] ?? PRESETS[preset].colors[key]
+  const isCustomized = Object.values(custom).some((v) => v !== null)
+
+  /*
+    Vista previa: los tokens se fijan EN el contenedor, no en <html>, para no
+    teñir la app antes de guardar. Se redefinen también `--glow-*` y
+    `--text-gradient-*` porque en `:root` se calcularon a partir del color
+    global y los descendientes heredan ese valor ya resuelto.
+  */
+  const previewStyle = useMemo(() => {
+    const start = hexToChannels(valueOf('btn_gradient_start'))
+    const end = hexToChannels(valueOf('btn_gradient_end'))
+    return {
+      '--color-primary': hexToChannels(valueOf('primary_color')),
+      '--color-gradient-start': start,
+      '--color-gradient-end': end,
+      '--color-btn-text': hexToChannels(valueOf('btn_text_color')),
+      '--glow-a': start,
+      '--glow-b': end,
+      '--text-gradient-from': start,
+      '--text-gradient-via': end,
+      '--text-gradient-to': end,
+    } as CSSProperties
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preset, custom])
 
   const saveColor = async () => {
     setSaving(true)
     try {
-      await adminApi.updateSettings({ 
-        primary_color: primaryColor,
-        btn_gradient_start: btnGradientStart,
-        btn_gradient_end: btnGradientEnd,
-        btn_text_color: btnTextColor
+      // Solo se guardan los colores que se personalizaron; el resto se envía
+      // vacío para que los siga dando el estilo base (antes se guardaban los
+      // cuatro siempre y quedaban fijos aunque nadie los hubiera tocado).
+      await adminApi.updateSettings({
+        theme_preset: preset,
+        primary_color: custom.primary_color ?? '',
+        btn_gradient_start: custom.btn_gradient_start ?? '',
+        btn_gradient_end: custom.btn_gradient_end ?? '',
+        btn_text_color: custom.btn_text_color ?? '',
       })
       loader.show('Aplicando cambios...')
       window.location.reload()
@@ -41,14 +127,16 @@ export function AppearanceSettings() {
     }
   }
 
+  /** Quita la personalización y conserva el estilo base elegido. */
   const resetColors = async () => {
     setSaving(true)
     try {
-      await adminApi.updateSettings({ 
+      await adminApi.updateSettings({
+        theme_preset: preset,
         primary_color: '',
         btn_gradient_start: '',
         btn_gradient_end: '',
-        btn_text_color: ''
+        btn_text_color: '',
       })
       loader.show('Restaurando colores...')
       window.location.reload()
@@ -62,63 +150,120 @@ export function AppearanceSettings() {
   return (
     <div className="max-w-3xl space-y-6">
       <div>
-        <h2 className="mb-1 text-lg font-medium text-content-primary">Configuración visual</h2>
+        <h2 className="mb-1 text-lg font-semibold text-content-primary">Configuración visual</h2>
         <p className="text-sm text-content-secondary">
-          Personaliza los colores y logos de la plataforma.
+          Elige el estilo de color, personalízalo si lo necesitas y sube los logos de la plataforma.
         </p>
       </div>
 
       <div className="rounded-xl glass p-6">
-        <h3 className="mb-1 font-medium text-content-primary">Colores de la plataforma</h3>
-        <p className="mb-6 text-sm text-content-secondary">
-          Define el color principal y personaliza los gradientes de los botones primarios.
+        {/* ── 1. Estilo base ─────────────────────────────────────────── */}
+        <h3 className="mb-1 font-semibold text-content-primary">Estilo de color</h3>
+        <p className="mb-4 text-sm text-content-secondary">
+          El estilo base define el degradado de botones, halos y acentos de toda la plataforma.
         </p>
-        
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
-          <div>
-            <label className="block text-sm font-medium mb-2 text-content-primary">Color primario (Global)</label>
-            <input
-              type="color"
-              value={primaryColor}
-              onChange={(e) => setPrimaryColor(e.target.value)}
-              className="h-10 w-full cursor-pointer rounded border border-border bg-transparent p-1"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-2 text-content-primary">Texto del Botón</label>
-            <input
-              type="color"
-              value={btnTextColor}
-              onChange={(e) => setBtnTextColor(e.target.value)}
-              className="h-10 w-full cursor-pointer rounded border border-border bg-transparent p-1"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-2 text-content-primary">Botón Gradiente (Inicio)</label>
-            <input
-              type="color"
-              value={btnGradientStart}
-              onChange={(e) => setBtnGradientStart(e.target.value)}
-              className="h-10 w-full cursor-pointer rounded border border-border bg-transparent p-1"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-2 text-content-primary">Botón Gradiente (Fin)</label>
-            <input
-              type="color"
-              value={btnGradientEnd}
-              onChange={(e) => setBtnGradientEnd(e.target.value)}
-              className="h-10 w-full cursor-pointer rounded border border-border bg-transparent p-1"
-            />
+
+        <div role="radiogroup" aria-label="Estilo de color" className="mb-8 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {(Object.keys(PRESETS) as ThemePreset[]).map((id) => {
+            const p = PRESETS[id]
+            const selected = preset === id
+            return (
+              <button
+                key={id}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                onClick={() => setPreset(id)}
+                className={cn(
+                  'glass-lite glass-hover relative flex flex-col gap-3 rounded-xl p-4 text-left transition-all duration-300',
+                  selected && 'border-primary ring-2 ring-primary/40'
+                )}
+              >
+                <span
+                  aria-hidden="true"
+                  className="h-10 w-full rounded-lg"
+                  style={{
+                    backgroundImage: `linear-gradient(90deg, ${p.colors.btn_gradient_start}, ${p.colors.btn_gradient_end})`,
+                    boxShadow: `0 10px 30px -10px ${p.colors.btn_gradient_start}`,
+                  }}
+                />
+                <span className="flex items-start justify-between gap-2">
+                  <span>
+                    <span className="block font-semibold text-content-primary">{p.label}</span>
+                    <span className="block text-xs text-content-secondary">{p.description}</span>
+                  </span>
+                  {selected && (
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-gradient-start to-gradient-end text-btn-text">
+                      <Check size={14} strokeWidth={3} />
+                    </span>
+                  )}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+
+        {/* ── 2. Personalización ─────────────────────────────────────── */}
+        <div className="mb-1 flex items-center gap-2">
+          <h3 className="font-semibold text-content-primary">Personalización</h3>
+          {isCustomized && (
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary ring-1 ring-inset ring-primary/20">
+              Personalizado
+            </span>
+          )}
+        </div>
+        <p className="mb-6 text-sm text-content-secondary">
+          Opcional. Cada color que cambies se aplica por encima del estilo base; los demás siguen el estilo elegido.
+        </p>
+
+        <div className="mb-6 grid grid-cols-1 gap-6 sm:grid-cols-2">
+          {COLOR_FIELDS.map(({ key, label }) => (
+            <div key={key}>
+              <label htmlFor={`color-${key}`} className="mb-2 block text-sm font-medium text-content-primary">
+                {label}
+              </label>
+              <input
+                id={`color-${key}`}
+                type="color"
+                value={valueOf(key)}
+                onChange={(e) => setCustom((prev) => ({ ...prev, [key]: e.target.value }))}
+                className="input-glass h-10 w-full cursor-pointer rounded p-1"
+              />
+            </div>
+          ))}
+        </div>
+
+        {/* ── 3. Vista previa en vivo ────────────────────────────────── */}
+        <p className="mb-2 text-xs font-medium uppercase tracking-wide text-content-tertiary">Vista previa</p>
+        <div
+          style={previewStyle}
+          aria-hidden="true"
+          className="pointer-events-none relative mb-6 overflow-hidden rounded-xl bg-slate-900/[0.03] p-6 ring-1 ring-inset ring-slate-900/[0.06] dark:bg-white/[0.02] dark:ring-white/[0.06]"
+        >
+          <div className="orb absolute -left-16 -top-16 h-48 w-48 text-glow-a/30" />
+          <div className="orb absolute -bottom-20 -right-10 h-56 w-56 text-glow-b/25" />
+          <div className="glass relative rounded-xl p-5">
+            <p className="text-gradient text-xl font-semibold">Tu plataforma</p>
+            <p className="mt-1 text-sm text-content-secondary">Así se verán botones, acentos y barras.</p>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <Button tabIndex={-1}>Botón principal</Button>
+              <Button tabIndex={-1} variant="secondary">
+                Secundario
+              </Button>
+              <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary ring-1 ring-inset ring-primary/20">
+                Etiqueta
+              </span>
+            </div>
+            <ProgressBar value={64} className="mt-5" />
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-3 border-t border-border pt-4">
           <Button onClick={saveColor} disabled={saving} className="min-w-[120px]">
-            {saving ? 'Guardando...' : 'Guardar colores'}
+            {saving ? 'Guardando...' : 'Guardar'}
           </Button>
-          <Button variant="secondary" onClick={resetColors} disabled={saving}>
-            Restablecer a valores por defecto
+          <Button variant="secondary" onClick={resetColors} disabled={saving || !isCustomized}>
+            Quitar personalización
           </Button>
         </div>
       </div>

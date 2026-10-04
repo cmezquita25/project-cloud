@@ -97,7 +97,7 @@ export function NotificationBell() {
           <div
             ref={menuRef}
             style={{ top: `${pos.top}px`, right: `${pos.right}px` }}
-            className="fixed z-dropdown w-80 sm:w-96 rounded-2xl glass-panel ring-1 ring-slate-900/5 dark:ring-white/10 overflow-hidden flex flex-col max-h-[520px] animate-fade-in"
+            className="fixed z-dropdown w-80 sm:w-96 rounded-2xl glass-menu overflow-hidden flex flex-col max-h-[520px] animate-fade-in"
           >
             {/* Encabezado del menú flotante */}
             <div className="flex items-center justify-between border-b border-border bg-slate-900/[0.04] dark:bg-white/[0.05] px-4 py-3">
