@@ -104,8 +104,9 @@ npm run dev
 El backend en desarrollo se puede ejecutar utilizando el servidor integrado de PHP:
 ```bash
 cd api
-php -S localhost:8000 -t public
+php -S localhost:8000 index.php
 ```
+`index.php` actúa como router: recibe todas las peticiones `/api/*` (el front en desarrollo las reenvía al puerto 8000 desde `vite.config.ts`). Si la API no está levantada, el login responde **500** porque el proxy de Vite no encuentra el backend. Requiere MySQL activo y `api/config/config.php` generado por el instalador.
 
 ---
 

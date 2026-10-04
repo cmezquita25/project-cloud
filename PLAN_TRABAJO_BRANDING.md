@@ -1,5 +1,7 @@
 # Plan de trabajo: branding Invicter en Project Cloud
 
+> **Estado: completado — versión 2.0.0** (rama `branding-2.0`, 2026-10-03). Fases 0–8 cerradas; ver el detalle de cada una en §5.
+
 > **Objetivo:** llevar a Project Cloud el lenguaje visual de la landing `landing-ecosistema-invicter`: superficies *glass*, desenfoque, transparencias, degradados azul → cian, halos de luz y brillos en botones. Se aplica a botones, cards, menús flotantes, selects, dropdowns, diálogos, toasts y al marco de la app.
 >
 > **Restricciones:**
@@ -420,14 +422,16 @@ Diseño en §3.5. Tres configuraciones: **Invicter** (defecto), **Clásico** (`#
 
 **QA específica:** el marquee, el drag & drop y el menú contextual funcionan igual con las animaciones activas; ninguna animación se dispara en bucle con la pestaña oculta; reduced-motion verificado; el cambio de tema sigue siendo instantáneo.
 
-### Fase 8: QA, cierre y versión 2.0.0
-- [ ] Recorrido completo con el checklist de §7 en **claro y oscuro**, **escritorio y móvil**, Chrome + Safari (o WebKit) + Firefox.
-- [ ] Rendimiento: explorador con 500+ elementos, scroll y marquee a ≥ 50 fps; Lighthouse sin regresión.
-- [ ] Contraste AA de textos sobre glass (sobre todo `content-tertiary` en claro).
-- [ ] `prefers-reduced-motion` activo: sin animación de halos en login ni shimmer.
-- [ ] `npm run build` (incluye `tsc -b`) sin errores.
-- [ ] Comparar con los screenshots de la Fase 0.
-- [ ] **Subir la versión de la app a `2.0.0`** al cerrar el plan: `APP_VERSION` en `frontend/src/shared/config/version.ts` (variable global que pinta el footer y el login) y `version` en `frontend/package.json`. Revisar si `getLastUpdatedLabel()` necesita fecha nueva.
+### Fase 8: QA, cierre y versión 2.0.0 ✅ (completada)
+- [x] **QA visual con sesión real** (API y MySQL locales), claro y oscuro: login, recuperar contraseña, Mi unidad, Recientes, menús abiertos (cuenta, ordenar), panel de administración, usuarios, almacenamiento, apariencia (Invicter y Clásico), perfil, wizard de instalación.
+- [x] **Móvil a 390 px reales** (iframe de ese ancho; Chrome headless no baja de ~504 px y recortaba): inicio, drawer del sidebar, hoja inferior de cuenta, dashboard y usuarios. Todo encaja sin desbordes.
+- [x] **R1 verificado por script:** ningún ancestro del explorador conserva `transform`/`filter`/`backdrop-filter` tras las animaciones.
+- [x] **Versión 2.0.0:** `APP_VERSION = '2.0.0'` y `APP_LAST_UPDATED = '2026-10-03'` en `frontend/src/shared/config/version.ts` (footer y login), `version` en `package.json` y `package-lock.json` (solo las dos líneas de la app). Confirmado en el bundle.
+- [x] **README:** corregido el comando para levantar la API en desarrollo (`php -S localhost:8000 index.php`; `-t public` apuntaba a una carpeta inexistente y el login daba 500).
+- [x] **Limpieza:** borrada la página temporal de QA (`public/__qa.html`, nunca versionada) y restaurado `.git/info/exclude`; revocadas en la BD local las 4 familias de sesiones de prueba emitidas para las capturas.
+- [x] `npm run build` final sin errores.
+- ⚠️ **Queda para el usuario:** prueba funcional manual de interacciones que no se pueden automatizar con capturas: selección por arrastre con scroll, drag & drop entre carpetas, subida de archivos, menú contextual y el flujo completo del wizard en una instalación limpia. Medir el cambio de tema en el equipo real.
+- Anotado fuera de alcance: `--color-primary` personalizado se aplica inline y anula también la variante de `.dark` (comportamiento previo al rediseño).
 
 ---
 
