@@ -32,7 +32,16 @@ export function InstallWizard() {
         <ThemeToggle />
       </div>
 
-      <div className="w-full max-w-3xl">
+      <div className="relative z-10 w-full max-w-3xl">
+        {/* Halo de marca DETRÁS de la tarjeta: es lo que el vidrio desenfoca.
+            Sin él la tarjeta solo tenía detrás el fondo casi negro y se veía
+            gris (los halos del fondo quedan en las esquinas). `-z-10` dentro
+            de este contenedor (que ya es contexto de apilamiento) lo pinta
+            detrás de la tarjeta pero encima del fondo. */}
+        <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-1/2 -z-10 flex -translate-y-1/2 justify-center">
+          <div className="orb h-[36rem] w-[36rem] animate-pulse-glow text-glow-a/25 dark:text-glow-a/50" />
+          <div className="orb -ml-72 mt-32 h-96 w-96 animate-pulse-glow text-glow-b/20 [animation-delay:-2.5s] dark:text-glow-b/45" />
+        </div>
         <div className="mb-6 flex items-center justify-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-gradient-start to-gradient-end text-btn-text shadow-[0_10px_30px_-8px_rgb(var(--glow-a)/0.7)]">
             <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6">
@@ -45,7 +54,7 @@ export function InstallWizard() {
           </div>
         </div>
 
-        <div className="glass-strong rounded-2xl p-6 ring-1 ring-slate-900/5 sm:p-8 dark:ring-white/10">
+        <div className="glass-strong rounded-2xl p-6 ring-1 ring-slate-900/5 sm:p-8 dark:ring-white/10 dark:[background:linear-gradient(145deg,rgb(255_255_255/0.08),rgb(255_255_255/0.02))]">
           <div className="mb-8">
             <Stepper steps={STEPS} current={step} />
           </div>
