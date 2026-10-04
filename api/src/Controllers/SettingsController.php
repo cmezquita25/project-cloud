@@ -31,8 +31,10 @@ final class SettingsController
         $config['btn_gradient_start'] = $settings->get('btn_gradient_start');
         $config['btn_gradient_end'] = $settings->get('btn_gradient_end');
         $config['btn_text_color'] = $settings->get('btn_text_color');
-        // Estilo base de color; sin clave guardada = preset por defecto (Invicter).
-        $config['theme_preset'] = $settings->get('theme_preset') ?: 'invicter';
+        // Estilo base de color; sin clave guardada = preset por defecto
+        // (Blizzard). Un valor antiguo 'classic' se publica como 'nebula'.
+        $storedPreset = $settings->get('theme_preset');
+        $config['theme_preset'] = ($storedPreset === 'nebula' || $storedPreset === 'classic') ? 'nebula' : 'blizzard';
         $config['ga4_measurement_id'] = $settings->get('ga4_measurement_id');
         $config['ga4_enabled'] = (bool) $settings->getInt('ga4_enabled', 0);
         return Response::success($config);

@@ -10,9 +10,11 @@ interface AvatarProps {
 
 // Paleta determinista de colores de fondo para iniciales.
 const BG_COLORS = [
-  'bg-primary',
-  'bg-success',
-  'bg-danger',
+  // Colores fijos y no tokens: el primario en oscuro es un azul claro y
+  // las iniciales blancas perderían contraste sobre él.
+  'bg-blue-600',
+  'bg-emerald-600',
+  'bg-red-600',
   'bg-[#9334e6]', // púrpura Google
   'bg-[#e8710a]', // naranja Google
   'bg-[#12b5cb]', // cian Google

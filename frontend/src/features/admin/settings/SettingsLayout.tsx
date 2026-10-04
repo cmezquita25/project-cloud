@@ -34,7 +34,7 @@ export function SettingsLayout() {
           ))}
         </nav>
 
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]">
           <Outlet />
         </div>
       </div>

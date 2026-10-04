@@ -31,10 +31,10 @@
     --color-border-strong: 189 193 198; /* #bdc1c6 */
 
     /*
-      Marca — preset Invicter (azul → cian), el de fábrica.
+      Marca — preset Blizzard (azul → cian), el de fábrica.
 
-      El preset «Clásico» (azul → morado, el estilo original de la plataforma)
-      se activa con `data-theme-preset="classic"` en <html> y está más abajo.
+      El preset «Nebula» (azul → morado, el estilo original de la plataforma)
+      se activa con `data-theme-preset="nebula"` en <html> y está más abajo.
       Por encima de los dos siguen ganando los colores personalizados que el
       admin guarda en Apariencia: `usePlatformSettings` los escribe inline en
       <html>, y un estilo inline vence a cualquier regla de esta hoja.
@@ -68,6 +68,14 @@
     --glow-a: var(--color-gradient-start);
     --glow-b: var(--color-gradient-end);
     --glow-c: 79 70 229; /* #4f46e5 indigo-600 */
+
+    /*
+      Color sólido de las casillas marcadas. Token propio y no el primario:
+      el primario en oscuro es un azul claro y el check blanco perdería
+      contraste. Blizzard = azul, Nebula = morado, personalizado = el
+      primario elegido (lo fija usePlatformSettings).
+    */
+    --color-check: 37 99 235; /* #2563eb blue-600 */
 
     /* Texto degradado (más oscuro en claro para que se lea sobre blanco) */
     --text-gradient-from: 37 99 235; /* blue-600 */
@@ -103,10 +111,13 @@
     --color-border: 51 65 85; /* slate-700 */
     --color-border-strong: 71 85 105; /* slate-600 */
 
-    /* Marca — preset Invicter (variante oscura, sobre slate) */
-    --color-primary: 96 165 250; /* #60a5fa blue-400 */
-    --color-primary-hover: 147 197 253; /* #93c5fd blue-300 */
-    --color-primary-active: 191 219 254; /* #bfdbfe blue-200 */
+    /* Marca — preset Blizzard (variante oscura, sobre slate) */
+    /* Más claro que en la landing (blue-400) a propósito: es el color de
+       textos, iconos, badges y activos sobre el vidrio oscuro, y con blue-400
+       algunos quedaban justos de contraste. */
+    --color-primary: 147 197 253; /* #93c5fd blue-300 */
+    --color-primary-hover: 191 219 254; /* #bfdbfe blue-200 */
+    --color-primary-active: 219 234 254; /* #dbeafe blue-100 */
     --color-primary-subtle: 23 37 84; /* #172554 blue-950, fondo de selección */
     --color-primary-on: 15 23 42; /* texto oscuro sobre azul claro */
 
@@ -137,14 +148,14 @@
   }
 
   /*
-    Preset «Clásico»: el estilo original de la plataforma (azul Google →
-    púrpura). Solo redefine lo que cambia respecto a Invicter.
+    Preset «Nebula»: el estilo original de la plataforma (azul Google →
+    púrpura). Solo redefine lo que cambia respecto a Blizzard.
 
     Especificidad: `:root[data-theme-preset]` (0,2,0) gana a `.dark` (0,1,0),
     por eso el bloque oscuro del preset va DESPUÉS y con la misma
     especificidad: así en oscuro gana el suyo y no el claro.
   */
-  :root[data-theme-preset='classic'] {
+  :root[data-theme-preset='nebula'] {
     --color-primary: 26 115 232; /* #1a73e8 */
     --color-primary-hover: 23 101 204; /* #1765cc */
     --color-primary-active: 24 90 188; /* #185abc */
@@ -153,16 +164,17 @@
     --color-gradient-end: 147 51 234; /* #9333ea purple-600 */
     --color-focus: 26 115 232;
     --glow-c: 124 58 237; /* #7c3aed violet-600 */
+    --color-check: 147 51 234; /* #9333ea purple-600 */
     --text-gradient-from: 26 115 232;
     --text-gradient-via: 147 51 234; /* purple-600 */
     --text-gradient-to: 124 58 237; /* violet-600 */
     --scroll-from: 147 197 253; /* blue-300 */
     --scroll-to: 216 180 254; /* purple-300 */
   }
-  .dark[data-theme-preset='classic'] {
-    --color-primary: 138 180 248; /* #8ab4f8 */
-    --color-primary-hover: 158 193 250; /* #9ec1fa */
-    --color-primary-active: 174 203 250; /* #aecbfa */
+  .dark[data-theme-preset='nebula'] {
+    --color-primary: 168 199 250; /* #a8c7fa (más claro que el #8ab4f8 original, por contraste) */
+    --color-primary-hover: 194 215 251; /* #c2d7fb */
+    --color-primary-active: 210 227 252; /* #d2e3fc */
     --color-primary-subtle: 30 58 95;
     --color-focus: 138 180 248;
     --text-gradient-from: 96 165 250; /* blue-400 */
@@ -181,6 +193,7 @@
   #root {
     height: 100%;
   }
+
 
   body {
     @apply bg-canvas text-content-primary font-sans antialiased;

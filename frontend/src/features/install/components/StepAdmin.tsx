@@ -85,7 +85,7 @@ export function StepAdmin({ onBack, onDone }: StepAdminProps) {
       </p>
 
       {error && (
-        <div className="mt-4 rounded-drive border border-danger/40 bg-danger-subtle p-3 text-sm text-danger">
+        <div className="mt-4 rounded-drive border border-danger/40 bg-danger/10 ring-1 ring-inset ring-danger/25 p-3 text-sm text-danger">
           {error}
         </div>
       )}

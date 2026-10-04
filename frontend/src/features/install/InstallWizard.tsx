@@ -24,7 +24,7 @@ export function InstallWizard() {
 
   return (
     // Sin fondo propio: el `AppBackdrop` va en -z-10 y un `bg-*` aquí lo
-    // taparía. Corre antes de que exista la BD: siempre con el preset Invicter.
+    // taparía. Corre antes de que exista la BD: siempre con el preset Blizzard.
     <div className="relative flex min-h-full items-center justify-center p-4">
       <AppBackdrop animated />
       <CursorGlow />

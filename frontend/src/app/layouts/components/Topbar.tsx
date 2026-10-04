@@ -78,7 +78,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
       className={cn(
         'inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[11px] font-medium',
         isAdminRole
-          ? 'bg-danger-subtle text-danger'
+          ? 'bg-danger/10 ring-1 ring-inset ring-danger/25 text-danger'
           : 'bg-primary/10 text-primary'
       )}
     >
@@ -149,7 +149,9 @@ export function Topbar({ onMenuClick }: TopbarProps) {
 
       <div className="flex items-center gap-1">
         <NotificationBell />
-        <ThemeToggle />
+        {/* Contorno de vidrio como el de la campana (en el login y el wizard
+            el botón ya va dentro de su propio círculo glass). */}
+        <ThemeToggle className="h-9 w-9 transition-all duration-300 bg-slate-900/[0.03] ring-1 ring-inset ring-slate-900/10 hover:bg-primary/10 hover:ring-primary/40 hover:text-primary dark:bg-white/[0.04] dark:ring-white/10 dark:hover:bg-primary/15" />
         <div ref={anchor} className="relative ml-1">
           <button
             onClick={account.toggle}

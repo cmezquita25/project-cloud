@@ -1,4 +1,5 @@
 import { Moon, Sun } from 'lucide-react'
+import { cn } from '@shared/lib/cn'
 import { IconButton } from '@shared/ui'
 import { useTheme } from '@app/providers/ThemeProvider'
 
@@ -7,7 +8,7 @@ import { useTheme } from '@app/providers/ThemeProvider'
  * Al entrar sin preferencia guardada se usa la del sistema; si hay una guardada,
  * se recuerda. El icono muestra a qué modo cambiará el próximo clic.
  */
-export function ThemeToggle() {
+export function ThemeToggle({ className }: { className?: string } = {}) {
   const { resolved, toggle } = useTheme()
   const isDark = resolved === 'dark'
 
@@ -16,7 +17,7 @@ export function ThemeToggle() {
       icon={isDark ? Sun : Moon}
       label={isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
       onClick={toggle}
-      className="[&>svg]:animate-theme-icon-in motion-reduce:[&>svg]:animate-none"
+      className={cn('[&>svg]:animate-theme-icon-in motion-reduce:[&>svg]:animate-none', className)}
     />
   )
 }

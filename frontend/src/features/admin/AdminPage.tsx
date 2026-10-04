@@ -294,7 +294,7 @@ export function AdminPage() {
         )}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]">
         {loading ? (
           <div className="flex h-64 items-center justify-center text-content-tertiary">
             <Spinner size={32} />

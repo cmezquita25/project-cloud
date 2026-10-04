@@ -37,7 +37,7 @@ export default {
         border: rgb('--color-border'),
         'border-strong': rgb('--color-border-strong'),
 
-        /* --- Marca (preset Invicter por defecto; ver index.css) --- */
+        /* --- Marca (preset Blizzard por defecto; ver index.css) --- */
         primary: {
           DEFAULT: rgb('--color-primary'),
           hover: rgb('--color-primary-hover'),
@@ -49,6 +49,7 @@ export default {
         /* --- Gradientes --- */
         'gradient-start': rgb('--color-gradient-start'),
         'gradient-end': rgb('--color-gradient-end'),
+        check: rgb('--color-check'), // casillas marcadas (sólido por estilo)
         'btn-text': rgb('--color-btn-text'),
 
         /* --- Halos y brillos (siguen al preset y al white-label) --- */

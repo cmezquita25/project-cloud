@@ -10,13 +10,14 @@ type ColorKey = 'primary_color' | 'btn_gradient_start' | 'btn_gradient_end' | 'b
 
 /**
  * Los dos estilos base. Sus valores son los mismos que definen `index.css`
- * (`:root` para Invicter y `[data-theme-preset='classic']` para Clásico); aquí
+ * (`:root` para Blizzard y `[data-theme-preset='nebula']` para Nebula); aquí
  * solo se usan para mostrarlos en los selectores y en la vista previa.
  */
-const PRESETS: Record<ThemePreset, { label: string; description: string; colors: Record<ColorKey, string> }> = {
-  invicter: {
-    label: 'Invicter',
+const PRESETS: Record<ThemePreset, { label: string; description: string; check: string; colors: Record<ColorKey, string> }> = {
+  blizzard: {
+    label: 'Blizzard',
     description: 'Azul → cian. El estilo de marca por defecto.',
+    check: '#2563eb', // = --color-check de index.css
     colors: {
       primary_color: '#2563eb',
       btn_gradient_start: '#2563eb',
@@ -24,9 +25,10 @@ const PRESETS: Record<ThemePreset, { label: string; description: string; colors:
       btn_text_color: '#ffffff',
     },
   },
-  classic: {
-    label: 'Clásico',
+  nebula: {
+    label: 'Nebula',
     description: 'Azul → morado. El estilo original de la plataforma.',
+    check: '#9333ea', // = --color-check de index.css
     colors: {
       primary_color: '#1a73e8',
       btn_gradient_start: '#1a73e8',
@@ -63,14 +65,14 @@ export function AppearanceSettings() {
   const toast = useToast()
   const loader = useLoader()
 
-  const [preset, setPreset] = useState<ThemePreset>('invicter')
+  const [preset, setPreset] = useState<ThemePreset>('blizzard')
   // `null` = sin personalizar: se usa el color del estilo base.
   const [custom, setCustom] = useState<Record<ColorKey, string | null>>(NO_CUSTOM)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (!settings) return
-    setPreset(settings.theme_preset === 'classic' ? 'classic' : 'invicter')
+    setPreset(settings.theme_preset === 'nebula' ? 'nebula' : 'blizzard')
     setCustom({
       primary_color: settings.primary_color || null,
       btn_gradient_start: settings.btn_gradient_start || null,
@@ -193,7 +195,11 @@ export function AppearanceSettings() {
                     <span className="block text-xs text-content-secondary">{p.description}</span>
                   </span>
                   {selected && (
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-gradient-start to-gradient-end text-btn-text">
+                    // Sólido con el color de check de ESE estilo (como las casillas).
+                    <span
+                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-white"
+                      style={{ backgroundColor: p.check, boxShadow: `0 2px 10px -2px ${p.check}` }}
+                    >
                       <Check size={14} strokeWidth={3} />
                     </span>
                   )}

@@ -205,7 +205,7 @@ export function UserFormDialog({ open, user, onClose, onSaved }: UserFormDialogP
   return (
     <Dialog open={open} onClose={onClose} title={isEdit ? 'Editar usuario' : 'Nuevo usuario'} size="md">
       {error && (
-        <div className="mb-4 rounded-drive border border-danger/40 bg-danger-subtle p-3 text-sm text-danger">
+        <div className="mb-4 rounded-drive border border-danger/40 bg-danger/10 ring-1 ring-inset ring-danger/25 p-3 text-sm text-danger">
           {error}
         </div>
       )}

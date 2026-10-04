@@ -260,7 +260,7 @@ export function SharedItemsBentoCard() {
                     onClick={() => handleRevoke(item.share_id, item.invited_user.display_name)}
                     disabled={revokingId === item.share_id}
                     title="Cancelar compartido"
-                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-danger bg-danger-subtle/50 hover:bg-danger-subtle border border-danger/20 hover:border-danger/40 transition-colors disabled:opacity-50"
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-danger bg-danger/10 hover:bg-danger/10 ring-1 ring-inset ring-danger/25 border border-danger/20 hover:border-danger/40 transition-colors disabled:opacity-50"
                   >
                     {revokingId === item.share_id ? (
                       <Spinner size={12} />

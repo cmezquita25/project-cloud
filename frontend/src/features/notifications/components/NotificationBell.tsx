@@ -80,16 +80,16 @@ export function NotificationBell() {
         ref={buttonRef}
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="relative flex h-9 w-9 items-center justify-center rounded-xl text-content-secondary hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.07] hover:text-content-primary transition-colors focus:outline-none"
+        className="relative flex h-9 w-9 items-center justify-center rounded-xl text-content-secondary transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus bg-slate-900/[0.03] ring-1 ring-inset ring-slate-900/10 hover:bg-primary/10 hover:ring-primary/40 hover:text-primary dark:bg-white/[0.04] dark:ring-white/10 dark:hover:bg-primary/15"
         title="Notificaciones"
         aria-label="Ver notificaciones"
       >
         <Bell size={20} />
         {unreadCount > 0 && (
-          <span className="isolate absolute -top-1 -right-1 flex min-w-[18px] h-4 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold text-white shadow-sm">
+          <span className="isolate absolute -top-1 -right-1 flex min-w-[18px] h-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white shadow-sm">
             {/* Onda de la landing: avisa de pendientes sin hacer parpadear el
                 número (antes `animate-pulse` lo atenuaba y costaba leerlo). */}
-            <span aria-hidden="true" className="absolute inset-0 -z-10 animate-ping-dot rounded-full bg-danger" />
+            <span aria-hidden="true" className="absolute inset-0 -z-10 animate-ping-dot rounded-full bg-red-500" />
             {badgeText}
           </span>
         )}

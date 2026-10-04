@@ -313,7 +313,7 @@ export function ShareDialog({
                             type="button"
                             onClick={() => handleRemoveShare(c.share_id!, c.display_name)}
                             title="Quitar acceso"
-                            className="p-1.5 text-content-tertiary hover:text-danger hover:bg-danger-subtle rounded-lg transition-colors"
+                            className="p-1.5 text-content-tertiary hover:text-danger hover:bg-danger/10 ring-1 ring-inset ring-danger/25 rounded-lg transition-colors"
                           >
                             <Trash2 size={16} />
                           </button>

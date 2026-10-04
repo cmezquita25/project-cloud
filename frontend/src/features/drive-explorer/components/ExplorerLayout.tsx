@@ -537,7 +537,7 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
           </div>
         </div>
 
-        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto max-sm:overflow-visible" onContextMenu={onBackgroundContextMenu}>
+        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto max-sm:overflow-visible [scrollbar-gutter:stable]" onContextMenu={onBackgroundContextMenu}>
           {atRoot && (
             <div className="mb-8 flex flex-col items-center px-2 pt-4 text-center sm:pt-8">
               <h1 className="mb-6 text-2xl font-semibold text-content-primary sm:text-[28px]">
@@ -634,7 +634,7 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
               <Spinner size={32} />
             </div>
           ) : error ? (
-            <div className="my-8 flex flex-col items-center justify-center rounded-drive border border-danger/30 bg-danger-subtle/30 p-8 text-center">
+            <div className="my-8 flex flex-col items-center justify-center rounded-drive border border-danger/30 bg-danger/10 p-8 text-center">
               <AlertTriangle size={48} className="mb-3 text-danger shrink-0" />
               <h2 className="mb-1 text-lg font-semibold text-content-primary">Ubicación no disponible</h2>
               <p className="mb-4 max-w-md text-sm text-content-secondary">{error}</p>

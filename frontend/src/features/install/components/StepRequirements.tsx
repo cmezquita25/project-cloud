@@ -43,7 +43,7 @@ export function StepRequirements({ onNext }: StepRequirementsProps) {
         )}
 
         {error && !loading && (
-          <div className="rounded-drive border border-danger/40 bg-danger-subtle p-4 text-sm text-danger">
+          <div className="rounded-drive border border-danger/40 bg-danger/10 ring-1 ring-inset ring-danger/25 p-4 text-sm text-danger">
             {error}
           </div>
         )}

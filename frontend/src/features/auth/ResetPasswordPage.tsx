@@ -71,7 +71,7 @@ export function ResetPasswordPage() {
   if (tokenState === 'invalid') {
     return (
       <div className="text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-danger-subtle text-danger">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-danger/10 ring-1 ring-inset ring-danger/25 text-danger">
           <XCircle size={24} />
         </div>
         <h1 className="text-2xl font-semibold text-content-primary">Enlace no válido</h1>
@@ -100,7 +100,7 @@ export function ResetPasswordPage() {
       </div>
 
       {error && (
-        <div className="mb-4 rounded-drive border border-danger/40 bg-danger-subtle p-3 text-sm text-danger">
+        <div className="mb-4 rounded-drive border border-danger/40 bg-danger/10 ring-1 ring-inset ring-danger/25 p-3 text-sm text-danger">
           {error}
         </div>
       )}

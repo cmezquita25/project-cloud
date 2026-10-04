@@ -83,7 +83,12 @@ export function AppLayout() {
             `filter` ni `transform`: el recuadro de selección por arrastre es
             `fixed` y vive aquí dentro; cualquiera de ellos lo descolocaría. */}
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-          <main className="min-w-0 flex-1 flex flex-col overflow-y-auto">
+          {/* `scrollbar-gutter: stable` (aquí y en los contenedores con scroll
+              propio: explorador, colecciones, papelera, admin, ajustes): el
+              hueco de la barra queda reservado siempre, así el contenido no
+              salta ~12px al cambiar de página ni cuando una carpeta termina
+              de cargar y desborda. */}
+          <main className="min-w-0 flex-1 flex flex-col overflow-y-auto [scrollbar-gutter:stable]">
             {/* Recibe la animación de entrada (sin `fill`: no deja transform). */}
             <div ref={pageRef} className="mx-auto h-full w-full max-w-[1600px] px-4 py-4 sm:px-6 flex flex-col">
               <Outlet />

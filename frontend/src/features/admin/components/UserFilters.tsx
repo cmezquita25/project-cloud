@@ -165,7 +165,7 @@ export function UserFilters({
             <button
               type="button"
               onClick={onClearFilters}
-              className="h-10 w-full lg:w-auto flex items-center justify-center gap-1.5 rounded-drive px-3.5 text-xs font-medium text-danger bg-danger-subtle/50 hover:bg-danger-subtle transition-all border border-danger/20 hover:border-danger/40"
+              className="h-10 w-full lg:w-auto flex items-center justify-center gap-1.5 rounded-drive px-3.5 text-xs font-medium text-danger bg-danger/10 hover:bg-danger/10 ring-1 ring-inset ring-danger/25 transition-all border border-danger/20 hover:border-danger/40"
             >
               <RotateCcw size={14} />
               <span>Limpiar filtros</span>

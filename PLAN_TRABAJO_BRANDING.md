@@ -433,6 +433,14 @@ Diseño en §3.5. Tres configuraciones: **Invicter** (defecto), **Clásico** (`#
 - ⚠️ **Queda para el usuario:** prueba funcional manual de interacciones que no se pueden automatizar con capturas: selección por arrastre con scroll, drag & drop entre carpetas, subida de archivos, menú contextual y el flujo completo del wizard en una instalación limpia. Medir el cambio de tema en el equipo real.
 - Anotado fuera de alcance: `--color-primary` personalizado se aplica inline y anula también la variante de `.dark` (comportamiento previo al rediseño).
 
+
+### Ajustes posteriores al QA (feedback del usuario)
+- [x] **Sin saltos entre páginas:** `scrollbar-gutter: stable` en todos los contenedores con scroll (main, explorador, colecciones, papelera, admin, ajustes). La plataforma nunca lo tuvo (la landing sí, en `html`); no se pone en `html` porque reservaría el hueco en toda la app.
+- [x] **Presets renombrados:** Invicter → **Blizzard**, Clásico → **Nebula** (UI, valores de API, atributo CSS `data-theme-preset='nebula'`, caché e `index.html`). La API y el front aceptan los nombres antiguos (`invicter`/`classic`) sin migración.
+- [x] **Contraste de azules en oscuro:** primario oscuro de Blizzard → `blue-300` y de Nebula → `#a8c7fa`. El primario **personalizado** ya no se escribe inline (pisaba también `.dark`): va en una hoja `<style id="pc-custom-primary">` con el color tal cual en claro y una versión aclarada (40 % hacia blanco) en oscuro. Avatares y contador de la campana con colores fijos; mensajes y badges rojos de fondo sólido (`bg-danger-subtle`) → tinte translúcido con anillo.
+- [x] **Botones de la barra superior** (notificaciones y tema) con contorno de vidrio y hover de marca.
+- [x] **Casillas marcadas en color sólido** (token `--color-check`): azul en Blizzard, morado en Nebula, el primario elegido si hay personalización; check blanco. La marca de selección de las tarjetas de estilo, igual.
+
 ---
 
 ## 6. Decisiones

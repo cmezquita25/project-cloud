@@ -95,7 +95,7 @@ function SingleItemDetails({ item, copied, onCopyUrl }: { item: DriveItem, copie
         <div className="relative flex h-24 w-24 items-center justify-center rounded-drive bg-slate-900/[0.04] dark:bg-white/[0.05]">
           <Icon size={48} className={cn('opacity-80', className)} strokeWidth={1.5} />
           {item.blocked_actions && item.blocked_actions.length > 0 && (
-            <div className="absolute right-0 top-0 rounded-full bg-danger-subtle p-1.5 text-danger shadow-sm">
+            <div className="absolute right-0 top-0 rounded-full bg-danger/10 ring-1 ring-inset ring-danger/25 p-1.5 text-danger shadow-sm">
               <Lock size={16} />
             </div>
           )}

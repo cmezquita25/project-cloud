@@ -190,13 +190,13 @@ export function TrashPage() {
         </p>
       )}
 
-      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]">
         {isLoading ? (
           <div className="flex h-64 items-center justify-center text-content-tertiary">
             <Spinner size={32} />
           </div>
         ) : errorMessage ? (
-          <div className="rounded-drive border border-danger/40 bg-danger-subtle p-4 text-sm text-danger">
+          <div className="rounded-drive border border-danger/40 bg-danger/10 ring-1 ring-inset ring-danger/25 p-4 text-sm text-danger">
             {errorMessage}
           </div>
         ) : isEmpty ? (

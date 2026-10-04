@@ -14,12 +14,22 @@ interface PlatformSettings {
   btn_gradient_end?: string | null
   btn_text_color?: string | null
   /** Estilo base de color. Los colores personalizados de arriba van encima. */
-  theme_preset?: ThemePreset | null
+  theme_preset?: string | null
   ga4_measurement_id?: string | null
   ga4_enabled?: boolean
 }
 
-export type ThemePreset = 'invicter' | 'classic'
+export type ThemePreset = 'blizzard' | 'nebula'
+
+/**
+ * Normaliza el valor que llega de la API. Acepta los nombres antiguos
+ * (`invicter` → Blizzard, `classic` → Nebula) por si una instalación los
+ * tiene guardados de antes del cambio de nombre.
+ */
+// eslint-disable-next-line react-refresh/only-export-components
+export function normalizeThemePreset(value: string | null | undefined): ThemePreset {
+  return value === 'nebula' || value === 'classic' ? 'nebula' : 'blizzard'
+}
 
 /** Clave de caché local: la lee el script anti-parpadeo de `index.html`. */
 const PRESET_STORAGE_KEY = 'pc-theme-preset'
@@ -27,18 +37,18 @@ const PRESET_STORAGE_KEY = 'pc-theme-preset'
 /**
  * Aplica el estilo base de color en <html>.
  *
- * Invicter es el defecto de `index.css`, así que solo el Clásico necesita el
+ * Blizzard es el defecto de `index.css`, así que solo Nebula necesita el
  * atributo. Se guarda en localStorage para que `index.html` lo aplique antes
- * del primer pintado en la próxima carga; sin eso se vería Invicter un
- * instante y luego saltaría al Clásico al llegar la respuesta de la API.
+ * del primer pintado en la próxima carga; sin eso se vería Blizzard un
+ * instante y luego saltaría a Nebula al llegar la respuesta de la API.
  */
 // eslint-disable-next-line react-refresh/only-export-components
 export function applyThemePreset(preset: ThemePreset | null | undefined) {
   const root = document.documentElement
-  if (preset === 'classic') root.setAttribute('data-theme-preset', 'classic')
+  if (preset === 'nebula') root.setAttribute('data-theme-preset', 'nebula')
   else root.removeAttribute('data-theme-preset')
   try {
-    if (preset === 'classic') localStorage.setItem(PRESET_STORAGE_KEY, 'classic')
+    if (preset === 'nebula') localStorage.setItem(PRESET_STORAGE_KEY, 'nebula')
     else localStorage.removeItem(PRESET_STORAGE_KEY)
   } catch {
     // Almacenamiento bloqueado: el preset igual se aplica en esta carga.
@@ -56,7 +66,7 @@ export function PlatformSettingsProvider({ children }: { children: ReactNode }) 
       .then((data) => {
         if (!active) return
         setSettings(data)
-        applyThemePreset(data.theme_preset)
+        applyThemePreset(normalizeThemePreset(data.theme_preset))
 
         // Título del navegador: "<Organización> - Drive" (o el nombre por defecto).
         document.title = data.organization_name
@@ -95,14 +105,37 @@ export function PlatformSettingsProvider({ children }: { children: ReactNode }) 
           return null
         }
 
-        if (data.primary_color) {
-          const rgb = hexToRgb(data.primary_color)
-          if (rgb) {
-            document.documentElement.style.setProperty('--color-primary', rgb)
+        /*
+          Color primario personalizado, con variante propia para modo oscuro.
+
+          Antes se escribía inline en <html>, y un estilo inline gana también
+          a `.dark`: en oscuro quedaba el mismo azul medio que en claro, con
+          poco contraste sobre el vidrio oscuro (textos, iconos, badges,
+          activos). Ahora va en una hoja de estilos con dos reglas: el color
+          tal cual en claro y una versión aclarada en oscuro. La especificidad
+          (`html:root:root`, `html.dark:root:root`) supera a la de los presets
+          (`:root[data-theme-preset]`), así la personalización sigue mandando.
+        */
+        document.documentElement.style.removeProperty('--color-primary')
+        let customStyle = document.getElementById('pc-custom-primary') as HTMLStyleElement | null
+        const rgb = data.primary_color ? hexToRgb(data.primary_color) : null
+        if (rgb) {
+          // Aclarado para oscuro: mezcla con blanco al 40 %.
+          const light = rgb
+            .split(' ')
+            .map((c) => Math.round(Number(c) + (255 - Number(c)) * 0.4))
+            .join(' ')
+          if (!customStyle) {
+            customStyle = document.createElement('style')
+            customStyle.id = 'pc-custom-primary'
+            document.head.appendChild(customStyle)
           }
+          customStyle.textContent =
+            `html:root:root{--color-primary:${rgb};--color-check:${rgb}}` +
+            `html.dark:root:root{--color-primary:${light}}`
         } else {
-          // Si no hay color primario, limpiamos para que regrese a los defaults de index.css
-          document.documentElement.style.removeProperty('--color-primary')
+          // Sin color personalizado: vuelven los valores del preset (index.css).
+          customStyle?.remove()
         }
 
         if (data.btn_gradient_start) {

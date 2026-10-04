@@ -15,7 +15,7 @@ interface AdminChartsProps {
 /**
  * Lee un token de marca de `index.css` (formato "R G B") como color para
  * ApexCharts, que no entiende la sintaxis con espacios. Así la gráfica sigue
- * al preset (Invicter/Clásico) y a los colores personalizados de Apariencia.
+ * al preset (Blizzard/Nebula) y a los colores personalizados de Apariencia.
  */
 function brandColor(token: string, fallback: string): string {
   if (typeof window === 'undefined') return fallback

@@ -59,7 +59,7 @@ export function ForgotPasswordPage() {
       </div>
 
       {error && (
-        <div className="mb-4 rounded-drive border border-danger/40 bg-danger-subtle p-3 text-sm text-danger">
+        <div className="mb-4 rounded-drive border border-danger/40 bg-danger/10 ring-1 ring-inset ring-danger/25 p-3 text-sm text-danger">
           {error}
         </div>
       )}

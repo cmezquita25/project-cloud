@@ -616,20 +616,22 @@ final class AdminController
             ActivityLogger::log($request, 'settings.update', 'setting', null, ['primary_color' => $primaryColor]);
         }
         
-        // Estilo base de color (branding 2.0): 'invicter' (azul → cian, por
-        // defecto) o 'classic' (azul → morado, el estilo original). Vacío =
-        // se borra la clave y vuelve el defecto. Los colores personalizados
-        // de abajo siguen aplicándose por encima del preset elegido.
+        // Estilo base de color (branding 2.0): 'blizzard' (azul → cian, por
+        // defecto) o 'nebula' (azul → morado, el estilo original). Se aceptan
+        // también los nombres antiguos ('invicter' / 'classic'). Vacío = se
+        // borra la clave y vuelve el defecto. Los colores personalizados de
+        // abajo siguen aplicándose por encima del preset elegido.
         if (array_key_exists('theme_preset', $body)) {
             $preset = strtolower(trim((string) $body['theme_preset']));
-            if ($preset === '' || $preset === 'invicter') {
+            $preset = ['invicter' => 'blizzard', 'classic' => 'nebula'][$preset] ?? $preset;
+            if ($preset === '' || $preset === 'blizzard') {
                 $settings->delete('theme_preset');
-            } elseif ($preset === 'classic') {
+            } elseif ($preset === 'nebula') {
                 $settings->set('theme_preset', $preset);
             } else {
                 throw new HttpException(422, 'INVALID_THEME_PRESET', 'Estilo de color no válido.');
             }
-            ActivityLogger::log($request, 'settings.update', 'setting', null, ['theme_preset' => $preset === '' ? 'invicter' : $preset]);
+            ActivityLogger::log($request, 'settings.update', 'setting', null, ['theme_preset' => $preset === '' ? 'blizzard' : $preset]);
         }
 
         $btnKeys = ['btn_gradient_start', 'btn_gradient_end', 'btn_text_color'];
