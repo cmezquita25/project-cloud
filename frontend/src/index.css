@@ -30,27 +30,56 @@
     --color-border: 218 220 224; /* #dadce0 */
     --color-border-strong: 189 193 198; /* #bdc1c6 */
 
-    /* Marca — azul Google Drive */
-    --color-primary: 26 115 232; /* #1a73e8 */
-    --color-primary-hover: 23 101 204; /* #1765cc */
-    --color-primary-active: 24 90 188; /* #185abc */
-    --color-primary-subtle: 232 240 254; /* #e8f0fe */
+    /*
+      Marca — preset Invicter (azul → cian), el de fábrica.
+
+      El preset «Clásico» (azul → morado, el estilo original de la plataforma)
+      se activa con `data-theme-preset="classic"` en <html> y está más abajo.
+      Por encima de los dos siguen ganando los colores personalizados que el
+      admin guarda en Apariencia: `usePlatformSettings` los escribe inline en
+      <html>, y un estilo inline vence a cualquier regla de esta hoja.
+    */
+    --color-primary: 37 99 235; /* #2563eb blue-600 */
+    --color-primary-hover: 29 78 216; /* #1d4ed8 blue-700 */
+    --color-primary-active: 30 64 175; /* #1e40af blue-800 */
+    --color-primary-subtle: 219 234 254; /* #dbeafe blue-100 */
     --color-primary-on: 255 255 255;
 
     /* Gradientes y Botones */
-    --color-gradient-start: 26 115 232; /* primary */
-    --color-gradient-end: 147 51 234; /* purple-600 */
+    --color-gradient-start: 37 99 235; /* #2563eb blue-600 */
+    --color-gradient-end: 6 182 212; /* #06b6d4 cyan-500 */
     --color-btn-text: 255 255 255; /* text-white */
 
-    /* Funcionales */
-    --color-success: 24 128 56; /* #188038 */
-    --color-warning: 249 171 0; /* #f9ab00 */
-    --color-danger: 217 48 37; /* #d93025 */
-    --color-danger-subtle: 252 232 230; /* #fce8e6 */
+    /* Funcionales (paleta de la landing: emerald / amber / red) */
+    --color-success: 5 150 105; /* #059669 emerald-600 */
+    --color-warning: 245 158 11; /* #f59e0b amber-500 */
+    --color-danger: 220 38 38; /* #dc2626 red-600 */
+    --color-danger-subtle: 254 226 226; /* #fee2e2 red-100 */
     --color-danger-on: 255 255 255;
 
     /* Foco */
-    --color-focus: 26 115 232;
+    --color-focus: 37 99 235;
+
+    /*
+      Halos y brillos. Se derivan de los tokens del degradado, así que siguen
+      al preset y a la personalización sin tener que redefinirlos.
+      `--glow-c` es el tercer halo del fondo, el único que no sale del botón.
+    */
+    --glow-a: var(--color-gradient-start);
+    --glow-b: var(--color-gradient-end);
+    --glow-c: 79 70 229; /* #4f46e5 indigo-600 */
+
+    /* Texto degradado (más oscuro en claro para que se lea sobre blanco) */
+    --text-gradient-from: 37 99 235; /* blue-600 */
+    --text-gradient-via: 8 145 178; /* cyan-600 */
+    --text-gradient-to: 79 70 229; /* indigo-600 */
+
+    /* Scrollbar con degradado de marca */
+    --scroll-from: 147 197 253; /* blue-300 */
+    --scroll-to: 103 232 249; /* cyan-300 */
+
+    /* Curva de las transiciones de la landing */
+    --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 
     color-scheme: light;
   }
@@ -74,29 +103,73 @@
     --color-border: 51 65 85; /* slate-700 */
     --color-border-strong: 71 85 105; /* slate-600 */
 
-    /* Marca — azul Google Drive (variante oscura, sobre slate) */
-    --color-primary: 138 180 248; /* #8ab4f8 */
-    --color-primary-hover: 158 193 250; /* #9ec1fa */
-    --color-primary-active: 174 203 250; /* #aecbfa */
-    --color-primary-subtle: 30 58 95; /* azul profundo para selección */
+    /* Marca — preset Invicter (variante oscura, sobre slate) */
+    --color-primary: 96 165 250; /* #60a5fa blue-400 */
+    --color-primary-hover: 147 197 253; /* #93c5fd blue-300 */
+    --color-primary-active: 191 219 254; /* #bfdbfe blue-200 */
+    --color-primary-subtle: 23 37 84; /* #172554 blue-950, fondo de selección */
     --color-primary-on: 15 23 42; /* texto oscuro sobre azul claro */
 
-    /* Gradientes y Botones */
-    --color-gradient-start: 26 115 232; /* primary (match light mode) */
-    --color-gradient-end: 147 51 234; /* purple-600 (match light mode) */
+    /* Gradientes y Botones (iguales en ambos temas, como el CTA de la landing) */
+    --color-gradient-start: 37 99 235; /* #2563eb blue-600 */
+    --color-gradient-end: 6 182 212; /* #06b6d4 cyan-500 */
     --color-btn-text: 255 255 255; /* text-white */
 
     /* Funcionales */
-    --color-success: 129 201 149; /* #81c995 */
-    --color-warning: 253 214 99; /* #fdd663 */
-    --color-danger: 242 139 130; /* #f28b82 */
-    --color-danger-subtle: 60 31 29; /* #3c1f1d */
+    --color-success: 52 211 153; /* #34d399 emerald-400 */
+    --color-warning: 251 191 36; /* #fbbf24 amber-400 */
+    --color-danger: 248 113 113; /* #f87171 red-400 */
+    --color-danger-subtle: 69 26 26; /* rojo profundo */
     --color-danger-on: 15 23 42;
 
-    /* Foco */
-    --color-focus: 138 180 248;
+    /* Foco: cian, como los campos de la landing */
+    --color-focus: 34 211 238; /* #22d3ee cyan-400 */
+
+    /* Texto degradado (el de la landing tal cual) */
+    --text-gradient-from: 96 165 250; /* blue-400 */
+    --text-gradient-via: 34 211 238; /* cyan-400 */
+    --text-gradient-to: 129 140 248; /* indigo-400 */
+
+    --scroll-from: 29 78 216; /* #1d4ed8 */
+    --scroll-to: 14 116 144; /* #0e7490 */
 
     color-scheme: dark;
+  }
+
+  /*
+    Preset «Clásico»: el estilo original de la plataforma (azul Google →
+    púrpura). Solo redefine lo que cambia respecto a Invicter.
+
+    Especificidad: `:root[data-theme-preset]` (0,2,0) gana a `.dark` (0,1,0),
+    por eso el bloque oscuro del preset va DESPUÉS y con la misma
+    especificidad: así en oscuro gana el suyo y no el claro.
+  */
+  :root[data-theme-preset='classic'] {
+    --color-primary: 26 115 232; /* #1a73e8 */
+    --color-primary-hover: 23 101 204; /* #1765cc */
+    --color-primary-active: 24 90 188; /* #185abc */
+    --color-primary-subtle: 232 240 254; /* #e8f0fe */
+    --color-gradient-start: 26 115 232; /* #1a73e8 */
+    --color-gradient-end: 147 51 234; /* #9333ea purple-600 */
+    --color-focus: 26 115 232;
+    --glow-c: 124 58 237; /* #7c3aed violet-600 */
+    --text-gradient-from: 26 115 232;
+    --text-gradient-via: 147 51 234; /* purple-600 */
+    --text-gradient-to: 124 58 237; /* violet-600 */
+    --scroll-from: 147 197 253; /* blue-300 */
+    --scroll-to: 216 180 254; /* purple-300 */
+  }
+  .dark[data-theme-preset='classic'] {
+    --color-primary: 138 180 248; /* #8ab4f8 */
+    --color-primary-hover: 158 193 250; /* #9ec1fa */
+    --color-primary-active: 174 203 250; /* #aecbfa */
+    --color-primary-subtle: 30 58 95;
+    --color-focus: 138 180 248;
+    --text-gradient-from: 96 165 250; /* blue-400 */
+    --text-gradient-via: 192 132 252; /* purple-400 */
+    --text-gradient-to: 167 139 250; /* violet-400 */
+    --scroll-from: 29 78 216; /* #1d4ed8 */
+    --scroll-to: 126 34 206; /* #7e22ce */
   }
 
   * {
@@ -140,14 +213,282 @@
     width: 12px;
     height: 12px;
   }
+  /* Thumb con el degradado de marca (como la landing). Firefox no admite
+     degradados en la barra: se queda con el `scrollbar-color` de arriba. */
   *::-webkit-scrollbar-thumb {
-    background-color: rgb(var(--color-border-strong));
+    background-image: linear-gradient(180deg, rgb(var(--scroll-from)), rgb(var(--scroll-to)));
     border-radius: 9999px;
     border: 3px solid transparent;
     background-clip: content-box;
   }
   *::-webkit-scrollbar-thumb:hover {
-    background-color: rgb(var(--color-content-tertiary));
+    filter: brightness(1.15);
+  }
+
+  ::selection {
+    background: rgb(var(--glow-a) / 0.2);
+    color: rgb(30 58 138); /* blue-900 */
+  }
+  .dark ::selection {
+    background: rgb(var(--glow-a) / 0.55);
+    color: #fff;
+  }
+
+  /*
+    Popup del <select> nativo. El control lleva sus propias clases; lo que no
+    hereda nada es la lista de opciones, que con fondos translúcidos cae al
+    blanco del sistema. Se fija un fondo sólido por tema.
+  */
+  select option {
+    background-color: rgb(var(--color-surface));
+    color: rgb(var(--color-content-primary));
+  }
+}
+
+/*
+ * ============================================================================
+ *  SISTEMA VISUAL INVICTER — superficies glass, degradados y halos
+ *  Portado de la landing (`landing-ecosistema-invicter/src/index.css`).
+ *
+ *  Diferencias con el original:
+ *   - Aquí el tema CLARO es la base y `.dark` el override (la landing es al
+ *     revés, con `html.is-light`).
+ *   - Ninguna clase fija `border-radius`: los radios son los de la plataforma.
+ *   - Los colores de marca salen de tokens, para respetar presets y white-label.
+ *
+ *  Al ir en `@layer components`, cualquier utilidad de Tailwind en el mismo
+ *  elemento gana (p. ej. `bg-surface`): al aplicar `glass` hay que retirar el
+ *  fondo y el borde sólidos que tuviera el componente.
+ *
+ *  ⚠️ `backdrop-filter` convierte al elemento en bloque contenedor de sus
+ *  hijos `position: fixed` y en nuevo contexto de apilamiento. Nunca se pone
+ *  en contenedores de vista (main, ExplorerLayout, ItemCollection): el
+ *  recuadro de selección por arrastre es `fixed` y vive dentro de ellos.
+ * ============================================================================
+ */
+@layer components {
+  /* ---------- Superficies glass (claro por defecto) ---------- */
+  .glass {
+    border: 1px solid rgb(15 23 42 / 0.08);
+    background: linear-gradient(145deg, rgb(255 255 255 / 0.92), rgb(255 255 255 / 0.72));
+    box-shadow: 0 8px 30px rgb(15 23 42 / 0.06);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+  .glass-strong {
+    border: 1px solid rgb(15 23 42 / 0.1);
+    background: linear-gradient(145deg, rgb(255 255 255 / 0.97), rgb(255 255 255 / 0.82));
+    box-shadow: 0 12px 40px rgb(15 23 42 / 0.08);
+    backdrop-filter: blur(28px);
+    -webkit-backdrop-filter: blur(28px);
+  }
+  .glass-subtle {
+    border: 1px solid rgb(15 23 42 / 0.06);
+    background: rgb(255 255 255 / 0.55);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  /*
+    Capas que se abren encima del contenido (menús, selects, bottom sheets,
+    tooltips). Casi opaca: tiene que leerse desde el primer frame, y
+    `backdrop-filter` tarda en rasterizar.
+  */
+  .glass-panel {
+    border: 1px solid rgb(15 23 42 / 0.1);
+    background: rgb(255 255 255 / 0.97);
+    box-shadow: 0 12px 40px rgb(15 23 42 / 0.1);
+    backdrop-filter: blur(28px);
+    -webkit-backdrop-filter: blur(28px);
+  }
+  /*
+    Mismo aspecto que `.glass` pero SIN desenfoque. Para elementos que se
+    repiten por cientos (tarjetas y filas del explorador, tablas): con
+    `backdrop-filter` en cada uno el scroll se hunde, sobre todo en Safari.
+  */
+  .glass-lite {
+    border: 1px solid rgb(15 23 42 / 0.08);
+    background: linear-gradient(145deg, rgb(255 255 255 / 0.9), rgb(255 255 255 / 0.7));
+  }
+
+  .glass,
+  .glass-strong,
+  .glass-subtle,
+  .glass-panel,
+  .glass-lite {
+    transition:
+      background 0.5s ease,
+      border-color 0.5s ease;
+  }
+
+  .dark .glass {
+    border-color: rgb(255 255 255 / 0.1);
+    background: linear-gradient(145deg, rgb(255 255 255 / 0.07), rgb(255 255 255 / 0.02));
+    box-shadow: none;
+  }
+  .dark .glass-strong {
+    border-color: rgb(255 255 255 / 0.12);
+    background: linear-gradient(145deg, rgb(255 255 255 / 0.1), rgb(255 255 255 / 0.03));
+    box-shadow: 0 25px 80px -15px rgb(2 6 23 / 0.9);
+  }
+  .dark .glass-subtle {
+    border-color: rgb(255 255 255 / 0.07);
+    background: rgb(255 255 255 / 0.03);
+  }
+  .dark .glass-panel {
+    border-color: rgb(255 255 255 / 0.12);
+    background: rgb(9 14 30 / 0.96);
+    box-shadow: 0 25px 80px -15px rgb(2 6 23 / 0.9);
+  }
+  .dark .glass-lite {
+    border-color: rgb(255 255 255 / 0.08);
+    background: linear-gradient(145deg, rgb(255 255 255 / 0.06), rgb(255 255 255 / 0.02));
+  }
+
+  /* Hover con borde de marca y halo. Se combina con cualquier `.glass*`. */
+  .glass-hover {
+    transition:
+      border-color 0.5s var(--ease-out-expo),
+      transform 0.5s var(--ease-out-expo),
+      box-shadow 0.5s var(--ease-out-expo),
+      background 0.5s ease;
+  }
+  .glass-hover:hover {
+    border-color: rgb(var(--color-primary) / 0.35);
+    box-shadow:
+      0 24px 70px -24px rgb(var(--glow-a) / 0.35),
+      inset 0 1px 0 rgb(255 255 255 / 0.9);
+  }
+  .dark .glass-hover:hover {
+    border-color: rgb(var(--color-primary) / 0.45);
+    box-shadow:
+      0 20px 60px -20px rgb(var(--glow-a) / 0.45),
+      inset 0 1px 0 rgb(255 255 255 / 0.1);
+  }
+
+  /* ---------- Campos de formulario ---------- */
+  .input-glass {
+    border: 1px solid rgb(15 23 42 / 0.1);
+    background-color: rgb(15 23 42 / 0.03);
+    transition:
+      border-color 0.3s ease,
+      box-shadow 0.3s ease,
+      background-color 0.3s ease;
+  }
+  .dark .input-glass {
+    border-color: rgb(255 255 255 / 0.1);
+    background-color: rgb(255 255 255 / 0.04);
+  }
+
+  /* ---------- Botón primario: halo de marca ---------- */
+  .btn-glow {
+    box-shadow:
+      0 10px 40px -10px rgb(var(--glow-a) / 0.7),
+      0 4px 16px -4px rgb(var(--glow-b) / 0.4);
+    transition:
+      transform 0.4s var(--ease-out-expo),
+      box-shadow 0.4s var(--ease-out-expo),
+      filter 0.4s,
+      background-position 0.6s var(--ease-out-expo);
+  }
+  .btn-glow:hover {
+    transform: translateY(-2px) scale(1.02);
+    filter: brightness(1.08);
+    box-shadow:
+      0 18px 55px -12px rgb(var(--glow-a) / 0.85),
+      0 6px 22px -4px rgb(var(--glow-b) / 0.5);
+  }
+  .btn-glow:active {
+    transform: translateY(0) scale(0.99);
+  }
+
+  /* ---------- Texto degradado ---------- */
+  .text-gradient {
+    background: linear-gradient(
+      100deg,
+      rgb(var(--text-gradient-from)) 0%,
+      rgb(var(--text-gradient-via)) 45%,
+      rgb(var(--text-gradient-to)) 100%
+    );
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+
+  /* ---------- Rejilla técnica del fondo ---------- */
+  .grid-surface {
+    background-image:
+      linear-gradient(to right, rgb(100 116 139 / 0.1) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(100 116 139 / 0.1) 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 40%, transparent 100%);
+    -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 40%, transparent 100%);
+  }
+  .dark .grid-surface {
+    background-image:
+      linear-gradient(to right, rgb(148 163 184 / 0.055) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(148 163 184 / 0.055) 1px, transparent 1px);
+  }
+
+  /*
+    Halo de luz SIN `filter: blur()`: un degradado radial que toma el color de
+    `currentColor` (se elige con `text-glow-a/25`, etc.). La landing midió que
+    los círculos con `blur-3xl` dejaban Safari en 14 fps; esto es un relleno,
+    no un filtro, y no cuesta nada.
+  */
+  .orb {
+    border-radius: 9999px;
+    background-image: radial-gradient(closest-side, currentColor, transparent);
+  }
+}
+
+@layer utilities {
+  /* Foco de campo: borde y anillo con el color de foco (cian en oscuro). */
+  .ring-glow-focus:focus,
+  .ring-glow-focus:focus-within {
+    outline: none;
+    border-color: rgb(var(--color-focus) / 0.6);
+    box-shadow: 0 0 0 2px rgb(var(--color-focus) / 0.25);
+  }
+
+  /* Brillo radial que sigue al cursor (solo login, escritorio). */
+  .cursor-glow {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(
+      600px circle at var(--mx, 50%) var(--my, 0%),
+      rgb(var(--glow-a) / 0.07),
+      transparent 65%
+    );
+  }
+  .dark .cursor-glow {
+    background: radial-gradient(
+      600px circle at var(--mx, 50%) var(--my, 0%),
+      rgb(var(--glow-a) / 0.12),
+      transparent 65%
+    );
+  }
+  @media (hover: none), (max-width: 767px) {
+    .cursor-glow {
+      display: none;
+    }
+  }
+
+  /* Las animaciones nuevas se apagan con movimiento reducido. */
+  @media (prefers-reduced-motion: reduce) {
+    .animate-aurora-drift,
+    .animate-gradient-x,
+    .animate-shimmer,
+    .animate-pulse-glow,
+    .animate-ping-dot {
+      animation: none !important;
+    }
+    .btn-glow:hover,
+    .glass-hover:hover {
+      transform: none;
+    }
   }
 }
 

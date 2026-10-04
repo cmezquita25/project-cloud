@@ -261,14 +261,17 @@ Si prefieres que *Clásico* sea **morado violeta** en lugar del púrpura actual 
 - [ ] Inventario final de hex en duro (`grep -rE "#[0-9a-fA-F]{6}" src`) clasificado en *se cambia* / *no se toca* (iconos por tipo de archivo, plantillas de email).
 - [ ] Decisiones cerradas (§6): nada pendiente.
 
-### Fase 1: Tokens y utilidades base
+### Fase 1: Tokens y utilidades base ✅ (completada)
 **Archivos:** `src/index.css`, `tailwind.config.ts`, `index.html` (meta `theme-color`).
-- [ ] Añadir tokens `--c-*`, `--glass-*` y `--glow-*` (§3.1).
-- [ ] Actualizar los valores por defecto de marca al preset Invicter.
-- [ ] Portar `.glass`, `.glass-strong`, `.glass-subtle`, `.glass-panel`, `.glass-hover`, `.glass-lite`, `.btn-glow`, `.text-gradient`, `.orb`, `.grid-surface`, `.input-glass` (§3.2), invertidas para `.dark`.
-- [ ] Keyframes y animaciones de la landing en Tailwind + `prefers-reduced-motion`.
-- [ ] Scrollbar con degradado de marca, `::selection` azul, regla para `<select>` nativo (R8).
-- **Resultado visible:** mínimo (scrollbar, selección). Nada se rompe porque nada usa aún las clases.
+- [x] Tokens de halo `--glow-a/b/c`, texto degradado `--text-gradient-*`, scrollbar `--scroll-*` y `--ease-out-expo` (§3.1). Los colores del glass quedaron como valores directos en cada clase (claro + `.dark`) en vez de tokens `--glass-*`: se leen mejor y no los cambia ningún preset.
+- [x] Valores por defecto de marca → preset Invicter (claro y oscuro), estados emerald/amber/red (D7).
+- [x] Preset Clásico en CSS: `:root[data-theme-preset='classic']` y `.dark[data-theme-preset='classic']`. Falta conectarlo (atributo en `<html>`, API, Apariencia) en la Fase 6.
+- [x] Portadas `.glass`, `.glass-strong`, `.glass-subtle`, `.glass-panel`, `.glass-hover`, `.glass-lite`, `.input-glass`, `.btn-glow`, `.text-gradient`, `.orb`, `.grid-surface`, más las utilidades `.ring-glow-focus` y `.cursor-glow`. Ninguna fija `border-radius` (salvo `.orb`, que es un círculo decorativo).
+- [x] Keyframes `aurora-drift`, `gradient-x`, `shimmer`, `pulse-glow`, `ping-dot` + curva `ease-out-expo`; se apagan con `prefers-reduced-motion`.
+- [x] Scrollbar con degradado de marca, `::selection`, fondo sólido de `<option>` (R8), `theme-color` por tema.
+- **Resultado visible:** cambia el color de marca en toda la app (azul Google → azul Invicter; el degradado del botón primario pasa de azul → morado a azul → cian), los colores de estado, la scrollbar y la selección. Las clases glass aún no se usan, así que Tailwind todavía no las incluye en el CSS compilado.
+- **Ojo:** si en la base de datos ya hay colores guardados en *Apariencia*, siguen ganando (inline) y no se verá el cambio de marca hasta pulsar *Restaurar*.
+- **Verificado:** `npm run build` (`tsc -b` + Vite) sin errores.
 
 ### Fase 2: Fondo y marco de la app
 **Archivos:** nuevo `shared/ui/AppBackdrop.tsx`, `AppLayout.tsx`, `AuthLayout.tsx`, `Topbar.tsx`, `Sidebar.tsx`, `Footer.tsx`.

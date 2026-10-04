@@ -37,7 +37,7 @@ export default {
         border: rgb('--color-border'),
         'border-strong': rgb('--color-border-strong'),
 
-        /* --- Marca (azul Google Drive) --- */
+        /* --- Marca (preset Invicter por defecto; ver index.css) --- */
         primary: {
           DEFAULT: rgb('--color-primary'),
           hover: rgb('--color-primary-hover'),
@@ -51,11 +51,16 @@ export default {
         'gradient-end': rgb('--color-gradient-end'),
         'btn-text': rgb('--color-btn-text'),
 
-        /* --- Colores funcionales Google --- */
-        success: rgb('--color-success'), // verde  #188038
-        warning: rgb('--color-warning'), // amarillo #fbbc04
+        /* --- Halos y brillos (siguen al preset y al white-label) --- */
+        'glow-a': rgb('--glow-a'),
+        'glow-b': rgb('--glow-b'),
+        'glow-c': rgb('--glow-c'),
+
+        /* --- Colores funcionales (emerald / amber / red de la landing) --- */
+        success: rgb('--color-success'),
+        warning: rgb('--color-warning'),
         danger: {
-          DEFAULT: rgb('--color-danger'), // rojo #d93025
+          DEFAULT: rgb('--color-danger'),
           subtle: rgb('--color-danger-subtle'),
           on: rgb('--color-danger-on'),
         },
@@ -137,6 +142,31 @@ export default {
           from: { transform: 'translateX(0)' },
           to: { transform: 'translateX(-100%)' },
         },
+        /* --- Sistema visual Invicter (portado de la landing) --- */
+        'aurora-drift': {
+          '0%, 100%': { transform: 'translate3d(0, 0, 0) scale(1) rotate(0deg)' },
+          '33%': { transform: 'translate3d(6%, -8%, 0) scale(1.15) rotate(30deg)' },
+          '66%': { transform: 'translate3d(-5%, 5%, 0) scale(0.95) rotate(-20deg)' },
+        },
+        'gradient-x': {
+          '0%, 100%': { backgroundPosition: '0% 50%' },
+          '50%': { backgroundPosition: '100% 50%' },
+        },
+        shimmer: {
+          '0%': { backgroundPosition: '-200% 0' },
+          '100%': { backgroundPosition: '200% 0' },
+        },
+        'pulse-glow': {
+          '0%, 100%': { opacity: '0.55', transform: 'scale(1)' },
+          '50%': { opacity: '0.9', transform: 'scale(1.08)' },
+        },
+        'ping-dot': {
+          '0%': { transform: 'scale(1)', opacity: '0.9' },
+          '75%, 100%': { transform: 'scale(2.4)', opacity: '0' },
+        },
+      },
+      transitionTimingFunction: {
+        'out-expo': 'cubic-bezier(0.16, 1, 0.3, 1)',
       },
       animation: {
         'fade-in': 'fade-in 150ms ease-out',
@@ -146,6 +176,11 @@ export default {
         'slide-in-right': 'slide-in-right 240ms cubic-bezier(0.32, 0.72, 0, 1)',
         'slide-in-left': 'slide-in-left 240ms cubic-bezier(0.32, 0.72, 0, 1)',
         'slide-out-left': 'slide-out-left 240ms cubic-bezier(0.32, 0.72, 0, 1) forwards',
+        'aurora-drift': 'aurora-drift 18s ease-in-out infinite',
+        'gradient-x': 'gradient-x 6s ease infinite',
+        shimmer: 'shimmer 2.5s linear infinite',
+        'pulse-glow': 'pulse-glow 5s ease-in-out infinite',
+        'ping-dot': 'ping-dot 1.8s cubic-bezier(0, 0, 0.2, 1) infinite',
       },
     },
   },
