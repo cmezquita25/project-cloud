@@ -1,3 +1,0 @@
-Base: drive_techmaleon_
-Usuario: drive_techmaleon_admin
-Contraseña: I@Zshm4b2ht^dT5y
