@@ -119,17 +119,17 @@ export function SharedItemsBentoCard() {
   }
 
   return (
-    <div className="rounded-drive border border-border bg-surface p-6 shadow-sm space-y-4">
+    <div className="rounded-drive glass p-6 space-y-4">
       {/* Header Bento */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-subtle text-primary">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
             <Users size={20} />
           </span>
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-lg font-medium text-content-primary">Elementos compartidos</h2>
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-subtle text-primary border border-primary/20">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20">
                 {items.length} {items.length === 1 ? 'otorgado' : 'otorgados'}
               </span>
             </div>
@@ -149,7 +149,7 @@ export function SharedItemsBentoCard() {
                 placeholder="Buscar compartido..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-8 w-full rounded-lg border border-border bg-surface pl-8 pr-7 text-xs text-content-primary placeholder:text-content-tertiary focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                className="h-8 w-full rounded-lg input-glass ring-glow-focus pl-8 pr-7 text-xs text-content-primary placeholder:text-content-tertiary"
               />
               {search && (
                 <button
@@ -162,7 +162,7 @@ export function SharedItemsBentoCard() {
               )}
             </div>
 
-            <div className="flex items-center gap-1 bg-surface-hover/60 p-1 rounded-lg border border-border/60 text-xs">
+            <div className="flex items-center gap-1 bg-slate-900/[0.06] dark:bg-white/[0.08] p-1 rounded-lg border border-border/60 text-xs">
               {(['all', 'unit', 'folder', 'file'] as const).map((t) => (
                 <button
                   key={t}
@@ -171,7 +171,7 @@ export function SharedItemsBentoCard() {
                   className={cn(
                     'px-2.5 py-1 rounded-md font-medium transition-colors capitalize',
                     filterType === t
-                      ? 'bg-surface text-primary shadow-xs font-semibold'
+                      ? 'bg-white text-primary shadow-sm font-semibold dark:bg-white/[0.12]'
                       : 'text-content-secondary hover:text-content-primary'
                   )}
                 >
@@ -189,7 +189,7 @@ export function SharedItemsBentoCard() {
           <Spinner size={28} />
         </div>
       ) : items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-10 px-4 text-center rounded-xl border border-dashed border-border/80 bg-surface-hover/30">
+        <div className="flex flex-col items-center justify-center py-10 px-4 text-center rounded-xl border border-dashed border-border/80 bg-slate-900/[0.06] dark:bg-white/[0.08]">
           <Users size={36} className="text-content-tertiary opacity-40 mb-2" />
           <p className="text-sm font-medium text-content-primary">No has compartido elementos aún</p>
           <p className="text-xs text-content-secondary max-w-sm mt-1">
@@ -209,7 +209,7 @@ export function SharedItemsBentoCard() {
             return (
               <div
                 key={item.share_id}
-                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3 transition-colors hover:bg-surface-hover/40 px-2 rounded-xl"
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3 transition-colors hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.07] px-2 rounded-xl"
               >
                 {/* 1. Recurso */}
                 <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -249,7 +249,7 @@ export function SharedItemsBentoCard() {
                   <select
                     value={item.permission_level}
                     onChange={(e) => handleUpdatePermission(item.share_id, e.target.value as 'read' | 'full')}
-                    className="text-xs bg-surface border border-border rounded-lg px-2.5 py-1.5 text-content-primary focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer"
+                    className="input-glass ring-glow-focus text-xs rounded-lg px-2.5 py-1.5 text-content-primary cursor-pointer"
                   >
                     <option value="read">Solo lectura</option>
                     <option value="full">Control total</option>

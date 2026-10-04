@@ -25,15 +25,15 @@ export function Stepper({ steps, current }: StepperProps) {
               <span
                 className={cn(
                   'h-0.5 flex-1 rounded-full transition-colors',
-                  i === 0 ? 'invisible' : done || active ? 'bg-primary' : 'bg-border'
+                  i === 0 ? 'invisible' : done || active ? 'bg-gradient-to-r from-gradient-start to-gradient-end' : 'bg-slate-900/10 dark:bg-white/10'
                 )}
               />
               <span
                 className={cn(
                   'flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-medium transition-colors',
-                  done && 'bg-primary text-primary-on',
-                  active && 'bg-primary text-primary-on ring-4 ring-primary-subtle',
-                  !done && !active && 'bg-surface-hover text-content-tertiary'
+                  done && 'bg-gradient-to-r from-gradient-start to-gradient-end text-btn-text',
+                  active && 'bg-gradient-to-r from-gradient-start to-gradient-end text-btn-text ring-4 ring-primary/20 shadow-[0_6px_20px_-6px_rgb(var(--glow-a)/0.7)]',
+                  !done && !active && 'bg-slate-900/[0.06] dark:bg-white/[0.08] text-content-tertiary'
                 )}
               >
                 {done ? <Check size={16} strokeWidth={3} /> : i + 1}
@@ -41,7 +41,7 @@ export function Stepper({ steps, current }: StepperProps) {
               <span
                 className={cn(
                   'h-0.5 flex-1 rounded-full transition-colors',
-                  i === last ? 'invisible' : done ? 'bg-primary' : 'bg-border'
+                  i === last ? 'invisible' : done ? 'bg-gradient-to-r from-gradient-start to-gradient-end' : 'bg-slate-900/10 dark:bg-white/10'
                 )}
               />
             </div>

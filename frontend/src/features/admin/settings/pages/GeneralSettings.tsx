@@ -63,7 +63,7 @@ export function GeneralSettings() {
       </div>
 
       {/* Card 1: Datos de la organización */}
-      <div className="space-y-4 rounded-drive border border-border bg-surface p-5 shadow-sm">
+      <div className="space-y-4 rounded-drive glass p-5">
         <h3 className="text-base font-medium text-content-primary">Datos de la organización</h3>
         <p className="text-xs text-content-secondary -mt-2">
           Personaliza la identidad visual y marca de tu nube.
@@ -87,7 +87,7 @@ export function GeneralSettings() {
             placeholder="Ej. Tu nube privada y segura"
             value={slogan}
             onChange={(e) => setSlogan(e.target.value)}
-            className="w-full resize-none rounded-drive border border-border-strong bg-surface px-3.5 py-2.5 text-content-primary placeholder:text-content-tertiary transition-colors focus:border-transparent focus:outline-none focus:ring-2 focus:ring-focus"
+            className="w-full resize-none rounded-drive input-glass ring-glow-focus px-3.5 py-2.5 text-content-primary placeholder:text-content-tertiary"
           />
           <p className="text-xs text-content-tertiary">
             Se muestra bajo el logo en la pantalla de inicio de sesión. {slogan.length}/{SLOGAN_MAX}
@@ -102,7 +102,7 @@ export function GeneralSettings() {
       </div>
 
       {/* Card 2: Soporte e información del sistema */}
-      <div className="space-y-5 rounded-drive border border-border bg-surface p-5 shadow-sm">
+      <div className="space-y-5 rounded-drive glass p-5">
         <div className="space-y-1">
           <h3 className="text-base font-medium text-content-primary">Soporte e información de la plataforma</h3>
           <p className="text-xs text-content-secondary">
@@ -134,7 +134,7 @@ export function GeneralSettings() {
           <h4 className="text-xs font-semibold text-content-secondary uppercase tracking-wider">
             Información del sistema
           </h4>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 rounded-lg bg-surface-container/50 p-4 border border-border/40">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 rounded-lg bg-slate-900/[0.04] dark:bg-white/[0.05] p-4 border border-border/40">
             <div>
               <p className="text-xs text-content-tertiary">Desarrollado por</p>
               <p className="text-sm font-medium text-content-primary">Carlos Mezquita Alvarado</p>

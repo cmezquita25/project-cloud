@@ -85,7 +85,7 @@ export function IntegrationsSettings() {
           </h3>
         </div>
 
-        <div className="rounded-drive border border-border bg-surface shadow-sm transition-all hover:border-border-hover overflow-hidden">
+        <div className="rounded-drive glass transition-all hover:border-border-hover overflow-hidden">
           <div className="p-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="flex items-start gap-4">
@@ -149,7 +149,7 @@ export function IntegrationsSettings() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Card 1: Google Tag Manager */}
-          <div className="rounded-drive border border-border bg-surface p-5 opacity-90 transition-all hover:border-border-hover">
+          <div className="rounded-drive glass p-5 opacity-90 transition-all hover:border-border-hover">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-500">
@@ -160,7 +160,7 @@ export function IntegrationsSettings() {
                   <p className="text-xs text-content-tertiary">Gestor centralizado de contenedores</p>
                 </div>
               </div>
-              <span className="rounded-full bg-primary-subtle px-2.5 py-0.5 text-xs font-medium text-primary">
+              <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
                 Próximamente
               </span>
             </div>
@@ -170,7 +170,7 @@ export function IntegrationsSettings() {
           </div>
 
           {/* Card 2: Webhooks HTTP */}
-          <div className="rounded-drive border border-border bg-surface p-5 opacity-90 transition-all hover:border-border-hover">
+          <div className="rounded-drive glass p-5 opacity-90 transition-all hover:border-border-hover">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-500/10 text-purple-500">
@@ -181,7 +181,7 @@ export function IntegrationsSettings() {
                   <p className="text-xs text-content-tertiary">Slack, Zapier, Make & n8n</p>
                 </div>
               </div>
-              <span className="rounded-full bg-primary-subtle px-2.5 py-0.5 text-xs font-medium text-primary">
+              <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
                 Próximamente
               </span>
             </div>
@@ -191,7 +191,7 @@ export function IntegrationsSettings() {
           </div>
 
           {/* Card 3: Monitoreo Sentry */}
-          <div className="rounded-drive border border-border bg-surface p-5 opacity-90 transition-all hover:border-border-hover">
+          <div className="rounded-drive glass p-5 opacity-90 transition-all hover:border-border-hover">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/10 text-red-500">
@@ -202,7 +202,7 @@ export function IntegrationsSettings() {
                   <p className="text-xs text-content-tertiary">Telemetría de excepciones en tiempo real</p>
                 </div>
               </div>
-              <span className="rounded-full bg-primary-subtle px-2.5 py-0.5 text-xs font-medium text-primary">
+              <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
                 Próximamente
               </span>
             </div>
@@ -212,7 +212,7 @@ export function IntegrationsSettings() {
           </div>
 
           {/* Card 4: Notificaciones Telegram */}
-          <div className="rounded-drive border border-border bg-surface p-5 opacity-90 transition-all hover:border-border-hover">
+          <div className="rounded-drive glass p-5 opacity-90 transition-all hover:border-border-hover">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/10 text-sky-500">
@@ -223,7 +223,7 @@ export function IntegrationsSettings() {
                   <p className="text-xs text-content-tertiary">Alertas críticas instantáneas</p>
                 </div>
               </div>
-              <span className="rounded-full bg-primary-subtle px-2.5 py-0.5 text-xs font-medium text-primary">
+              <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
                 Próximamente
               </span>
             </div>

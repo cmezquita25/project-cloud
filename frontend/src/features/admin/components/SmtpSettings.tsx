@@ -114,9 +114,9 @@ export function SmtpSettings() {
   }
 
   return (
-    <div className="rounded-drive border border-border bg-surface p-5">
+    <div className="rounded-drive glass p-5">
       <div className="mb-4 flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-subtle text-primary">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
           <Mail size={20} />
         </div>
         <div>
@@ -152,7 +152,7 @@ export function SmtpSettings() {
           <Select
             value={form.encryption}
             onChange={(val) => onEncryptionChange(val as SmtpEncryption)}
-            className="h-10 w-full rounded-drive border border-border bg-surface px-3 text-sm text-content-primary outline-none focus:border-primary focus:ring-2 focus:ring-focus"
+            className="h-10 w-full rounded-drive input-glass ring-glow-focus px-3 text-sm text-content-primary"
             options={ENCRYPTIONS}
           />
         </div>
@@ -206,7 +206,7 @@ export function SmtpSettings() {
         </Button>
       </div>
 
-      <div className="mt-4 rounded-drive border border-border bg-surface-container p-3">
+      <div className="mt-4 rounded-drive border border-border bg-slate-900/[0.04] dark:bg-white/[0.05] p-3">
         <p className="mb-2 text-sm font-medium text-content-secondary">Enviar correo de prueba</p>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <div className="flex-1">

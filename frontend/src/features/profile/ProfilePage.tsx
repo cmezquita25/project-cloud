@@ -108,7 +108,7 @@ export function ProfilePage() {
       {/* Título de la página */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-normal text-content-primary">Mi perfil</h1>
+          <h1 className="text-2xl font-semibold text-content-primary">Mi perfil</h1>
           <p className="mt-1 text-sm text-content-secondary">
             Administra la información de tu cuenta, seguridad y almacenamiento.
           </p>
@@ -118,7 +118,7 @@ export function ProfilePage() {
       {/* Grid Bento Principal */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         {/* Bento 1: Tarjeta de Identidad (Header - Col 12) */}
-        <div className="lg:col-span-12 rounded-drive border border-border bg-surface p-6 shadow-sm transition-all hover:border-border-strong">
+        <div className="lg:col-span-12 rounded-drive glass p-6 transition-all hover:border-border-strong">
           <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-5">
               <div className="relative shrink-0">
@@ -128,7 +128,7 @@ export function ProfilePage() {
                   onClick={() => avatarInput.current?.click()}
                   disabled={avatarBusy}
                   aria-label="Cambiar foto de perfil"
-                  className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full border-2 border-surface bg-primary text-primary-on shadow-elevation-1 transition-colors hover:bg-primary-hover disabled:opacity-60"
+                  className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-gradient-to-br from-gradient-start to-gradient-end text-btn-text shadow-[0_6px_18px_-6px_rgb(var(--glow-a)/0.7)] transition-all hover:brightness-110 disabled:opacity-60 dark:border-slate-900"
                   title="Cambiar foto"
                 >
                   {avatarBusy ? <Spinner size={14} /> : <Camera size={15} />}
@@ -145,7 +145,7 @@ export function ProfilePage() {
               <div className="min-w-0">
                 <div className="flex items-center gap-2.5">
                   <h2 className="truncate text-xl font-medium text-content-primary">{user.display_name}</h2>
-                  <span className="inline-flex items-center gap-1 rounded-pill bg-primary-subtle px-2.5 py-0.5 text-xs font-medium text-primary">
+                  <span className="inline-flex items-center gap-1 rounded-pill bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
                     {user.role === 'admin' ? <ShieldCheck size={13} /> : <UserIcon size={13} />}
                     {user.role === 'admin' ? 'Administrador' : 'Usuario'}
                   </span>
@@ -179,14 +179,14 @@ export function ProfilePage() {
         </div>
 
         {/* Bento 2: Almacenamiento (Col 7 en Escritorio) */}
-        <div className="lg:col-span-7 flex flex-col justify-between rounded-drive border border-border bg-surface p-6 shadow-sm transition-all hover:border-border-strong">
+        <div className="lg:col-span-7 flex flex-col justify-between rounded-drive glass p-6 transition-all hover:border-border-strong">
           <div>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2.5 text-content-primary">
                 <span className="material-symbols-rounded text-[22px] text-primary">cloud</span>
                 <h3 className="font-medium text-base">Almacenamiento</h3>
               </div>
-              <span className="text-xs font-medium px-2.5 py-1 rounded-pill bg-surface-container text-content-secondary">
+              <span className="text-xs font-medium px-2.5 py-1 rounded-pill bg-slate-900/[0.04] dark:bg-white/[0.05] text-content-secondary">
                 {percent.toFixed(1)}% usado
               </span>
             </div>
@@ -199,7 +199,7 @@ export function ProfilePage() {
             </p>
 
             {/* Barra segmentada por tipo */}
-            <div className="flex h-3.5 w-full overflow-hidden rounded-pill bg-surface-hover">
+            <div className="flex h-3.5 w-full overflow-hidden rounded-pill bg-slate-900/[0.06] dark:bg-white/[0.08]">
               {(quota?.breakdown ?? []).map((b) => {
                 const w = quota && quota.quota_bytes > 0 ? (b.bytes / quota.quota_bytes) * 100 : 0
                 return (
@@ -234,7 +234,7 @@ export function ProfilePage() {
         </div>
 
         {/* Bento 3: Datos de la Cuenta (Col 5 en Escritorio) */}
-        <div className="lg:col-span-5 flex flex-col justify-between rounded-drive border border-border bg-surface p-6 shadow-sm transition-all hover:border-border-strong">
+        <div className="lg:col-span-5 flex flex-col justify-between rounded-drive glass p-6 transition-all hover:border-border-strong">
           <form onSubmit={saveProfile} className="flex h-full flex-col justify-between space-y-4">
             <div>
               <h3 className="mb-4 text-base font-medium text-content-primary">Datos personales</h3>

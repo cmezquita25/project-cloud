@@ -12,6 +12,18 @@ interface AdminChartsProps {
   source: 'private' | 'workspace'
 }
 
+/**
+ * Lee un token de marca de `index.css` (formato "R G B") como color para
+ * ApexCharts, que no entiende la sintaxis con espacios. Así la gráfica sigue
+ * al preset (Invicter/Clásico) y a los colores personalizados de Apariencia.
+ */
+function brandColor(token: string, fallback: string): string {
+  if (typeof window === 'undefined') return fallback
+  const value = getComputedStyle(document.documentElement).getPropertyValue(token).trim()
+  const parts = value.split(/\s+/)
+  return parts.length === 3 ? `rgb(${parts.join(',')})` : fallback
+}
+
 export function AdminCharts({ source }: AdminChartsProps) {
   const { resolved: theme } = useTheme()
   const isDark = theme === 'dark'
@@ -93,14 +105,21 @@ export function AdminCharts({ source }: AdminChartsProps) {
   // 1. Mountain Chart (Historial de uso general)
   const historyOptions = {
     chart: { type: 'area', toolbar: { show: false }, background: 'transparent' },
-    colors: ['#3b82f6'],
+    colors: [brandColor('--glow-a', '#2563eb')],
     theme: { mode: isDark ? 'dark' : 'light' },
     dataLabels: { enabled: false },
     stroke: { curve: 'smooth', width: 2 },
     markers: { size: history.length === 1 ? 6 : 0 },
     fill: {
       type: 'gradient',
-      gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05, stops: [0, 100] }
+      // Del color de inicio del degradado de marca al de fin, desvaneciéndose.
+      gradient: {
+        shadeIntensity: 1,
+        opacityFrom: 0.4,
+        opacityTo: 0.05,
+        stops: [0, 100],
+        gradientToColors: [brandColor('--glow-b', '#06b6d4')],
+      }
     },
     xaxis: {
       type: 'datetime',
@@ -257,7 +276,7 @@ export function AdminCharts({ source }: AdminChartsProps) {
           <Select 
             value={userId}
             onChange={(val) => setUserId(String(val))}
-            className="rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-content-primary focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary w-48"
+            className="rounded-lg input-glass ring-glow-focus px-3 py-1.5 text-sm text-content-primary w-48"
             options={[
               { value: 'all', label: 'Todos los usuarios' },
               ...allUsersList.map((u: any) => ({ value: String(u.id), label: u.display_name || u.username }))
@@ -266,7 +285,7 @@ export function AdminCharts({ source }: AdminChartsProps) {
           <Select 
             value={period}
             onChange={(val) => handlePeriodChange(String(val))}
-            className="rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-content-primary focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            className="rounded-lg input-glass ring-glow-focus px-3 py-1.5 text-sm text-content-primary"
             options={[
               { value: 'today', label: 'Hoy' },
               { value: '7d', label: 'Últimos 7 días' },
@@ -279,7 +298,7 @@ export function AdminCharts({ source }: AdminChartsProps) {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* 1. Historial de Uso (Montaña) */}
-        <div className="lg:col-span-2 rounded-2xl border border-border bg-surface p-6">
+        <div className="lg:col-span-2 rounded-2xl glass-lite p-6">
           <h3 className="mb-4 text-base font-medium text-content-primary">Registro Diario (MB)</h3>
           <div className="h-[300px]">
             <Chart options={historyOptions as any} series={historySeries} type="area" height="100%" />
@@ -287,7 +306,7 @@ export function AdminCharts({ source }: AdminChartsProps) {
         </div>
 
         {/* 2. Distribución global por tipo (Donut con leyenda storage-style) */}
-        <div className="rounded-2xl border border-border bg-surface p-6 flex flex-col justify-between">
+        <div className="rounded-2xl glass-lite p-6 flex flex-col justify-between">
           <div>
             <h3 className="mb-4 text-base font-medium text-content-primary">Distribución por Tipo</h3>
             {typeData.length > 0 ? (
@@ -320,7 +339,7 @@ export function AdminCharts({ source }: AdminChartsProps) {
         </div>
 
         {/* 3. Distribución por Usuario (Area Stacked Chart) */}
-        <div className="lg:col-span-3 rounded-2xl border border-border bg-surface p-6">
+        <div className="lg:col-span-3 rounded-2xl glass-lite p-6">
           <h3 className="mb-4 text-base font-medium text-content-primary">Registro Diario por Usuario (MB)</h3>
           {legendUsers.length > 0 ? (
             <div className="flex flex-col gap-4">
@@ -339,7 +358,7 @@ export function AdminCharts({ source }: AdminChartsProps) {
                     <div 
                       key={u.username || i} 
                       onClick={() => toggleUser(name)}
-                      className={`flex shrink-0 items-center gap-2.5 text-xs cursor-pointer transition-all hover:bg-surface-hover px-3 py-1.5 rounded-xl border border-border/50 bg-surface-container/30 ${isHidden ? 'opacity-40 grayscale' : 'opacity-100'}`}
+                      className={`flex shrink-0 items-center gap-2.5 text-xs cursor-pointer transition-all hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.07] px-3 py-1.5 rounded-xl border border-border/50 bg-slate-900/[0.04] dark:bg-white/[0.05] ${isHidden ? 'opacity-40 grayscale' : 'opacity-100'}`}
                     >
                       <span className="h-3.5 w-3.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />
                       <div className="min-w-0">

@@ -79,7 +79,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
         'inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[11px] font-medium',
         isAdminRole
           ? 'bg-danger-subtle text-danger'
-          : 'bg-primary-subtle text-primary'
+          : 'bg-primary/10 text-primary'
       )}
     >
       {isAdminRole ? 'Administrador' : 'Usuario'}

@@ -170,7 +170,7 @@ export function EmailTemplateEditor() {
       <div className="flex shrink-0 flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
         <div className="flex flex-col">
           <div className="flex items-center gap-2">
-            <Link to="/admin/settings/email-templates" className="p-2 -ml-2 rounded-full hover:bg-surface-hover text-content-secondary transition-colors" title="Volver a plantillas">
+            <Link to="/admin/settings/email-templates" className="p-2 -ml-2 rounded-full hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.07] text-content-secondary transition-colors" title="Volver a plantillas">
               <ArrowLeft size={20} />
             </Link>
             <h2 className="text-2xl font-semibold text-content-primary">{template.label}</h2>
@@ -185,8 +185,8 @@ export function EmailTemplateEditor() {
 
       <div className="flex flex-1 flex-col lg:flex-row gap-6 min-h-0">
         {/* Editor (Izq) */}
-        <div className="flex-1 flex flex-col min-h-0 bg-surface rounded-2xl border border-border shadow-sm overflow-hidden">
-          <div className="p-4 border-b border-border bg-surface-container/30">
+        <div className="glass flex-1 flex flex-col min-h-0 rounded-2xl overflow-hidden">
+          <div className="p-4 border-b border-border bg-slate-900/[0.04] dark:bg-white/[0.05]">
             <Input
               label="Asunto del correo"
               value={draft.subject}
@@ -205,7 +205,7 @@ export function EmailTemplateEditor() {
               ref={bodyRef}
               value={draft.body_html}
               onChange={(e) => setDraft((d) => ({ ...d, body_html: e.target.value }))}
-              className="flex-1 w-full resize-none rounded-xl border border-border bg-surface-container-highest p-4 font-mono text-sm text-content-primary focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary shadow-inner"
+              className="flex-1 w-full resize-none rounded-xl border border-border bg-slate-900/[0.04] dark:bg-white/[0.05]-highest p-4 font-mono text-sm text-content-primary focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary shadow-inner"
               spellCheck={false}
               placeholder="<!-- Pega aquí tu diseño en HTML -->"
             />
@@ -214,7 +214,7 @@ export function EmailTemplateEditor() {
 
         {/* Variables (Der/Abajo) */}
         <div className="w-full lg:w-80 shrink-0 flex flex-col gap-4 min-h-0">
-          <div className="flex flex-col min-h-0 bg-surface rounded-2xl border border-border shadow-sm overflow-hidden">
+          <div className="glass flex flex-col min-h-0 rounded-2xl overflow-hidden">
             <div className="p-5 border-b border-border bg-gradient-to-r from-primary/5 to-transparent">
               <h3 className="font-semibold text-content-primary text-base">Variables Disponibles</h3>
               <p className="text-xs text-content-secondary mt-1">Haz clic para insertar en el código en la posición actual del cursor.</p>
@@ -224,14 +224,14 @@ export function EmailTemplateEditor() {
                 <button
                   key={v}
                   onClick={() => insertVariable(v)}
-                  className="w-full flex items-center justify-between text-left p-3 rounded-xl border border-transparent hover:border-primary/20 hover:bg-primary-subtle/40 transition-all group"
+                  className="w-full flex items-center justify-between text-left p-3 rounded-xl border border-transparent hover:border-primary/20 hover:bg-primary/10 transition-all group"
                   title={`Insertar {{${v}}}`}
                 >
                   <div className="flex items-center gap-2">
                     <CopyPlus size={16} className="text-content-tertiary group-hover:text-primary transition-colors" />
                     <span className="text-sm font-medium text-content-primary capitalize group-hover:text-primary transition-colors">{v.replace(/_/g, ' ')}</span>
                   </div>
-                  <span className="font-mono text-[11px] bg-surface-container px-1.5 py-0.5 rounded text-content-secondary group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                  <span className="font-mono text-[11px] bg-slate-900/[0.04] dark:bg-white/[0.05] px-1.5 py-0.5 rounded text-content-secondary group-hover:bg-primary/10 group-hover:text-primary transition-colors">
                     {`{{${v}}}`}
                   </span>
                 </button>

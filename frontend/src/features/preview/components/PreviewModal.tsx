@@ -71,9 +71,9 @@ export function PreviewModal({ items, index, onIndex, onClose }: PreviewModalPro
 
   return (
     <Portal>
-      <div className="fixed inset-0 z-modal flex flex-col bg-black/90 text-white" role="dialog" aria-modal="true">
+      <div className="fixed inset-0 z-modal flex flex-col bg-slate-950/90 text-white backdrop-blur-xl" role="dialog" aria-modal="true">
         {/* Barra superior */}
-        <header className="flex items-center gap-2 px-3 py-2.5 sm:px-4">
+        <header className="flex items-center gap-2 border-b border-white/10 bg-white/[0.04] px-3 py-2.5 sm:px-4">
           <IconButton
             icon={X}
             label="Cerrar"
@@ -108,7 +108,7 @@ export function PreviewModal({ items, index, onIndex, onClose }: PreviewModalPro
             <button
               onClick={() => onIndex(index - 1)}
               aria-label="Anterior"
-              className="absolute left-2 z-10 hidden rounded-full bg-white/10 p-2 transition-colors hover:bg-white/20 sm:block"
+              className="absolute left-2 z-10 hidden rounded-full bg-white/10 p-2 ring-1 ring-white/15 transition-colors hover:bg-white/20 hover:ring-white/30 sm:block"
             >
               <ChevronLeft size={28} />
             </button>
@@ -120,7 +120,7 @@ export function PreviewModal({ items, index, onIndex, onClose }: PreviewModalPro
             <button
               onClick={() => onIndex(index + 1)}
               aria-label="Siguiente"
-              className="absolute right-2 z-10 hidden rounded-full bg-white/10 p-2 transition-colors hover:bg-white/20 sm:block"
+              className="absolute right-2 z-10 hidden rounded-full bg-white/10 p-2 ring-1 ring-white/15 transition-colors hover:bg-white/20 hover:ring-white/30 sm:block"
             >
               <ChevronRight size={28} />
             </button>

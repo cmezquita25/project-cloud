@@ -99,7 +99,7 @@ export function CronSettings() {
       </div>
 
       {/* Tarjeta de Estado del Cron */}
-      <div className="rounded-drive border border-border bg-surface p-6 shadow-sm">
+      <div className="rounded-drive glass p-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
@@ -142,7 +142,7 @@ export function CronSettings() {
         </h3>
 
         {/* Opción 1: Tarea Programada CLI */}
-        <div className="rounded-drive border border-border bg-surface p-5 space-y-3">
+        <div className="rounded-drive glass p-5 space-y-3">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-medium text-content-primary flex items-center gap-2">
               <span>Opción 1: Comando CLI de Linux / cPanel / Plesk (Recomendado)</span>
@@ -159,13 +159,13 @@ export function CronSettings() {
           <p className="text-xs text-content-secondary leading-relaxed">
             Agrega esta línea en la sección de <strong>Tareas Cron / Scheduled Tasks</strong> de tu panel cPanel o Plesk configurando el tiempo en <code>* * * * *</code> (cada minuto).
           </p>
-          <div className="rounded-xl border border-border bg-surface-container-highest p-3 font-mono text-xs text-content-primary overflow-x-auto select-all">
+          <div className="rounded-xl border border-border bg-slate-900/[0.04] dark:bg-white/[0.05]-highest p-3 font-mono text-xs text-content-primary overflow-x-auto select-all">
             {cronCommand}
           </div>
         </div>
 
         {/* Opción 2: Webhook HTTP */}
-        <div className="rounded-drive border border-border bg-surface p-5 space-y-3">
+        <div className="rounded-drive glass p-5 space-y-3">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-medium text-content-primary flex items-center gap-2">
               <Globe size={16} className="text-sky-500" />
@@ -183,7 +183,7 @@ export function CronSettings() {
           <p className="text-xs text-content-secondary leading-relaxed">
             Si tu hosting no permite ejecutar la CLI de PHP, configura una solicitud HTTP GET periódica hacia la siguiente URL protegida:
           </p>
-          <div className="rounded-xl border border-border bg-surface-container-highest p-3 font-mono text-xs text-content-primary overflow-x-auto select-all">
+          <div className="rounded-xl border border-border bg-slate-900/[0.04] dark:bg-white/[0.05]-highest p-3 font-mono text-xs text-content-primary overflow-x-auto select-all">
             {cronUrl}
           </div>
         </div>

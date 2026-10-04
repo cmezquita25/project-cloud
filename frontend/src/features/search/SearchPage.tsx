@@ -50,7 +50,7 @@ export function SearchPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <h1 className="mb-1 text-2xl font-normal text-content-primary">Resultados de búsqueda</h1>
+      <h1 className="mb-1 text-2xl font-semibold text-content-primary">Resultados de búsqueda</h1>
       {query !== '' && (
         <p className="text-sm text-content-tertiary">
           Para «<span className="text-content-secondary">{query}</span>»

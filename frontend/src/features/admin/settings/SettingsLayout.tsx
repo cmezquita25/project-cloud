@@ -10,7 +10,7 @@ import { SETTINGS_NAV } from './settingsNav'
 export function SettingsLayout() {
   return (
     <div className="flex h-full flex-col">
-      <h1 className="mb-4 text-2xl font-normal text-content-primary">Configuración</h1>
+      <h1 className="mb-4 text-2xl font-semibold text-content-primary">Configuración</h1>
 
       <div className="flex min-h-0 flex-1 flex-col gap-4 sm:flex-row sm:gap-6">
         <nav className="flex shrink-0 gap-1 overflow-x-auto pb-1 sm:w-56 sm:flex-col sm:space-y-1 sm:overflow-x-visible sm:overflow-y-auto sm:pb-0 sm:pr-1">
@@ -23,8 +23,8 @@ export function SettingsLayout() {
                 cn(
                   'flex shrink-0 items-center gap-3 rounded-pill px-3 py-2 text-sm font-medium transition-colors whitespace-nowrap',
                   isActive
-                    ? 'bg-primary-subtle text-primary'
-                    : 'text-content-secondary hover:bg-surface-hover'
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-content-secondary hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.07]'
                 )
               }
             >

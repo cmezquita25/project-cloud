@@ -56,8 +56,8 @@ function LogoUploader({
   }
 
   return (
-    <div className="flex items-center gap-4 rounded-drive border border-border bg-surface p-3">
-      <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded border border-border-strong bg-surface-container">
+    <div className="flex items-center gap-4 rounded-drive glass p-3">
+      <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded border border-border-strong bg-slate-900/[0.04] dark:bg-white/[0.05]">
         {preview ? (
           <img src={preview} alt={title} className="max-h-full max-w-full object-contain" />
         ) : (
@@ -150,7 +150,7 @@ export function StepConfig({ onBack, onDone }: StepConfigProps) {
             placeholder="Ej. Tu nube privada y segura"
             value={slogan}
             onChange={e => setSlogan(e.target.value)}
-            className="w-full resize-none rounded-drive border border-border-strong bg-surface px-3.5 py-2.5 text-content-primary placeholder:text-content-tertiary transition-colors focus:border-transparent focus:outline-none focus:ring-2 focus:ring-focus"
+            className="w-full resize-none rounded-drive input-glass ring-glow-focus px-3.5 py-2.5 text-content-primary placeholder:text-content-tertiary"
           />
           <p className="text-xs text-content-tertiary">
             Se muestra bajo el logo en la pantalla de inicio de sesión. {slogan.length}/{SLOGAN_MAX}

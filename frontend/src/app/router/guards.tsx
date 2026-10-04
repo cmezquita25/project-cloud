@@ -4,8 +4,8 @@ import { useAuth } from '@features/auth/AuthProvider'
 
 function FullScreenSpinner() {
   return (
-    <div className="flex h-full items-center justify-center bg-canvas text-content-tertiary">
-      <Spinner size={32} />
+    <div className="flex h-full items-center justify-center text-content-tertiary">
+      <Spinner size={32} tone="brand" />
     </div>
   )
 }

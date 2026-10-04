@@ -80,7 +80,7 @@ export function NotificationBell() {
         ref={buttonRef}
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="relative flex h-9 w-9 items-center justify-center rounded-xl text-content-secondary hover:bg-surface-hover hover:text-content-primary transition-colors focus:outline-none"
+        className="relative flex h-9 w-9 items-center justify-center rounded-xl text-content-secondary hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.07] hover:text-content-primary transition-colors focus:outline-none"
         title="Notificaciones"
         aria-label="Ver notificaciones"
       >
@@ -97,10 +97,10 @@ export function NotificationBell() {
           <div
             ref={menuRef}
             style={{ top: `${pos.top}px`, right: `${pos.right}px` }}
-            className="fixed z-dropdown w-80 sm:w-96 rounded-2xl border border-border bg-surface shadow-elevation-3 overflow-hidden flex flex-col max-h-[520px] animate-fade-in"
+            className="fixed z-dropdown w-80 sm:w-96 rounded-2xl glass-panel ring-1 ring-slate-900/5 dark:ring-white/10 overflow-hidden flex flex-col max-h-[520px] animate-fade-in"
           >
             {/* Encabezado del menú flotante */}
-            <div className="flex items-center justify-between border-b border-border bg-surface-container/40 px-4 py-3">
+            <div className="flex items-center justify-between border-b border-border bg-slate-900/[0.04] dark:bg-white/[0.05] px-4 py-3">
               <div className="flex items-center gap-2">
                 <h3 className="text-sm font-semibold text-content-primary">Notificaciones</h3>
                 {unreadCount > 0 && (
@@ -137,7 +137,7 @@ export function NotificationBell() {
                       key={item.id}
                       onClick={() => handleItemClick(item)}
                       className={`flex items-start gap-3 p-3.5 transition-colors cursor-pointer ${
-                        isUnread ? 'bg-primary-subtle/30 hover:bg-primary-subtle/50' : 'hover:bg-surface-hover'
+                        isUnread ? 'bg-primary/10 hover:bg-primary/15' : 'hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.07]'
                       }`}
                     >
                       <div className="mt-0.5 shrink-0">
@@ -150,7 +150,7 @@ export function NotificationBell() {
                             <HardDrive size={16} />
                           </div>
                         ) : (
-                          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-surface-container text-content-secondary">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-900/[0.04] dark:bg-white/[0.05] text-content-secondary">
                             <Info size={16} />
                           </div>
                         )}
@@ -176,7 +176,7 @@ export function NotificationBell() {
             </div>
 
             {/* Pie con botón estético hacia el historial */}
-            <div className="border-t border-border bg-surface-container/40 p-3">
+            <div className="border-t border-border bg-slate-900/[0.04] dark:bg-white/[0.05] p-3">
               <Button
                 variant="secondary"
                 size="sm"

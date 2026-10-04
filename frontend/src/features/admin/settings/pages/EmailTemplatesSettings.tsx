@@ -28,9 +28,9 @@ export function EmailTemplatesSettings() {
         </p>
       </div>
 
-      <div className="rounded-drive border border-border bg-surface overflow-hidden">
+      <div className="rounded-drive glass overflow-hidden">
         <table className="w-full text-left text-sm">
-          <thead className="bg-surface-container/50 text-content-secondary">
+          <thead className="bg-slate-900/[0.04] dark:bg-white/[0.05] text-content-secondary">
             <tr>
               <th className="px-4 py-3 font-medium">Nombre de la plantilla</th>
               <th className="px-4 py-3 font-medium">Descripción</th>
@@ -39,13 +39,13 @@ export function EmailTemplatesSettings() {
           </thead>
           <tbody className="divide-y divide-border">
             {templates.map((t) => (
-              <tr key={t.key} className="hover:bg-surface-hover/50 transition-colors">
+              <tr key={t.key} className="hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.07] transition-colors">
                 <td className="px-4 py-3 font-medium text-content-primary">{t.label}</td>
                 <td className="px-4 py-3 text-content-secondary">{t.description}</td>
                 <td className="px-4 py-3 text-right">
                   <Link
                     to={`/admin/settings/email-templates/${t.key}`}
-                    className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary-subtle transition-colors"
+                    className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/10 transition-colors"
                   >
                     <Edit2 size={14} />
                     Editar

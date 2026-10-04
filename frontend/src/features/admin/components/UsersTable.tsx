@@ -32,7 +32,7 @@ function RoleBadge({ role }: { role: string }) {
     <span
       className={cn(
         'inline-flex rounded-pill px-2 py-0.5 text-xs font-medium',
-        role === 'admin' ? 'bg-primary-subtle text-primary' : 'bg-surface-hover text-content-secondary'
+        role === 'admin' ? 'bg-primary/10 text-primary' : 'bg-slate-900/[0.06] dark:bg-white/[0.08] text-content-secondary'
       )}
     >
       {role === 'admin' ? 'Administrador' : 'Usuario'}
@@ -100,7 +100,7 @@ export function UsersTable(props: UsersTableProps) {
   return (
     <>
       {/* Escritorio */}
-      <div className="hidden overflow-hidden rounded-drive border border-border bg-surface md:block">
+      <div className="hidden overflow-hidden rounded-drive glass-lite md:block">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs font-medium text-content-tertiary">
@@ -120,7 +120,7 @@ export function UsersTable(props: UsersTableProps) {
           </thead>
           <tbody>
             {users.map((u) => (
-              <tr key={u.id} className="border-b border-border/60 last:border-0 hover:bg-surface-hover">
+              <tr key={u.id} className="border-b border-border/60 last:border-0 hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.07]">
                 <td className="w-[1%] whitespace-nowrap pl-4 pr-6 py-2">
                   <Avatar name={u.display_name} size={36} src={u.avatar_url} />
                 </td>
@@ -172,7 +172,7 @@ export function UsersTable(props: UsersTableProps) {
       {/* Móvil */}
       <div className="space-y-3 md:hidden">
         {users.map((u) => (
-          <div key={u.id} className="rounded-drive border border-border bg-surface p-3">
+          <div key={u.id} className="rounded-drive glass-lite p-3">
             <div className="flex items-center gap-3">
               <Avatar name={u.display_name} size={40} src={u.avatar_url} />
               <div className="min-w-0 flex-1">

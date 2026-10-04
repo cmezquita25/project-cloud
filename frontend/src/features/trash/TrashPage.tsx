@@ -175,7 +175,7 @@ export function TrashPage() {
             </div>
           </div>
         ) : (
-          <h1 className="text-2xl font-normal text-content-primary">Papelera</h1>
+          <h1 className="text-2xl font-semibold text-content-primary">Papelera</h1>
         )}
         {items.length > 0 && selected.size === 0 && (
           <Button variant="secondary" size="sm" leftIcon={Trash} onClick={() => setConfirmEmpty(true)}>

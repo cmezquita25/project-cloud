@@ -64,8 +64,8 @@ export function LogoUploader({ title, description, type, onUpload }: LogoUploade
   }
 
   return (
-    <div className="flex items-center gap-6 rounded-drive border border-border bg-surface p-4">
-      <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border-strong bg-surface-container">
+    <div className="flex items-center gap-6 rounded-drive glass p-4">
+      <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border-strong bg-slate-900/[0.04] dark:bg-white/[0.05]">
         <img
           src={`/api/v1/settings/logo/${type}?t=${timestamp}`}
           alt={title}

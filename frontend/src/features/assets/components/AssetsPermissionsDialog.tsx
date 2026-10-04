@@ -91,7 +91,7 @@ export function AssetsPermissionsDialog({ open, onClose }: Props) {
                   <p className="truncate text-xs text-content-tertiary">@{u.username}</p>
                 </div>
                 {isAdmin && (
-                  <span className="inline-flex items-center gap-1 rounded-pill bg-surface-container px-2 py-0.5 text-xs text-content-tertiary">
+                  <span className="inline-flex items-center gap-1 rounded-pill bg-slate-900/[0.04] dark:bg-white/[0.05] px-2 py-0.5 text-xs text-content-tertiary">
                     <ShieldCheck size={12} /> Admin
                   </span>
                 )}

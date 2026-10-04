@@ -177,7 +177,7 @@ export function UserFormDialog({ open, user, onClose, onSaved }: UserFormDialogP
               Comparte esta contraseña temporal con el usuario de forma segura:
             </p>
           </div>
-          <div className="flex items-center gap-2 rounded-drive border border-border bg-surface-container p-3">
+          <div className="flex items-center gap-2 rounded-drive border border-border bg-slate-900/[0.04] dark:bg-white/[0.05] p-3">
             <KeyRound size={18} className="shrink-0 text-content-tertiary" />
             <code className="flex-1 select-all font-mono text-base text-content-primary">{createdPassword}</code>
             <Button
@@ -251,7 +251,7 @@ export function UserFormDialog({ open, user, onClose, onSaved }: UserFormDialogP
           <Select
             value={form.role}
             onChange={(val) => setForm((f) => ({ ...f, role: val as 'admin' | 'user' }))}
-            className="h-11 w-full rounded-drive border border-border-strong bg-surface px-3 text-content-primary focus:outline-none focus:ring-2 focus:ring-focus"
+            className="h-11 w-full rounded-drive input-glass ring-glow-focus px-3 text-content-primary"
             options={[
               { value: 'user', label: 'Usuario' },
               { value: 'admin', label: 'Administrador' }
@@ -329,7 +329,7 @@ function QuotaField({
         <Select
           value={unit}
           onChange={(val) => onUnit(String(val) as Unit)}
-          className="h-11 shrink-0 rounded-drive border border-border-strong bg-surface px-3 text-content-primary focus:outline-none focus:ring-2 focus:ring-focus"
+          className="h-11 shrink-0 rounded-drive input-glass ring-glow-focus px-3 text-content-primary"
           options={[
             { value: 'MB', label: 'MB' },
             { value: 'GB', label: 'GB' }

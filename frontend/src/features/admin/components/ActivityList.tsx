@@ -41,14 +41,14 @@ export function ActivityList({
 
   return (
     <div className="flex flex-col">
-      <ul className="divide-y divide-border overflow-hidden rounded-drive border border-border bg-surface">
+      <ul className="divide-y divide-border overflow-hidden rounded-drive glass-lite">
         {items.map((item) => {
           const meta = ACTIONS[item.action] ?? { label: item.action, icon: Activity, className: 'text-content-tertiary' }
         const Icon = meta.icon
         const detail = detailText(item)
         return (
           <li key={item.id} className="flex items-center gap-3 px-4 py-3">
-            <span className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-container', meta.className)}>
+            <span className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-900/[0.04] dark:bg-white/[0.05]', meta.className)}>
               <Icon size={18} />
             </span>
             <div className="min-w-0 flex-1">

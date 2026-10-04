@@ -20,7 +20,7 @@ export function RecentPage() {
       transition={{ duration: 0.3 }}
       className="flex h-full flex-col"
     >
-      <h1 className="mb-4 text-2xl font-normal text-content-primary">Recientes</h1>
+      <h1 className="mb-4 text-2xl font-semibold text-content-primary">Recientes</h1>
       <div className="min-h-0 flex-1">
         <ItemCollection
           items={data ?? []}

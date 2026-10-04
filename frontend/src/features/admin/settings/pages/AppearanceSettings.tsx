@@ -68,7 +68,7 @@ export function AppearanceSettings() {
         </p>
       </div>
 
-      <div className="rounded-xl border border-border bg-surface p-6">
+      <div className="rounded-xl glass p-6">
         <h3 className="mb-1 font-medium text-content-primary">Colores de la plataforma</h3>
         <p className="mb-6 text-sm text-content-secondary">
           Define el color principal y personaliza los gradientes de los botones primarios.

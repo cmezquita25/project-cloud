@@ -49,7 +49,7 @@ function BackupRow({
   }
 
   return (
-    <tr className="hover:bg-surface-hover transition-colors">
+    <tr className="hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.07] transition-colors">
       <td className="px-4 py-3 font-medium text-content-primary whitespace-nowrap">
         {backup.filename}
       </td>
@@ -201,7 +201,7 @@ export function DatabaseSettings() {
       </div>
 
       {/* Card 1: Migración */}
-      <div className="space-y-4 rounded-drive border border-border bg-surface p-5 shadow-sm">
+      <div className="space-y-4 rounded-drive glass p-5">
         <h3 className="text-base font-medium text-content-primary">Migrar / Actualizar BD</h3>
         <p className="text-xs text-content-secondary -mt-2">
           Aplica el esquema oficial para actualizar la base de datos (recomendado). O sube un archivo `.sql` de migración personalizado.
@@ -235,13 +235,13 @@ export function DatabaseSettings() {
       </div>
 
       {/* Card 2: Backup y Restauración */}
-      <div className="space-y-5 rounded-drive border border-border bg-surface p-5 shadow-sm">
+      <div className="space-y-5 rounded-drive glass p-5">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div className="space-y-1 flex-1">
             <h3 className="text-base font-medium text-content-primary">Copias de Seguridad (Backups)</h3>
             <p className="text-xs text-content-secondary">
               Respalda la base de datos y todos los archivos de los usuarios. 
-              Si tu backup es muy pesado para procesarlo aquí, puedes descargarlo/subirlo vía FTP directamente en la carpeta <code className="bg-surface-container px-1 py-0.5 rounded text-content-primary">storage/backups/</code>.
+              Si tu backup es muy pesado para procesarlo aquí, puedes descargarlo/subirlo vía FTP directamente en la carpeta <code className="bg-slate-900/[0.04] dark:bg-white/[0.05] px-1 py-0.5 rounded text-content-primary">storage/backups/</code>.
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
@@ -256,7 +256,7 @@ export function DatabaseSettings() {
 
         <div className="border border-border/40 rounded-lg overflow-x-auto">
           <table className="w-full text-left text-sm text-content-secondary">
-            <thead className="bg-surface-container/50 text-xs text-content-primary border-b border-border/40">
+            <thead className="bg-slate-900/[0.04] dark:bg-white/[0.05] text-xs text-content-primary border-b border-border/40">
               <tr>
                 <th className="px-4 py-3 font-medium whitespace-nowrap">Nombre de Archivo</th>
                 <th className="px-4 py-3 font-medium whitespace-nowrap">Fecha</th>
@@ -264,7 +264,7 @@ export function DatabaseSettings() {
                 <th className="px-4 py-3 font-medium text-right whitespace-nowrap w-[1%]">Acciones</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border/40 bg-surface">
+            <tbody className="divide-y divide-border/40">
               {isLoading ? (
                 <tr>
                   <td colSpan={4} className="px-4 py-8 text-center text-content-tertiary">

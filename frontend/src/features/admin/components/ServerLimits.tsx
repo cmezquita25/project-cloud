@@ -44,7 +44,7 @@ function ServerInfoCard({
 }) {
   const Icon = STATUS_ICON[status]
   return (
-    <div className="flex flex-col gap-2 rounded-drive border border-border bg-surface p-4">
+    <div className="flex flex-col gap-2 rounded-drive glass p-4">
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm font-medium text-content-secondary">{title}</p>

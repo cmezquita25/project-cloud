@@ -32,7 +32,7 @@ export function UserFilters({
   onClearFilters,
 }: UserFiltersProps) {
   return (
-    <div className="rounded-drive border border-border bg-surface p-3.5 sm:p-4 shadow-sm transition-colors">
+    <div className="rounded-drive glass p-3.5 sm:p-4 transition-colors">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:gap-3">
         {/* 1. Fechas (Desde & Hasta) */}
         <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:flex lg:shrink-0 lg:gap-3">
@@ -48,8 +48,8 @@ export function UserFilters({
               className={cn(
                 'h-10 w-full rounded-drive border px-3 text-sm text-content-primary transition-all focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary cursor-pointer',
                 dateFrom
-                  ? 'border-primary bg-primary-subtle/50 font-medium text-primary'
-                  : 'border-border bg-surface hover:border-border-strong'
+                  ? 'border-primary bg-primary/10 font-medium text-primary'
+                  : 'input-glass hover:border-primary/40'
               )}
             />
           </div>
@@ -66,8 +66,8 @@ export function UserFilters({
               className={cn(
                 'h-10 w-full rounded-drive border px-3 text-sm text-content-primary transition-all focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary cursor-pointer',
                 dateTo
-                  ? 'border-primary bg-primary-subtle/50 font-medium text-primary'
-                  : 'border-border bg-surface hover:border-border-strong'
+                  ? 'border-primary bg-primary/10 font-medium text-primary'
+                  : 'input-glass hover:border-primary/40'
               )}
             />
           </div>
@@ -89,8 +89,8 @@ export function UserFilters({
               className={cn(
                 'h-10 w-full rounded-drive border text-sm font-medium transition-all',
                 role
-                  ? 'border-primary bg-primary-subtle/50 text-primary hover:border-primary-hover'
-                  : 'border-border bg-surface text-content-primary hover:border-border-strong'
+                  ? 'border-primary bg-primary/10 text-primary hover:border-primary-hover'
+                  : 'input-glass text-content-primary hover:border-primary/40'
               )}
               options={[
                 { value: '', label: 'Todos' },
@@ -114,8 +114,8 @@ export function UserFilters({
               className={cn(
                 'h-10 w-full rounded-drive border text-sm font-medium transition-all',
                 status
-                  ? 'border-primary bg-primary-subtle/50 text-primary hover:border-primary-hover'
-                  : 'border-border bg-surface text-content-primary hover:border-border-strong'
+                  ? 'border-primary bg-primary/10 text-primary hover:border-primary-hover'
+                  : 'input-glass text-content-primary hover:border-primary/40'
               )}
               options={[
                 { value: '', label: 'Todos' },
@@ -142,15 +142,15 @@ export function UserFilters({
               className={cn(
                 'h-10 w-full rounded-drive border pl-9 pr-8 text-sm text-content-primary placeholder:text-content-tertiary transition-all focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary',
                 search
-                  ? 'border-primary bg-surface font-medium'
-                  : 'border-border bg-surface hover:border-border-strong'
+                  ? 'border-primary bg-primary/5 font-medium'
+                  : 'input-glass hover:border-primary/40'
               )}
             />
             {search && (
               <button
                 type="button"
                 onClick={() => onSearchChange('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-content-tertiary hover:bg-surface-hover hover:text-content-primary transition-colors"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-content-tertiary hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.07] hover:text-content-primary transition-colors"
                 title="Limpiar búsqueda"
               >
                 <X size={14} />

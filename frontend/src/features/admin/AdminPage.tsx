@@ -26,8 +26,8 @@ type Tab = 'overview' | 'users' | 'activity'
 
 function StatCard({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
   return (
-    <div className="flex items-center gap-4 rounded-drive border border-border bg-surface p-4">
-      <span className="flex h-11 w-11 items-center justify-center rounded-full bg-primary-subtle text-primary">
+    <div className="flex items-center gap-4 rounded-drive glass p-4">
+      <span className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary ring-1 ring-inset ring-primary/20">
         <Icon size={22} />
       </span>
       <div>
@@ -280,7 +280,7 @@ export function AdminPage() {
     <div className="flex h-full flex-col">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-normal text-content-primary">{TAB_TITLE[tab]}</h1>
+          <h1 className="text-2xl font-semibold text-content-primary">{TAB_TITLE[tab]}</h1>
           {tab === 'users' && (
             <p className="mt-1 text-sm text-content-secondary">
               Gestiona los accesos, roles y el almacenamiento de los miembros de tu organización.
@@ -316,14 +316,14 @@ export function AdminPage() {
 
               {/* Left Column - Charts (2/3 width on xl) */}
               <div className="xl:col-span-2 space-y-6 flex flex-col">
-                <section className="flex-1 rounded-drive border border-border bg-surface p-5 shadow-sm">
+                <section className="flex-1 rounded-drive glass p-5">
                   <h2 className="text-xl font-medium text-content-primary mb-2">Mi Unidad</h2>
                   <p className="text-sm text-content-secondary mb-6">Uso y distribución del almacenamiento privado de los usuarios.</p>
                   <AdminCharts source="private" />
                 </section>
 
                 {access?.active && (
-                  <section className="flex-1 rounded-drive border border-border bg-surface p-5 shadow-sm">
+                  <section className="flex-1 rounded-drive glass p-5">
                     <h2 className="text-xl font-medium text-content-primary mb-2">Espacio de Trabajo</h2>
                     <p className="text-sm text-content-secondary mb-6">Uso y distribución de la carpeta compartida.</p>
                     <AdminCharts source="workspace" />
@@ -333,9 +333,9 @@ export function AdminPage() {
 
               {/* Right Column - Server Limits & Info (1/3 width on xl) */}
               <div className="xl:col-span-1 space-y-6 flex flex-col">
-                <div className="flex flex-col justify-between gap-4 rounded-drive border border-border bg-surface p-5 shadow-sm">
+                <div className="flex flex-col justify-between gap-4 rounded-drive glass p-5">
                   <div className="flex items-center gap-3">
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-subtle text-primary">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
                       <Server size={22} />
                     </span>
                     <h3 className="font-medium text-content-primary">Límites del Servidor</h3>
@@ -442,7 +442,7 @@ export function AdminPage() {
                 </div>
 
                 {serverInfo && (
-                  <div className="rounded-drive border border-border bg-surface p-5 shadow-sm">
+                  <div className="rounded-drive glass p-5">
                     <ServerLimits
                       serverInfo={serverInfo}
                       chunkSizeBytes={stats?.chunk_size_bytes}
@@ -451,7 +451,7 @@ export function AdminPage() {
                   </div>
                 )}
 
-                <div className="rounded-drive border border-border bg-surface p-5 shadow-sm">
+                <div className="rounded-drive glass p-5">
                   <UserContributionChart period="30d" />
                 </div>
               </div>
@@ -550,7 +550,7 @@ export function AdminPage() {
             <Select
               value={capUnit}
               onChange={(val) => setCapUnit(String(val) as 'MB' | 'GB')}
-              className="h-11 rounded-drive border border-border-strong bg-surface px-3 text-sm text-content-primary focus:border-transparent focus:outline-none focus:ring-2 focus:ring-focus"
+              className="h-11 rounded-drive input-glass ring-glow-focus px-3 text-sm text-content-primary"
               options={[
                 { value: 'MB', label: 'MB' },
                 { value: 'GB', label: 'GB' }
@@ -575,7 +575,7 @@ export function AdminPage() {
               <Select
                 value={assetsCapUnit}
                 onChange={(val) => setAssetsCapUnit(String(val) as 'MB' | 'GB')}
-                className="h-11 rounded-drive border border-border-strong bg-surface px-3 text-sm text-content-primary focus:border-transparent focus:outline-none focus:ring-2 focus:ring-focus"
+                className="h-11 rounded-drive input-glass ring-glow-focus px-3 text-sm text-content-primary"
                 options={[
                   { value: 'MB', label: 'MB' },
                   { value: 'GB', label: 'GB' }
@@ -592,7 +592,7 @@ export function AdminPage() {
             <Select
               value={chunkVal}
               onChange={(val) => setChunkVal(String(val))}
-              className="h-11 w-full rounded-drive border border-border-strong bg-surface px-3 text-sm text-content-primary focus:border-transparent focus:outline-none focus:ring-2 focus:ring-focus"
+              className="h-11 w-full rounded-drive input-glass ring-glow-focus px-3 text-sm text-content-primary"
               options={chunkOptions}
             />
             <div className="mt-3 flex items-start gap-2 rounded-drive border border-info/30 bg-info/10 p-2.5 text-xs text-content-secondary">

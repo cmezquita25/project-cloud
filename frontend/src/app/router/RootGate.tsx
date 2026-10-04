@@ -36,8 +36,8 @@ export function RootGate() {
 
   if (!ready) {
     return (
-      <div className="flex h-full items-center justify-center bg-canvas text-content-tertiary">
-        <Spinner size={32} />
+      <div className="flex h-full items-center justify-center text-content-tertiary">
+        <Spinner size={32} tone="brand" />
       </div>
     )
   }

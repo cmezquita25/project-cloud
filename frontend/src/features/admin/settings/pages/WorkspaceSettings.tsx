@@ -77,7 +77,7 @@ export function WorkspaceSettings() {
         </p>
       </div>
 
-      <div className="space-y-2 rounded-drive border border-border bg-surface p-4">
+      <div className="space-y-2 rounded-drive glass p-4">
         <label className="text-sm font-medium text-content-primary block">
           Alias de la unidad compartida (Apodo visual)
         </label>
@@ -98,7 +98,7 @@ export function WorkspaceSettings() {
         </div>
       </div>
 
-      <div className="space-y-2 rounded-drive border border-border bg-surface p-4">
+      <div className="space-y-2 rounded-drive glass p-4">
         <label className="text-sm font-medium text-content-primary block">
           Raíz de la carpeta compartida (Ruta física)
         </label>
@@ -120,8 +120,8 @@ export function WorkspaceSettings() {
       </div>
 
       {!access?.active ? (
-        <div className="flex items-center gap-4 rounded-drive border border-border bg-surface p-4">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-subtle text-primary">
+        <div className="flex items-center gap-4 rounded-drive glass p-4">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
             <FolderPlus size={22} />
           </span>
           <div className="min-w-0 flex-1">
@@ -136,8 +136,8 @@ export function WorkspaceSettings() {
           </Button>
         </div>
       ) : (
-        <div className="flex items-center gap-4 rounded-drive border border-border bg-surface p-4">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-subtle text-primary">
+        <div className="flex items-center gap-4 rounded-drive glass p-4">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
             <Images size={22} />
           </span>
           <div className="min-w-0 flex-1">

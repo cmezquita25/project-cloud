@@ -87,7 +87,7 @@ export function ReportBugDialog({ isOpen, onClose }: ReportBugDialogProps) {
           <Select 
             value={subject}
             onChange={(val) => setSubject(String(val))}
-            className="w-full rounded-drive border border-border-strong bg-surface px-3.5 py-2.5 text-sm text-content-primary focus:border-transparent focus:outline-none focus:ring-2 focus:ring-focus"
+            className="w-full rounded-drive input-glass ring-glow-focus px-3.5 py-2.5 text-sm text-content-primary"
             options={[
               { value: 'Reporte de Error', label: 'Reportar un error (Bug)' },
               { value: 'Sugerencia', label: 'Sugerencia de mejora' },
@@ -106,7 +106,7 @@ export function ReportBugDialog({ isOpen, onClose }: ReportBugDialogProps) {
             placeholder="Describe con el mayor detalle posible tu comentario o el error encontrado..."
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            className="w-full resize-none rounded-drive border border-border-strong bg-surface px-3.5 py-2.5 text-sm text-content-primary placeholder:text-content-tertiary focus:border-transparent focus:outline-none focus:ring-2 focus:ring-focus"
+            className="w-full resize-none rounded-drive input-glass ring-glow-focus px-3.5 py-2.5 text-sm text-content-primary placeholder:text-content-tertiary"
           />
         </div>
 
@@ -129,7 +129,7 @@ export function ReportBugDialog({ isOpen, onClose }: ReportBugDialogProps) {
           {files.length > 0 && (
             <div className="mt-3 flex flex-col gap-2">
               {files.map((file, i) => (
-                <div key={i} className="flex items-center justify-between rounded-lg border border-border bg-surface-container px-3 py-2 text-sm">
+                <div key={i} className="flex items-center justify-between rounded-lg border border-border bg-slate-900/[0.04] dark:bg-white/[0.05] px-3 py-2 text-sm">
                   <span className="truncate flex-1" title={file.name}>{file.name}</span>
                   <span className="text-xs text-content-tertiary ml-2 shrink-0">{(file.size / 1024 / 1024).toFixed(2)} MB</span>
                   <button onClick={() => removeFile(i)} className="ml-2 text-content-tertiary hover:text-error transition-colors shrink-0">

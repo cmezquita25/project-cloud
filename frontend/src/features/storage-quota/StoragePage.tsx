@@ -127,13 +127,13 @@ export function StoragePage() {
       {/* Encabezado */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-normal text-content-primary">Almacenamiento personal</h1>
+          <h1 className="text-2xl font-semibold text-content-primary">Almacenamiento personal</h1>
           <p className="mt-1 text-sm text-content-secondary">
             Monitorea el uso de tu cuota de disco y la distribución por tipo de archivo.
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-medium text-content-secondary shadow-sm">
+          <span className="inline-flex items-center gap-1.5 rounded-full glass px-3 py-1.5 text-xs font-medium text-content-secondary">
             <Cloud size={14} className="text-primary" />
             Cuota activa: {formatBytes(data.quota_bytes)}
           </span>
@@ -144,12 +144,12 @@ export function StoragePage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
         
         {/* Bento Card 1: Tarjeta Principal de Resumen (2 cols en lg) */}
-        <div className="lg:col-span-2 rounded-drive border border-border bg-surface p-6 shadow-sm flex flex-col justify-between relative overflow-hidden">
+        <div className="lg:col-span-2 rounded-drive glass p-6 flex flex-col justify-between relative overflow-hidden">
           <div className="absolute -top-16 -right-16 w-44 h-44 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
           <div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-subtle text-primary">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
                   <HardDrive size={20} />
                 </span>
                 <span className="text-sm font-medium text-content-secondary">Espacio Total</span>
@@ -161,7 +161,7 @@ export function StoragePage() {
             </div>
 
             <div className="mt-4 flex items-baseline gap-3">
-              <span className="text-4xl font-semibold tracking-tight text-content-primary">
+              <span className="text-gradient text-4xl font-semibold tracking-tight">
                 {formatBytes(data.used_bytes)}
               </span>
               <span className="text-base text-content-tertiary">
@@ -176,7 +176,7 @@ export function StoragePage() {
               </div>
 
               {/* Barra segmentada multicolor */}
-              <div className="flex h-3 w-full overflow-hidden rounded-full bg-surface-hover p-0.5">
+              <div className="flex h-3 w-full overflow-hidden rounded-full bg-slate-900/[0.06] dark:bg-white/[0.08] p-0.5">
                 {data.breakdown.length === 0 ? (
                   <div className="h-full w-full rounded-full bg-content-tertiary/20" />
                 ) : (
@@ -212,10 +212,10 @@ export function StoragePage() {
         </div>
 
         {/* Bento Card 2: Distribución por Gráfico de Dona (2 cols en lg) */}
-        <div className="lg:col-span-2 rounded-drive border border-border bg-surface p-6 shadow-sm flex flex-col justify-between">
+        <div className="lg:col-span-2 rounded-drive glass p-6 flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-subtle text-primary">
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
                 <PieChart size={20} />
               </span>
               <h2 className="text-base font-medium text-content-primary">Distribución de archivos</h2>
@@ -278,7 +278,7 @@ export function StoragePage() {
                   const colors = KIND_COLORS[b.kind]
                   const catPercent = data.used_bytes > 0 ? ((b.bytes / data.used_bytes) * 100).toFixed(1) : '0'
                   return (
-                    <div key={b.kind} className="flex items-center justify-between text-xs p-1.5 rounded bg-surface-hover/50">
+                    <div key={b.kind} className="flex items-center justify-between text-xs p-1.5 rounded bg-slate-900/[0.06] dark:bg-white/[0.08]">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className={cn('flex h-6 w-6 shrink-0 items-center justify-center rounded', colors?.bg, colors?.text)}>
                           <Icon size={13} />
@@ -298,10 +298,10 @@ export function StoragePage() {
         </div>
 
         {/* Bento Card 3: Estado de Capacidad & Tip */}
-        <div className="rounded-drive border border-border bg-surface p-5 shadow-sm flex flex-col justify-between">
+        <div className="rounded-drive glass p-5 flex flex-col justify-between">
           <div>
             <div className="flex items-center gap-2 text-content-secondary mb-3">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-subtle text-primary">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
                 <TrendingUp size={18} />
               </span>
               <span className="text-sm font-medium text-content-primary">Diagnóstico</span>
@@ -313,7 +313,7 @@ export function StoragePage() {
 
           <div className="mt-4 pt-3 border-t border-border flex items-center justify-between">
             <span className="text-xs text-content-tertiary">Archivos totales</span>
-            <span className="inline-flex items-center gap-1 text-xs font-semibold text-content-primary bg-surface-hover px-2 py-0.5 rounded-full">
+            <span className="inline-flex items-center gap-1 text-xs font-semibold text-content-primary bg-slate-900/[0.06] dark:bg-white/[0.08] px-2 py-0.5 rounded-full">
               <Files size={12} />
               {totalFiles}
             </span>
@@ -321,10 +321,10 @@ export function StoragePage() {
         </div>
 
         {/* Bento Card 4: Mayor Consumo */}
-        <div className="rounded-drive border border-border bg-surface p-5 shadow-sm flex flex-col justify-between">
+        <div className="rounded-drive glass p-5 flex flex-col justify-between">
           <div>
             <div className="flex items-center gap-2 text-content-secondary mb-3">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-subtle text-primary">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
                 <Upload size={18} />
               </span>
               <span className="text-sm font-medium text-content-primary">Mayor consumo</span>
@@ -379,7 +379,7 @@ export function StoragePage() {
         </div>
 
         {data.breakdown.length === 0 ? (
-          <div className="rounded-drive border border-border bg-surface p-12 text-center text-sm text-content-tertiary">
+          <div className="rounded-drive glass p-12 text-center text-sm text-content-tertiary">
             <Files size={36} className="mx-auto mb-2 opacity-40 text-content-tertiary" />
             Aún no has subido archivos a tu almacenamiento.
           </div>
@@ -393,7 +393,7 @@ export function StoragePage() {
               return (
                 <div
                   key={b.kind}
-                  className="group rounded-drive border border-border bg-surface p-4 shadow-sm hover:border-primary/40 hover:shadow-md transition-all duration-200 flex flex-col justify-between"
+                  className="group rounded-drive glass p-4 hover:border-primary/40 hover:shadow-md transition-all duration-200 flex flex-col justify-between"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
@@ -415,7 +415,7 @@ export function StoragePage() {
                       <span className="text-content-tertiary font-medium">{catPercentOfUsed}%</span>
                     </div>
 
-                    <div className="h-1.5 w-full rounded-full bg-surface-hover overflow-hidden">
+                    <div className="h-1.5 w-full rounded-full bg-slate-900/[0.06] dark:bg-white/[0.08] overflow-hidden">
                       <div
                         className={cn('h-full rounded-full transition-all duration-300', KIND_META[b.kind]?.bar ?? 'bg-primary')}
                         style={{ width: `${Math.min(100, Math.max(2, Number(catPercentOfUsed)))}%` }}

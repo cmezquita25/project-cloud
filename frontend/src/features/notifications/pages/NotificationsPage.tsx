@@ -167,7 +167,7 @@ export function NotificationsPage() {
               <Filter size={15} />
               <span>Todas</span>
               {total > 0 && (
-                <span className="rounded-full bg-surface-container px-2 py-0.5 text-xs text-content-secondary">
+                <span className="rounded-full bg-slate-900/[0.04] dark:bg-white/[0.05] px-2 py-0.5 text-xs text-content-secondary">
                   {total}
                 </span>
               )}
@@ -204,7 +204,7 @@ export function NotificationsPage() {
                 setLimit(Number(e.target.value))
                 setPage(1)
               }}
-              className="rounded-lg border border-border bg-surface px-2 py-1 text-xs text-content-primary outline-none focus:border-primary"
+              className="rounded-lg input-glass ring-glow-focus px-2 py-1 text-xs text-content-primary"
             >
               <option value={10}>10 por pág.</option>
               <option value={20}>20 por pág.</option>
@@ -234,10 +234,10 @@ export function NotificationsPage() {
       </div>
 
       {/* Tabla / Lista de Notificaciones */}
-      <div className="rounded-drive border border-border bg-surface shadow-sm overflow-hidden divide-y divide-border">
+      <div className="rounded-drive glass-lite overflow-hidden divide-y divide-border">
         {/* Cabecera de Selección */}
         {items.length > 0 && (
-          <div className="flex items-center justify-between bg-surface-container/50 px-4 py-2.5 text-xs font-medium text-content-secondary border-b border-border">
+          <div className="flex items-center justify-between bg-slate-900/[0.04] dark:bg-white/[0.05] px-4 py-2.5 text-xs font-medium text-content-secondary border-b border-border">
             <label className="flex items-center gap-2 cursor-pointer select-none">
               <button
                 type="button"
@@ -284,10 +284,10 @@ export function NotificationsPage() {
                 onClick={(e) => handleItemClick(item, e)}
                 className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-4 transition-colors cursor-pointer ${
                   isChecked
-                    ? 'bg-primary-subtle/50'
+                    ? 'bg-primary/10'
                     : isUnread
-                    ? 'bg-primary-subtle/20 hover:bg-primary-subtle/40'
-                    : 'hover:bg-surface-hover'
+                    ? 'bg-primary/10 hover:bg-primary/10'
+                    : 'hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.07]'
                 }`}
               >
                 <div className="flex items-start gap-3.5 min-w-0 flex-1">
@@ -317,7 +317,7 @@ export function NotificationsPage() {
                         <HardDrive size={20} />
                       </div>
                     ) : (
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-container text-content-secondary">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900/[0.04] dark:bg-white/[0.05] text-content-secondary">
                         <Info size={20} />
                       </div>
                     )}

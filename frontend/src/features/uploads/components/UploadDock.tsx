@@ -26,8 +26,8 @@ function TaskRow({ task, onCancel, onRetry }: { task: UploadTask; onCancel: () =
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm text-content-primary">{task.name}</p>
         {task.status === 'uploading' && (
-          <div className="mt-1 h-1 overflow-hidden rounded-pill bg-surface-hover">
-            <div className="h-full rounded-pill bg-primary transition-[width]" style={{ width: `${pct}%` }} />
+          <div className="mt-1 h-1 overflow-hidden rounded-pill bg-slate-900/[0.06] dark:bg-white/[0.08]">
+            <div className="h-full rounded-pill bg-gradient-to-r from-gradient-start to-gradient-end shadow-[0_0_8px_rgb(var(--glow-b)/0.45)] transition-[width]" style={{ width: `${pct}%` }} />
           </div>
         )}
         {task.status === 'error' && <p className="truncate text-xs text-danger">{task.error}</p>}
@@ -83,9 +83,9 @@ export function UploadDock() {
   return (
     <>
       <div className="fixed inset-x-0 bottom-0 z-toast flex justify-center px-0 sm:inset-x-auto sm:bottom-6 sm:right-6 sm:px-0">
-        <div className="w-full overflow-hidden rounded-t-2xl bg-surface shadow-elevation-3 sm:w-96 sm:rounded-2xl border border-border/80">
+        <div className="glass-strong w-full overflow-hidden rounded-t-2xl ring-1 ring-slate-900/5 sm:w-96 sm:rounded-2xl dark:ring-white/10">
           {/* Cabecera */}
-          <div className="flex items-center gap-2 border-b border-border bg-surface-container px-4 py-3 text-content-primary">
+          <div className="flex items-center gap-2 border-b border-border bg-slate-900/[0.04] dark:bg-white/[0.05] px-4 py-3 text-content-primary">
             <div className="flex items-center gap-2 min-w-0">
               {active > 0 ? (
                 <Loader2 size={18} className="animate-spin text-primary shrink-0" />
@@ -100,7 +100,7 @@ export function UploadDock() {
               {tasks.length > 1 && (
                 <button
                   onClick={() => setShowUrlsModal(true)}
-                  className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-primary hover:bg-surface-hover transition-colors"
+                  className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-primary hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.07] transition-colors"
                   title="Listado de URLs"
                 >
                   <LinkIcon size={14} />
@@ -109,14 +109,14 @@ export function UploadDock() {
               )}
               <button
                 onClick={() => setMinimized((m) => !m)}
-                className="rounded-full p-1 text-content-secondary hover:bg-surface-hover"
+                className="rounded-full p-1 text-content-secondary hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.07]"
                 aria-label={minimized ? 'Expandir' : 'Minimizar'}
               >
                 {minimized ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
               </button>
               <button
                 onClick={() => (active > 0 ? clearFinished() : dismissAll())}
-                className="rounded-full p-1 text-content-secondary hover:bg-surface-hover"
+                className="rounded-full p-1 text-content-secondary hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.07]"
                 aria-label="Cerrar"
               >
                 <X size={18} />

@@ -331,22 +331,25 @@ Mayor palanca: estas piezas aparecen en toda la app.
 - **Verificado:** `npm run build` sin errores; ningún resto de `bg-surface`, `bg-canvas` opaco, `shadow-elevation` o `primary-subtle` en explorador y colecciones.
 - ⚠️ **Pendiente:** recorrido funcional real (marquee, drag & drop, menú contextual, grid/lista, detalles) con backend levantado; en local MySQL está apagado.
 
-### Fase 5: Resto de features
-- [ ] **UploadDock:** `glass-strong`, barra de progreso con degradado + shimmer.
-- [ ] **NotificationBell:** panel `glass-panel`; badge con `ping-dot` cian.
-- [ ] **PreviewModal:** barra y flechas `glass-subtle` oscuro (R11).
-- [ ] **Almacenamiento** (`StoragePage`, bento): cards `glass` + `glass-hover`, cifra principal `text-gradient`, barras de cuota con degradado. `kindMeta.ts` (colores por tipo) **no se toca**.
-- [ ] **Admin:** stat cards `glass`, `UsersTable` (N4), `UserFilters` (glass-subtle), `UserFormDialog`/`PasswordResetDialog` (heredan Dialog), `ServerLimits`, `SmtpSettings`, `LogoUploader`.
-- [ ] **Gráficas ApexCharts:** paleta `['#2563eb', '#06b6d4', '#818cf8', '#34d399', '#fbbf24']`, fondo transparente, rejilla `rgba(148,163,184,.1)`, tooltip con `theme` según modo. Idealmente leídos de los tokens CSS en tiempo de ejecución para que sigan el white-label.
-- [ ] **Settings del admin (×9 páginas):** paneles `glass`, navegación lateral con ítem activo en degradado.
-- [ ] **Wizard de instalación** (`/install`). **No** usa `AuthLayout`: tiene su propio contenedor en `InstallWizard.tsx` (`bg-surface-container`). Recibe:
-  - `AppBackdrop animated` + tarjeta `glass-strong`.
-  - Logo y título con `text-gradient`.
-  - `Stepper`: paso activo con degradado, completados con check en degradado, conector con relleno de degradado.
-  - Los 5 pasos (`StepRequirements`, `StepDatabase`, `StepConfig`, `StepAdmin`, `StepDone`): Inputs, Buttons y listas de requisitos con estados ok/error en emerald/red.
-  - ⚠️ Corre **antes** de que exista la BD, así que no hay settings ni preset: siempre se ve con Invicter (los defaults de `index.css`). No debe llamar a `usePlatformSettings` ni depender de él.
-  - Probar el flujo completo de instalación en limpio (sin `config.php` ni `install.lock`).
-- [ ] Notificaciones, Perfil, Soporte, Papelera, Recientes, Destacados, Búsqueda: revisar que heredan bien; ajustar los `bg-surface` sueltos a `glass` o `glass-lite` según §3.3.
+### Fase 5: Resto de la plataforma ✅ (completada)
+Cubre todas las pantallas restantes de §1.4: admin, ajustes, almacenamiento, perfil, notificaciones, recursos, previsualización, subidas, soporte y wizard de instalación.
+
+**Método:** transformador por reglas que actúa solo dentro de literales de clases (no toca lógica) y decide por contexto (campo → `input-glass ring-glow-focus`; tarjeta única → `glass`; fila/lista repetida → `glass-lite`; tintes y hovers → velos translúcidos; `primary-subtle` → `primary/10`), seguido de ajustes manuales y revisión con capturas reales (sesión de prueba local). 30 archivos, cambios línea a línea sin alterar estructura.
+
+- [x] **Admin:** tarjetas de métricas y secciones en `glass`, iconos con tinte y anillo de marca; gráficas internas en `glass-lite` (estaban anidadas en otra tarjeta glass y el blur doble las agrisaba); gráfica de historial con el color de marca leído de los tokens (`brandColor`), así sigue al preset y a los colores personalizados. Colores por tipo de archivo y por usuario sin cambios (son categorías).
+- [x] **Usuarios:** filtros con `input-glass` (también los `Select` que antes forzaban `bg-surface`), tabla y tarjetas móviles en `glass-lite`, rol con tinte de marca. Su menú de acciones usa `anchorRef` → Portal.
+- [x] **Ajustes (×9):** navegación con ítem activo en tinte de marca, paneles `glass`, campos y selects nativos con `input-glass`, editor de plantillas en `glass`, tabla de backups sin fondo sólido.
+- [x] **Almacenamiento y bento de compartidos:** tarjetas `glass`, cifra principal con `text-gradient`, segmentado y select nativo con el sistema nuevo. `kindMeta.ts` intacto.
+- [x] **Perfil:** tarjetas y campos glass; botón de cambiar foto con el degradado de marca.
+- [x] **Notificaciones:** panel de la campana en `glass-panel` (flota sobre el contenido; va en Portal), no leídas con tinte de marca; página de notificaciones en glass.
+- [x] **UploadDock:** `glass-strong`, barra de progreso con degradado y halo.
+- [x] **PreviewModal:** velo `slate-950/90` con blur, barra superior translúcida y flechas con anillo. Imagen, vídeo y PDF conservan su presentación (sombra y fondo blanco del PDF).
+- [x] **Wizard de instalación:** `AppBackdrop animated` + `CursorGlow`, tarjeta `glass-strong`, logo y título con degradado, botón de tema en glass, `Stepper` con paso activo/completado en degradado y conectores en degradado. Verificado en claro y oscuro.
+- [x] **Cargadores de arranque** (`RootGate`, guards): sin fondo propio y con spinner `brand`.
+- [x] Títulos de página unificados a `font-semibold`.
+- [x] Durante la fase se detectó y corrigió un artefacto del transformador (`bg-surface-hover/NN` dejaba un sufijo `/NN` inválido en 5 clases).
+- Quedan a propósito: sombra del drawer móvil, sombras de imagen/vídeo y fondo blanco del visor PDF.
+- **Verificado:** `npm run build` sin errores; capturas reales de Admin, Usuarios, Almacenamiento, Apariencia, Perfil y wizard (claro/oscuro).
 
 ### Fase 6: Presets de estilo, white-label y pantalla de Apariencia
 Diseño completo en §3.5.
