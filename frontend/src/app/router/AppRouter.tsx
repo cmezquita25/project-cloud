@@ -44,10 +44,18 @@ const router = createBrowserRouter([
         element: <AuthLayout />,
         children: [
           {
+            // Con sesión iniciada no se puede volver a estas pantallas: si el
+            // usuario pasó por «¿Olvidaste tu contraseña?» antes de entrar,
+            // esa entrada sigue en el historial y «atrás» lo devolvía ahí.
             element: <RedirectIfAuth />,
-            children: [{ path: '/login', element: <LoginPage /> }],
+            children: [
+              { path: '/login', element: <LoginPage /> },
+              { path: '/forgot-password', element: <ForgotPasswordPage /> },
+            ],
           },
-          { path: '/forgot-password', element: <ForgotPasswordPage /> },
+          // Fuera del guard a propósito: se abre desde el enlace del correo con
+          // un token de un solo uso, y debe funcionar aunque haya una sesión
+          // abierta en el mismo navegador.
           { path: '/reset-password', element: <ResetPasswordPage /> },
         ],
       },
