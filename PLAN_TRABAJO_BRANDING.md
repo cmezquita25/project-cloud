@@ -273,15 +273,18 @@ Si prefieres que *Clásico* sea **morado violeta** en lugar del púrpura actual 
 - **Ojo:** si en la base de datos ya hay colores guardados en *Apariencia*, siguen ganando (inline) y no se verá el cambio de marca hasta pulsar *Restaurar*.
 - **Verificado:** `npm run build` (`tsc -b` + Vite) sin errores.
 
-### Fase 2: Fondo y marco de la app
-**Archivos:** nuevo `shared/ui/AppBackdrop.tsx`, `AppLayout.tsx`, `AuthLayout.tsx`, `Topbar.tsx`, `Sidebar.tsx`, `Footer.tsx`.
-- [ ] `AppBackdrop` como hermano fijo (§3.4), **estático** en `AppLayout`. Contenido en `relative z-10`.
-- [ ] Wrapper de contenido: `bg-canvas` → transparente. **Sin** filter/transform (R1).
-- [ ] **Topbar:** `glass-strong` en lugar de `bg-surface` + `border-b`. Búsqueda: `glass-subtle` + foco `ring-glow-focus` (conserva `rounded-pill`).
-- [ ] **Sidebar:** `glass` con `border-r` translúcido. Ítem activo: fondo `bg-gradient-to-r from-glow-a/15 to-glow-b/5` + texto/icono `text-primary` + barra o anillo sutil. Hover `bg-white/[0.07]` (oscuro) / `bg-slate-900/[0.05]` (claro). Conserva radios.
-- [ ] Botón **"Nuevo"** del sidebar: primario con degradado + `btn-glow`.
-- [ ] Drawer móvil: overlay `bg-overlay/80 backdrop-blur-md`; panel `glass-panel`.
-- [ ] **AuthLayout:** `AppBackdrop animated` (reemplaza los halos `blur-2xl`) + cursor glow (solo escritorio, se oculta en táctil); tarjeta `glass-strong` con sombra de la landing; botón de tema flotante `glass-strong` + `glass-hover`; nombre de la organización con `text-gradient` cuando no hay logo.
+### Fase 2: Fondo y marco de la app ✅ (completada)
+**Archivos:** nuevos `shared/ui/AppBackdrop.tsx` y `shared/ui/CursorGlow.tsx`; `AppLayout.tsx`, `AuthLayout.tsx`, `Topbar.tsx`, `Sidebar.tsx`, `Footer.tsx`, `StorageIndicator.tsx`.
+- [x] `AppBackdrop` (rejilla + 3 halos `.orb` con `text-glow-a/b/c`) montado como hermano en `-z-10`, **estático** en `AppLayout` y `animated` en `AuthLayout`. No crea contexto de apilamiento, así que el orden de drawer, UploadDock y menús en Portal no cambia.
+- [x] Wrapper de contenido de `AppLayout`: `bg-canvas` retirado (transparente). **Sin** filter/transform/backdrop (R1), con comentario en el código.
+- [x] **Topbar:** `glass-strong` solo con borde inferior, sin z-index (el drawer sigue tapándola). Buscador `input-glass` + `ring-glow-focus` (conserva `rounded-pill`). Logo por defecto con degradado de marca y nombre de la organización con `text-gradient`.
+- [x] **Sidebar:** `glass` (escritorio) / `glass-panel` (nueva prop `inDrawer` para el drawer móvil). Estados unificados en `ITEM_ACTIVE` (tinte degradado + anillo) e `ITEM_IDLE` (hover translúcido) para ítems, subítems, unidades y carpetas compartidas. Buscador móvil `input-glass`. Radios intactos.
+- [x] `StorageIndicator`: tinte translúcido con anillo, sin blur (está dentro del sidebar glass, R6).
+- [x] Footer: `glass` con borde superior. `ReportBugDialog` usa `Dialog` (Portal), así que no le afecta.
+- [x] Drawer móvil: overlay `bg-overlay/70 backdrop-blur-md`.
+- [x] **AuthLayout:** `AppBackdrop animated` + `CursorGlow` (sustituyen los halos `blur-2xl` + `mix-blend-multiply`); tarjeta `glass-strong`; botón de tema flotante `glass-strong glass-hover`; logo por defecto en degradado y nombre con `text-gradient`. Sin `bg-canvas` en el contenedor (taparía el fondo).
+- ➡️ El brillo del botón **"Nuevo"** llega en la Fase 3 con la variante `primary` de `Button`, que lo aplica en toda la app.
+- **Verificado:** `npm run build` sin errores; capturas del login en claro y oscuro con Chrome headless (build de producción, sin backend). Las pantallas con sesión no se pudieron capturar sin backend: quedan para la QA con la API levantada.
 
 ### Fase 3: Design system (`shared/ui`)
 Mayor palanca: estas piezas aparecen en toda la app.

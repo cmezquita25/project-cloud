@@ -17,7 +17,9 @@ export function StorageIndicator({ usedBytes, totalBytes, onNavigate }: StorageI
     <Link
       to="/quota"
       onClick={onNavigate}
-      className="block rounded-xl bg-surface-container px-4 py-3 transition-colors hover:bg-surface-hover"
+      // Tinte translúcido, sin `backdrop-filter`: vive dentro del sidebar, que
+      // ya es glass, y un desenfoque anidado parpadea.
+      className="block rounded-xl bg-slate-900/[0.03] px-4 py-3 ring-1 ring-inset ring-slate-900/[0.06] transition-colors hover:bg-slate-900/[0.06] dark:bg-white/[0.04] dark:ring-white/[0.07] dark:hover:bg-white/[0.08]"
     >
       <div className="mb-2.5 flex items-center gap-2 text-content-secondary">
         <span className="material-symbols-rounded text-[18px]">cloud</span>

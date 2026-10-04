@@ -12,6 +12,17 @@ import { useUploadPicker } from '@features/uploads/hooks/useUploadPicker'
 import { useSharedItems } from '@features/drive-explorer/hooks/useSharedItems'
 import { NAV_GROUPS, type NavItem } from '../navigation'
 
+/**
+ * Estados de los enlaces del sidebar, compartidos por todas sus variantes
+ * (ítem, subítem, unidades y carpetas compartidas) para que se vean iguales.
+ * El activo es un tinte con el degradado de marca y un anillo sutil; el hover
+ * es un velo translúcido, porque el fondo del sidebar ahora es glass.
+ */
+const ITEM_IDLE =
+  'text-content-secondary hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.07]'
+const ITEM_ACTIVE =
+  'bg-gradient-to-r from-glow-a/15 to-glow-b/5 text-primary ring-1 ring-inset ring-primary/20'
+
 function SidebarItem({ item, onNavigate }: { item: NavItem, onNavigate?: () => void }) {
   const [open, setOpen] = useState(false)
   const location = useLocation()
@@ -33,7 +44,7 @@ function SidebarItem({ item, onNavigate }: { item: NavItem, onNavigate?: () => v
           onClick={() => setOpen(!open)}
           className={cn(
             'flex items-center gap-4 rounded-pill px-4 py-2.5 text-sm font-medium transition-colors w-full text-left',
-            'text-content-secondary hover:bg-surface-hover'
+            ITEM_IDLE
           )}
         >
           <Icon size={20} />
@@ -53,9 +64,7 @@ function SidebarItem({ item, onNavigate }: { item: NavItem, onNavigate?: () => v
                   className={({ isActive }) =>
                     cn(
                       'flex items-center gap-3 rounded-pill px-3 py-2 text-sm font-medium transition-colors',
-                      isActive
-                        ? 'bg-primary-subtle text-primary'
-                        : 'text-content-secondary hover:bg-surface-hover'
+                      isActive ? ITEM_ACTIVE : ITEM_IDLE
                     )
                   }
                 >
@@ -81,9 +90,7 @@ function SidebarItem({ item, onNavigate }: { item: NavItem, onNavigate?: () => v
         const active = isMyUnit ? (isActive && !isViewingSharedUnit) : isActive
         return cn(
           'flex items-center gap-4 rounded-pill px-4 py-2.5 text-sm font-medium transition-colors',
-          active
-            ? 'bg-primary-subtle text-primary'
-            : 'text-content-secondary hover:bg-surface-hover'
+          active ? ITEM_ACTIVE : ITEM_IDLE
         )
       }}
     >
@@ -96,10 +103,15 @@ function SidebarItem({ item, onNavigate }: { item: NavItem, onNavigate?: () => v
 interface SidebarProps {
   /** Cierra el drawer en móvil al navegar. */
   onNavigate?: () => void
+  /**
+   * Se pinta dentro del drawer móvil. Ahí va casi opaco (`glass-panel`): se
+   * abre encima del contenido y tiene que leerse desde el primer frame.
+   */
+  inDrawer?: boolean
 }
 
 /** Barra lateral de navegación (clon de Google Drive). */
-export function Sidebar({ onNavigate }: SidebarProps) {
+export function Sidebar({ onNavigate, inDrawer = false }: SidebarProps) {
   const { user, isAdmin } = useAuth()
   const { access } = useAssetsAccess()
   const sharedItems = useSharedItems()
@@ -164,13 +176,18 @@ export function Sidebar({ onNavigate }: SidebarProps) {
   ]
 
   return (
-    <div className="flex h-full flex-col border-r border-border bg-surface">
+    <div
+      className={cn(
+        'flex h-full flex-col',
+        inDrawer ? 'glass-panel border-y-0 border-l-0' : 'glass border-y-0 border-l-0'
+      )}
+    >
       {/* Buscador móvil */}
       <div className="px-3 pt-4 pb-2 md:hidden">
         <form
           onSubmit={submitSearch}
           role="search"
-          className="flex h-10 w-full items-center gap-2 rounded-pill bg-surface px-3 text-content-secondary shadow-elevation-1 focus-within:ring-2 focus-within:ring-focus"
+          className="input-glass ring-glow-focus flex h-10 w-full items-center gap-2 rounded-pill px-3 text-content-secondary"
         >
           <button type="submit" aria-label="Buscar" className="shrink-0 focus-visible:outline-focus">
             <Search size={16} />
@@ -231,8 +248,8 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                       onClick={onNavigate}
                       className={
                         cn(
-                          'flex items-center gap-4 rounded-pill px-4 py-2 text-sm font-medium transition-colors text-content-secondary hover:bg-surface-hover',
-                          isUnitActive && 'bg-primary-subtle text-primary'
+                          'flex items-center gap-4 rounded-pill px-4 py-2 text-sm font-medium transition-colors',
+                          isUnitActive ? ITEM_ACTIVE : ITEM_IDLE
                         )
                       }
                     >
@@ -248,8 +265,8 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                     onClick={onNavigate}
                     className={({ isActive }) =>
                       cn(
-                        'flex items-center gap-4 rounded-pill px-4 py-2 text-sm font-medium transition-colors text-content-secondary hover:bg-surface-hover',
-                        isActive && 'bg-primary-subtle text-primary'
+                        'flex items-center gap-4 rounded-pill px-4 py-2 text-sm font-medium transition-colors',
+                        isActive ? ITEM_ACTIVE : ITEM_IDLE
                       )
                     }
                   >
@@ -264,8 +281,8 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                     onClick={onNavigate}
                     className={({ isActive }) =>
                       cn(
-                        'flex items-center gap-4 rounded-pill px-4 py-2 text-sm font-medium transition-colors text-content-secondary hover:bg-surface-hover',
-                        isActive && 'bg-primary-subtle text-primary'
+                        'flex items-center gap-4 rounded-pill px-4 py-2 text-sm font-medium transition-colors',
+                        isActive ? ITEM_ACTIVE : ITEM_IDLE
                       )
                     }
                   >

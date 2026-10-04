@@ -5,6 +5,7 @@ import { usePlatformSettings } from '@shared/hooks/usePlatformSettings'
 import { useTheme } from '@app/providers/ThemeProvider'
 import { getVersionLabel } from '@shared/config/version'
 import { motion } from 'framer-motion'
+import { AppBackdrop, CursorGlow } from '@shared/ui'
 
 /** Layout para pantallas sin sesión (login, instalador): tarjeta centrada. */
 export function AuthLayout() {
@@ -22,12 +23,13 @@ export function AuthLayout() {
   const hasLogo = !!(settings && (settings.logo_white || settings.logo_dark))
 
   return (
-    <div className="relative flex min-h-full items-center justify-center overflow-hidden bg-canvas p-4">
-      {/* Background Decorative Gradients (Optimizado para GPU) */}
-      <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden opacity-30 dark:opacity-20">
-        <div className="absolute top-[-10%] left-[-10%] h-[500px] w-[500px] rounded-full bg-primary/20 mix-blend-multiply blur-2xl" />
-        <div className="absolute bottom-[-10%] right-[-10%] h-[600px] w-[600px] rounded-full bg-primary/10 mix-blend-multiply blur-2xl" />
-      </div>
+    // Sin fondo propio: el `AppBackdrop` va en -z-10 y un `bg-*` aquí lo
+    // taparía. El color de base lo pinta `body`.
+    <div className="relative flex min-h-full items-center justify-center overflow-hidden p-4">
+      {/* Fondo de marca animado + brillo del cursor (solo en acceso). Sustituye
+          a los halos con `blur-2xl` + `mix-blend-multiply`, mucho más caros. */}
+      <AppBackdrop animated />
+      <CursorGlow />
 
       <div className="relative z-10 w-full max-w-md">
         {/* Identidad: logo + eslogan de la organización */}
@@ -45,12 +47,12 @@ export function AuthLayout() {
             />
           ) : (
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-on">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-gradient-start to-gradient-end text-btn-text shadow-[0_10px_30px_-8px_rgb(var(--glow-a)/0.7)]">
                 <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6">
                   <path d="M4 5a2 2 0 0 1 2-2h5l2 3h5a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5Z" />
                 </svg>
               </div>
-              <span className="text-2xl font-medium text-content-primary">{orgName}</span>
+              <span className="text-gradient text-2xl font-semibold">{orgName}</span>
             </div>
           )}
           {slogan && (
@@ -68,7 +70,7 @@ export function AuthLayout() {
           }
           animate={{ opacity: 1, y: 0, rotateX: 0, rotateY: 0 }}
           transition={{ duration: 0.6, type: 'spring', bounce: 0.2 }}
-          className="rounded-2xl border border-white/20 bg-surface/90 p-8 shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] backdrop-blur-md dark:border-white/10 dark:bg-surface/80"
+          className="glass-strong rounded-2xl p-8 ring-1 ring-slate-900/5 dark:ring-white/10"
           style={{ perspective: 1000, backfaceVisibility: 'hidden' }}
         >
           <Outlet />
@@ -87,7 +89,7 @@ export function AuthLayout() {
       </div>
 
       {/* Botón de tema: flotante, abajo a la derecha (estilo botón elevado). */}
-      <div className="fixed bottom-5 right-5 z-50 flex h-11 w-11 items-center justify-center rounded-full border border-border bg-surface shadow-elevation-2">
+      <div className="glass-strong glass-hover fixed bottom-5 right-5 z-50 flex h-11 w-11 items-center justify-center rounded-full">
         <ThemeToggle />
       </div>
     </div>

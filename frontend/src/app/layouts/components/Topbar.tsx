@@ -87,7 +87,13 @@ export function Topbar({ onMenuClick }: TopbarProps) {
   )
 
   return (
-    <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border bg-surface px-2 sm:px-4">
+    /*
+      Glass solo con el borde inferior. Sin z-index a propósito: el drawer
+      móvil (Portal, z-sidebar) tiene que seguir tapando la barra. Los hijos no
+      llevan desenfoque propio (blur anidado = parpadeo); el buscador usa
+      `input-glass`, que es solo un tinte.
+    */
+    <header className="glass-strong flex h-16 shrink-0 items-center gap-2 border-x-0 border-t-0 px-2 sm:px-4">
       <IconButton icon={MenuIcon} label="Menú" onClick={onMenuClick} className="md:hidden" />
 
       <div className="flex items-center gap-2 pl-1 pr-2 sm:pr-6">
@@ -98,14 +104,14 @@ export function Topbar({ onMenuClick }: TopbarProps) {
             className="h-8 max-w-[120px] object-contain transition-opacity duration-300"
           />
         ) : (
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-on">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-gradient-start to-gradient-end text-btn-text shadow-[0_6px_20px_-6px_rgb(var(--glow-a)/0.7)]">
             <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
               <path d="M4 5a2 2 0 0 1 2-2h5l2 3h5a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5Z" />
             </svg>
           </div>
         )}
         {!(settings?.logo_white || settings?.logo_dark) && (
-          <span className="hidden text-xl font-medium text-content-secondary sm:block">
+          <span className="text-gradient hidden text-xl font-semibold sm:block">
             {orgName}
           </span>
         )}
@@ -118,7 +124,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
           <form
             onSubmit={submitSearch}
             role="search"
-            className="flex h-12 w-full max-w-2xl animate-fade-in items-center gap-3 rounded-pill border border-border bg-surface-container px-4 text-content-secondary transition-colors focus-within:border-transparent focus-within:bg-surface focus-within:ring-2 focus-within:ring-focus"
+            className="input-glass ring-glow-focus flex h-12 w-full max-w-2xl animate-fade-in items-center gap-3 rounded-pill px-4 text-content-secondary"
           >
             <button type="submit" aria-label="Buscar" className="shrink-0 focus-visible:outline-focus">
               <Search size={20} />

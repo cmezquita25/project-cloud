@@ -1,6 +1,6 @@
 import { Outlet } from 'react-router-dom'
 import { useState, useEffect } from 'react'
-import { Portal } from '@shared/ui'
+import { AppBackdrop, Portal } from '@shared/ui'
 import { useDisclosure } from '@shared/hooks/useDisclosure'
 import { useIsMobile } from '@shared/hooks/useMediaQuery'
 import { UploadDock } from '@features/uploads/components/UploadDock'
@@ -42,6 +42,8 @@ export function AppLayout() {
     <HeaderSearchProvider>
       <GoogleAnalyticsTracker />
       <div className="flex h-full flex-col overflow-hidden">
+      {/* Fondo de marca (estático en la app). Hermano del contenido, no envoltorio. */}
+      <AppBackdrop />
       <Topbar onMenuClick={drawer.open} />
 
       <div className="flex min-h-0 flex-1">
@@ -55,19 +57,22 @@ export function AppLayout() {
           <Portal>
             <div className="fixed inset-0 z-sidebar">
               <div
-                className={`absolute inset-0 bg-overlay/60 backdrop-blur-sm ${isClosing ? 'animate-fade-out' : 'animate-fade-in'}`}
+                className={`absolute inset-0 bg-overlay/70 backdrop-blur-md ${isClosing ? 'animate-fade-out' : 'animate-fade-in'}`}
                 onClick={handleClose}
                 aria-hidden="true"
               />
               <div className={`absolute left-0 top-0 h-full w-72 shadow-elevation-3 ${isClosing ? 'animate-slide-out-left' : 'animate-slide-in-left'}`}>
-                <Sidebar onNavigate={handleClose} />
+                <Sidebar onNavigate={handleClose} inDrawer />
               </div>
             </div>
           </Portal>
         )}
 
         {/* Contenido */}
-        <div className="flex min-w-0 flex-1 flex-col bg-canvas overflow-hidden">
+        {/* Transparente para que se vea el fondo de marca. Sin `backdrop-filter`,
+            `filter` ni `transform`: el recuadro de selección por arrastre es
+            `fixed` y vive aquí dentro; cualquiera de ellos lo descolocaría. */}
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <main className="min-w-0 flex-1 flex flex-col overflow-y-auto">
             <div className="mx-auto h-full w-full max-w-[1600px] px-4 py-4 sm:px-6 flex flex-col">
               <Outlet />
