@@ -74,7 +74,7 @@ export function Tooltip({ content, side = 'bottom', children, delay = 400 }: Too
           role="tooltip"
           className={cn(
             'pointer-events-none fixed z-[9999] hidden animate-fade-in whitespace-nowrap rounded-md md:block',
-            'bg-content-primary px-2 py-1 text-xs font-medium text-content-inverse shadow-elevation-2',
+            'glass-panel px-2 py-1 text-xs font-medium text-content-primary',
             side === 'top' && '-translate-x-1/2 -translate-y-full',
             side === 'bottom' && '-translate-x-1/2',
             side === 'left' && '-translate-x-full -translate-y-1/2',

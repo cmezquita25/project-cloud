@@ -56,13 +56,18 @@ export function Dialog({
         aria-modal="true"
       >
         <div
-          className="absolute inset-0 animate-fade-in bg-overlay/50"
+          className="absolute inset-0 animate-fade-in bg-overlay/50 backdrop-blur-md dark:bg-overlay/80"
           onClick={onClose}
           aria-hidden="true"
         />
+        {/*
+          Panel `glass-strong`, como el modal de la landing. Su contenido no
+          debe usar `position: fixed` sin Portal (el desenfoque lo volvería
+          relativo al panel); los menús y selects internos ya van en Portal.
+        */}
         <div
           className={cn(
-            'relative z-10 w-full animate-scale-in rounded-2xl bg-surface p-6 shadow-elevation-3',
+            'glass-strong relative z-10 w-full animate-scale-in rounded-2xl p-6 ring-1 ring-slate-900/5 dark:ring-white/10',
             SIZES[size]
           )}
         >
@@ -76,7 +81,7 @@ export function Dialog({
             />
           )}
           {title && (
-            <h2 className="pr-8 text-xl font-medium text-content-primary">{title}</h2>
+            <h2 className="pr-8 text-xl font-semibold text-content-primary">{title}</h2>
           )}
           {description && (
             <p className="mt-2 text-sm text-content-secondary">{description}</p>

@@ -39,13 +39,18 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
           aria-invalid={!!error}
           aria-describedby={describedBy}
           className={cn(
-            'h-11 w-full rounded-drive border bg-surface px-3.5 text-content-primary',
+            // `input-glass`: tinte translúcido + borde fino (sin blur). El
+            // foco es el de la landing: borde y anillo con el color de foco.
+            'input-glass h-11 w-full rounded-drive px-3.5 text-content-primary',
             'placeholder:text-content-tertiary',
-            'transition-colors focus:outline-none focus:ring-2 focus:ring-focus focus:border-transparent',
             'disabled:cursor-not-allowed disabled:opacity-60',
             LeftIcon && 'pl-11',
             rightElement && 'pr-11',
-            error ? 'border-danger focus:ring-danger' : 'border-border-strong',
+            // Con error no se usa `ring-glow-focus`: pintaría el borde con el
+            // color de foco y taparía el rojo justo al escribir.
+            error
+              ? 'border-danger focus:outline-none focus:ring-2 focus:ring-danger/25'
+              : 'ring-glow-focus',
             className
           )}
           {...props}

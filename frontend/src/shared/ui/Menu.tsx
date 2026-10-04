@@ -50,7 +50,7 @@ function ItemRow({ item, onClose }: { item: MenuItem; onClose: () => void }) {
   const Icon = item.icon
   return (
     <>
-      {item.divider && <div className="my-1 h-px bg-border" role="separator" />}
+      {item.divider && <div className="my-1 h-px bg-slate-900/10 dark:bg-white/10" role="separator" />}
       <button
         type="button"
         role="menuitem"
@@ -61,11 +61,13 @@ function ItemRow({ item, onClose }: { item: MenuItem; onClose: () => void }) {
         }}
         className={cn(
           'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors',
-          'hover:bg-surface-hover active:bg-surface-active disabled:pointer-events-none disabled:opacity-40',
-          item.danger ? 'text-danger' : 'text-content-primary'
+          'disabled:pointer-events-none disabled:opacity-40',
+          item.danger
+            ? 'text-danger hover:bg-danger/10 active:bg-danger/15'
+            : 'text-content-primary hover:bg-slate-900/[0.05] active:bg-slate-900/[0.08] dark:hover:bg-white/[0.07] dark:active:bg-white/[0.1]'
         )}
       >
-        {Icon && <Icon size={18} className={item.danger ? 'text-danger' : 'text-content-secondary'} />}
+        {Icon && <Icon size={18} className={item.danger ? 'text-danger' : 'text-primary'} />}
         <span className="flex-1">{item.label}</span>
       </button>
     </>
@@ -170,8 +172,13 @@ export function Menu({ open, onClose, items, title, align = 'left', anchorRef, p
     </>
   )
 
+  /*
+    `glass-panel`: casi opaco a propósito. El menú se abre encima de la
+    rejilla de archivos y tiene que leerse desde el primer frame; un glass
+    translúcido dejaría ver los nombres de debajo. Conserva `rounded-xl`.
+  */
   const panelClass = cn(
-    'min-w-[220px] max-w-[calc(100vw-1rem)] animate-scale-in overflow-y-auto rounded-xl border border-border bg-surface p-1.5 shadow-menu',
+    'glass-panel min-w-[220px] max-w-[calc(100vw-1rem)] animate-scale-in overflow-y-auto rounded-xl p-1.5 ring-1 ring-slate-900/5 dark:ring-white/10',
     className
   )
 

@@ -9,7 +9,8 @@ interface ProgressBarProps {
 }
 
 const TONE: Record<NonNullable<ProgressBarProps['tone']>, string> = {
-  primary: 'bg-primary',
+  // Degradado de marca con un halo leve; los tonos de estado siguen sólidos.
+  primary: 'bg-gradient-to-r from-gradient-start to-gradient-end shadow-[0_0_10px_rgb(var(--glow-b)/0.45)]',
   success: 'bg-success',
   warning: 'bg-warning',
   danger: 'bg-danger',
@@ -25,7 +26,7 @@ export function ProgressBar({ value, className, tone = 'primary', size = 'md' }:
       aria-valuenow={indeterminate ? undefined : Math.round(value)}
       aria-valuemin={0}
       aria-valuemax={100}
-      className={cn('w-full overflow-hidden rounded-pill bg-border', height, className)}
+      className={cn('w-full overflow-hidden rounded-pill bg-slate-900/[0.08] dark:bg-white/[0.08]', height, className)}
     >
       <div
         className={cn(

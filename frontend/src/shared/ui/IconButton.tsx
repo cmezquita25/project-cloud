@@ -32,9 +32,11 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
       title={label}
       className={cn(
         'inline-flex items-center justify-center rounded-full transition-colors',
-        'text-content-secondary hover:bg-surface-hover active:bg-surface-active',
+        // Velos translúcidos y sin desenfoque propio: estos botones viven
+        // sobre barras y paneles glass (blur anidado = parpadeo).
+        'text-content-secondary hover:bg-slate-900/[0.06] active:bg-slate-900/[0.1] dark:hover:bg-white/[0.08] dark:active:bg-white/[0.12]',
         'focus-visible:outline-focus disabled:pointer-events-none disabled:opacity-40',
-        active && 'bg-primary-subtle text-primary',
+        active && 'bg-primary/10 text-primary ring-1 ring-inset ring-primary/20',
         s.box,
         className
       )}

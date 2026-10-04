@@ -15,14 +15,27 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   fullWidth?: boolean
 }
 
+/*
+  Variantes con el sistema visual Invicter (ver `index.css`).
+
+  - primary: degradado de marca + `btn-glow` (halo y elevación al hover). El
+    degradado sale de los tokens, así que sigue al preset y a los colores
+    personalizados de Apariencia.
+  - secondary: `glass-lite` (mismo aspecto glass, SIN `backdrop-filter`). Estos
+    botones viven casi siempre dentro de diálogos y paneles glass, y un
+    desenfoque anidado parpadea.
+  - tonal / ghost: tintes translúcidos en vez de superficies sólidas.
+  - danger: degradado rojo con halo propio.
+*/
 const VARIANTS: Record<Variant, string> = {
   primary:
-    'bg-gradient-to-r from-gradient-start to-gradient-end text-btn-text hover:opacity-90 active:brightness-95',
-  secondary:
-    'bg-surface text-primary border border-border hover:bg-surface-hover active:bg-surface-active',
-  tonal: 'bg-primary-subtle text-primary hover:brightness-95 dark:hover:brightness-110',
-  ghost: 'bg-transparent text-content-secondary hover:bg-surface-hover active:bg-surface-active',
-  danger: 'bg-danger text-danger-on hover:brightness-95 active:brightness-90 shadow-elevation-1',
+    'bg-gradient-to-r from-gradient-start to-gradient-end text-btn-text btn-glow disabled:shadow-none',
+  secondary: 'glass-lite glass-hover text-primary',
+  tonal: 'bg-primary/10 text-primary ring-1 ring-inset ring-primary/20 hover:bg-primary/15 active:bg-primary/20',
+  ghost:
+    'bg-transparent text-content-secondary hover:bg-slate-900/[0.05] active:bg-slate-900/[0.08] dark:hover:bg-white/[0.07] dark:active:bg-white/[0.1]',
+  danger:
+    'bg-gradient-to-r from-red-600 to-red-500 text-white shadow-[0_10px_30px_-10px_rgb(220_38_38/0.6)] hover:brightness-110 active:brightness-95 disabled:shadow-none',
 }
 
 const SIZES: Record<Size, string> = {
@@ -55,7 +68,10 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       ref={ref}
       disabled={disabled || loading}
       className={cn(
-        'inline-flex select-none items-center justify-center font-medium transition-colors',
+        // `transition-all` y no `transition-colors`: una utilidad gana a la
+        // transición de `.btn-glow`/`.glass-hover`, y con solo colores la
+        // elevación y el halo del hover saltarían en vez de animarse.
+        'inline-flex select-none items-center justify-center font-medium transition-all duration-300 ease-out-expo',
         'focus-visible:outline-focus disabled:pointer-events-none disabled:opacity-50',
         SIZES[size],
         VARIANTS[variant],

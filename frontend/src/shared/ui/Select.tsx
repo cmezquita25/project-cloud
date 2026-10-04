@@ -49,13 +49,21 @@ export function Select({
         disabled={disabled}
         onClick={() => setOpen(true)}
         className={cn(
-          'flex items-center gap-2 rounded-md border border-transparent bg-surface-hover px-3 py-1.5 text-sm text-content-primary transition-colors focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 disabled:pointer-events-none',
+          'input-glass ring-glow-focus flex items-center gap-2 rounded-md px-3 py-1.5 text-sm text-content-primary disabled:opacity-50 disabled:pointer-events-none',
           className
         )}
       >
         {icon}
         <span className="flex-1 text-left truncate">{displayLabel}</span>
-        {!hideChevron && <ChevronDown size={16} className="text-content-secondary shrink-0 pointer-events-none" />}
+        {!hideChevron && (
+          <ChevronDown
+            size={16}
+            className={cn(
+              'pointer-events-none shrink-0 text-content-secondary transition-transform duration-200',
+              open && 'rotate-180'
+            )}
+          />
+        )}
       </button>
 
       <Menu

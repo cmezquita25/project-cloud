@@ -34,19 +34,19 @@ const ToastContext = createContext<ToastContextValue | null>(null)
 const TONE_CONFIG = {
   success: {
     icon: Check,
-    iconBoxClass: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-500/20',
+    iconBoxClass: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-500/20 shadow-[0_0_18px_-4px_rgb(16_185_129/0.55)]',
   },
   error: {
     icon: AlertCircle,
-    iconBoxClass: 'text-rose-600 bg-rose-100 dark:bg-rose-950/70 dark:text-rose-300 border border-rose-500/20',
+    iconBoxClass: 'text-red-600 bg-red-100 dark:bg-red-950/70 dark:text-red-300 border border-red-500/20 shadow-[0_0_18px_-4px_rgb(239_68_68/0.55)]',
   },
   warning: {
     icon: AlertTriangle,
-    iconBoxClass: 'text-amber-600 bg-amber-100 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-500/20',
+    iconBoxClass: 'text-amber-600 bg-amber-100 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-500/20 shadow-[0_0_18px_-4px_rgb(245_158_11/0.55)]',
   },
   info: {
     icon: Info,
-    iconBoxClass: 'text-blue-600 bg-blue-100 dark:bg-blue-950/70 dark:text-blue-300 border border-blue-500/20',
+    iconBoxClass: 'text-primary bg-primary/10 border border-primary/20 shadow-[0_0_18px_-4px_rgb(var(--glow-a)/0.55)]',
   },
 }
 
@@ -98,12 +98,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                   exit={{ opacity: 0, x: 60, scale: 0.95 }}
                   transition={{ type: 'spring', stiffness: 450, damping: 30 }}
                   role="alert"
-                  className="pointer-events-auto flex w-full max-w-sm sm:max-w-md items-center justify-between gap-3 rounded-xl border border-border/80 bg-surface p-4 text-content-primary shadow-elevation-3 transition-colors dark:border-border"
+                  className="glass-strong pointer-events-auto flex w-full max-w-sm sm:max-w-md items-center justify-between gap-3 rounded-xl p-4 text-content-primary ring-1 ring-slate-900/5 dark:ring-white/10"
                 >
                   {/* Icon Box */}
                   <div
                     className={cn(
-                      'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg shadow-sm transition-colors',
+                      'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors',
                       cfg.iconBoxClass
                     )}
                   >
@@ -124,7 +124,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                         t.action?.onClick()
                         dismiss(t.id)
                       }}
-                      className="ms-2 shrink-0 rounded-lg px-2 py-1 text-xs font-semibold text-primary hover:bg-primary-subtle hover:underline transition-colors"
+                      className="ms-2 shrink-0 rounded-lg px-2 py-1 text-xs font-semibold text-primary hover:bg-primary/10 hover:underline transition-colors"
                     >
                       {t.action.label}
                     </button>
@@ -135,7 +135,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                     type="button"
                     onClick={() => dismiss(t.id)}
                     aria-label="Descartar"
-                    className="ms-auto -mr-1.5 -my-1.5 inline-flex h-8 w-8 items-center justify-center rounded-lg bg-transparent p-1.5 text-content-tertiary hover:bg-surface-hover hover:text-content-primary focus:outline-none focus:ring-2 focus:ring-focus transition-colors"
+                    className="ms-auto -mr-1.5 -my-1.5 inline-flex h-8 w-8 items-center justify-center rounded-lg bg-transparent p-1.5 text-content-tertiary hover:bg-slate-900/[0.06] hover:text-content-primary dark:hover:bg-white/[0.08] focus:outline-none focus:ring-2 focus:ring-focus transition-colors"
                   >
                     <span className="sr-only">Close</span>
                     <X className="h-4 w-4" />

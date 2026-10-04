@@ -286,30 +286,34 @@ Si prefieres que *Clásico* sea **morado violeta** en lugar del púrpura actual 
 - ➡️ El brillo del botón **"Nuevo"** llega en la Fase 3 con la variante `primary` de `Button`, que lo aplica en toda la app.
 - **Verificado:** `npm run build` sin errores; capturas del login en claro y oscuro con Chrome headless (build de producción, sin backend). Las pantallas con sesión no se pudieron capturar sin backend: quedan para la QA con la API levantada.
 
-### Fase 3: Design system (`shared/ui`)
+### Fase 3: Design system (`shared/ui`) ✅ (completada)
 Mayor palanca: estas piezas aparecen en toda la app.
 
-| Componente | Cambio | Se conserva |
+| Componente | Hecho | Se conservó |
 |---|---|---|
-| **Button** `primary` | `bg-gradient-to-r from-gradient-start via-primary to-gradient-end bg-[length:200%_auto] btn-glow` + hover `bg-right` (desplazamiento del degradado) | `rounded-pill`, alturas, `loading`, iconos |
-| **Button** `secondary` | `glass-strong glass-hover text-content-primary` | |
-| **Button** `tonal` | `bg-primary/10 ring-1 ring-primary/20 text-primary`, hover `bg-primary/15` | |
-| **Button** `ghost` | hover `bg-white/[0.07]` / `bg-slate-900/[0.05]` | |
-| **Button** `danger` | degradado `red-600 → red-500` + glow rojo suave | |
-| **IconButton** | hover translúcido + foco cian. Sin blur propio (R6) | radios |
-| **Input** | `.input-glass` + foco `ring-glow-focus`; error mantiene `border-danger` | `rounded-drive`, `h-11`, label/hint/error, aria |
-| **Select** (trigger) | `glass-subtle` + chevron con rotación al abrir | `rounded-md`, API |
-| **Menu** (panel) | `glass-panel` + `ring-1 ring-white/10` + sombra `--glass-shadow`. Ítems: hover `bg-white/[0.07]`, icono `text-cyan-300` (oscuro) / `text-primary` (claro), `danger` en rojo | `rounded-xl`, posicionamiento en Portal, volteo, `maxHeight` |
-| **BottomSheet** | `glass-panel` (también el asa sticky), overlay con blur | `rounded-t-2xl`, safe-area |
-| **Dialog** | panel `glass-strong` + `ring-1` + sombra de la landing; overlay `bg-overlay/80 backdrop-blur-md`; título opcional `font-semibold` | `rounded-2xl`, tamaños, Escape, scroll lock |
-| **Tooltip** | `glass-panel` pequeño con texto `content-primary` | `rounded-md`, Portal |
-| **Toast** | `glass-strong` + icono de estado con halo de su color | `rounded-xl`, posición, acción |
-| **Checkbox** | marcado: degradado `gradient-start → gradient-end` + check blanco | tamaño, radio |
-| **ProgressBar** | relleno con degradado de marca + `shimmer` mientras progresa | |
-| **Loader / Spinner** | anillo de dos colores de la landing (`veil__ring`: cian + azul). Velo `bg-canvas/80 backdrop-blur-[22px]` | `z-toast`, mensaje |
-| **Pagination** | página activa con degradado; resto `glass-subtle` | |
-| **Avatar** | anillo opcional con degradado de marca | colores generados |
-| **EmptyState** | halo `.orb` detrás del icono + título con `text-gradient` opcional | |
+| **Button** `primary` | Degradado de marca + `btn-glow` (halo, elevación al hover); `transition-all` para que el hover anime | `rounded-pill`, alturas, `loading`, iconos, API |
+| **Button** `secondary` | `glass-lite glass-hover` (sin blur: vive dentro de diálogos glass) | |
+| **Button** `tonal` / `ghost` | Tinte `primary/10` con anillo / velos translúcidos | |
+| **Button** `danger` | Degradado `red-600 → red-500` con halo rojo | |
+| **IconButton** | Velos translúcidos al hover; `active` con tinte de marca y anillo. Sin blur propio (R6) | radios, tamaños |
+| **Input** | `input-glass` + `ring-glow-focus`; con error, borde y anillo rojos (no se usa el foco de marca para no tapar el rojo) | `rounded-drive`, `h-11`, label/hint/error, aria |
+| **Select** (trigger) | `input-glass ring-glow-focus` + chevron que gira al abrir | `rounded-md`, API |
+| **Menu** | Panel `glass-panel` + anillo; ítems con velo translúcido, icono en `text-primary`, `danger` con tinte rojo; separador translúcido | `rounded-xl`, Portal, posición, volteo, `maxHeight`, bottom sheet en móvil |
+| **BottomSheet** | `glass-panel`, asa sticky con `bg-inherit`, overlay con blur | `rounded-t-2xl`, safe-area |
+| **Dialog** | Panel `glass-strong` + anillo; overlay `bg-overlay/50` (claro) / `/80` (oscuro) con `backdrop-blur-md`; título `font-semibold` | `rounded-2xl`, tamaños, Escape, scroll lock |
+| **Tooltip** | `glass-panel` con texto `content-primary` | `rounded-md`, Portal |
+| **Toast** | `glass-strong` + anillo; caja de icono con halo de su tono; error en `red` (antes `rose`) e info con el color de marca | `rounded-xl`, posición, acción |
+| **Checkbox** | Marcada: degradado de marca con halo; desmarcada: tinte translúcido | tamaño, radio, `indeterminate` |
+| **ProgressBar** | Tono `primary` con degradado de marca y halo; pista translúcida | tonos de estado, modo indeterminado |
+| **Spinner** | Nueva prop `tone: 'current' | 'brand'`. `current` (por defecto) no cambia: es el de los botones. `brand` dibuja el arco con el degradado de marca | API anterior intacta |
+| **Loader** | Velo de la landing (`bg-canvas/80 backdrop-blur-[22px]`) + spinner `brand` | `z-toast`, mensaje |
+| **Pagination** | Su `Select` ya no sobrescribe el estilo; flechas con tinte de marca al hover | |
+| **EmptyState** | Icono en círculo `glass` con halo `.orb` detrás; título `font-semibold` | |
+| **Avatar** | Sin cambios: los colores de las iniciales identifican a cada usuario | |
+
+- ➡️ La barra con *shimmer* animado de la ProgressBar se deja fuera: añadía DOM y animación continua en subidas largas sin aportar información.
+- ⚠️ **Pendiente para la Fase 5:** varios formularios del admin (`AdminPage`, `AdminCharts`, `SmtpSettings`, `UserFormDialog`, `ReportBugDialog`) pasan a `Select` su propio estilo antiguo (`bg-surface border-border-strong`), que gana al del componente. Se limpian en el barrido de campos de la Fase 5.
+- **Verificado:** `npm run build` sin errores; capturas del login (oscuro) y de recuperar contraseña (claro) con los nuevos `Input`, `Checkbox` y `Button`.
 
 ### Fase 4: Explorador de archivos (máximo cuidado)
 **Archivos:** `ExplorerLayout`, `FileGridView`, `FileListView`, `Breadcrumbs`, `DetailsPanel`, `SortControl`, `ViewToggle`, `ItemActionsMenu`, diálogos de `dialogs/`, `ShareDialog`, `PublicUrlsModal`, `library/ItemCollection`.

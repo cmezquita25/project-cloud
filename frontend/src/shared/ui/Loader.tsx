@@ -67,10 +67,11 @@ export function LoaderProvider({ children }: { children: ReactNode }) {
             role="status"
             aria-live="polite"
             aria-label={message ?? 'Cargando'}
-            className="fixed inset-0 z-toast flex flex-col items-center justify-center gap-4 bg-canvas/70 backdrop-blur-sm animate-fade-in"
+            // Velo de la landing: fondo denso + desenfoque fuerte.
+            className="fixed inset-0 z-toast flex flex-col items-center justify-center gap-4 bg-canvas/80 backdrop-blur-[22px] animate-fade-in"
           >
-            <Spinner size={40} className="text-primary" />
-            {message && <p className="text-sm font-medium text-content-secondary">{message}</p>}
+            <Spinner size={44} tone="brand" className="text-content-tertiary" />
+            {message && <p className="font-heading text-sm font-semibold text-content-primary">{message}</p>}
           </div>
         </Portal>
       )}

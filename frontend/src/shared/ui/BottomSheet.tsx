@@ -31,18 +31,20 @@ export function BottomSheet({ open, onClose, title, children, className }: Botto
     <Portal>
       <div className="fixed inset-0 z-modal flex flex-col justify-end" role="dialog" aria-modal="true">
         <div
-          className="absolute inset-0 animate-fade-in bg-overlay/50"
+          className="absolute inset-0 animate-fade-in bg-overlay/50 backdrop-blur-sm dark:bg-overlay/70"
           onClick={onClose}
           aria-hidden="true"
         />
+        {/* `glass-panel`: casi opaco, se abre encima del contenido. */}
         <div
           className={cn(
-            'relative z-10 max-h-[85vh] animate-slide-up overflow-y-auto rounded-t-2xl bg-surface pb-[env(safe-area-inset-bottom)] shadow-elevation-3',
+            'glass-panel relative z-10 max-h-[85vh] animate-slide-up overflow-y-auto rounded-t-2xl border-x-0 border-b-0 pb-[env(safe-area-inset-bottom)]',
             className
           )}
         >
-          {/* Asa de arrastre */}
-          <div className="sticky top-0 flex justify-center bg-surface pt-3">
+          {/* Asa de arrastre. `bg-inherit` toma el mismo fondo del panel para
+              que, al quedarse fija arriba, tape lo que pasa por debajo. */}
+          <div className="sticky top-0 flex justify-center bg-inherit pt-3">
             <span className="h-1 w-9 rounded-full bg-border-strong" />
           </div>
           {title && (

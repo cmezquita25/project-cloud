@@ -17,10 +17,15 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(function Che
         ref={ref}
         type="checkbox"
         checked={checked}
-        className="peer absolute inset-0 cursor-pointer appearance-none rounded border-2 border-border-strong bg-surface transition-colors checked:border-primary checked:bg-primary focus-visible:outline-focus"
+        className={cn(
+          'peer absolute inset-0 cursor-pointer appearance-none rounded border-2 border-border-strong bg-white/70 transition-all dark:bg-white/[0.04]',
+          // Marcada: degradado de marca con un halo suave (sigue al preset).
+          'checked:border-transparent checked:bg-gradient-to-br checked:from-gradient-start checked:to-gradient-end checked:shadow-[0_2px_10px_-2px_rgb(var(--glow-a)/0.6)]',
+          'focus-visible:outline-focus'
+        )}
         {...props}
       />
-      <span className="pointer-events-none relative z-10 text-primary-on opacity-0 peer-checked:opacity-100">
+      <span className="pointer-events-none relative z-10 text-btn-text opacity-0 peer-checked:opacity-100">
         {indeterminate ? <Minus size={14} strokeWidth={3.5} /> : <Check size={14} strokeWidth={3.5} />}
       </span>
     </span>

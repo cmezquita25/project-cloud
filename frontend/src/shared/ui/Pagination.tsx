@@ -26,7 +26,7 @@ export function Pagination({ page, limit, total, onPageChange, onLimitChange, cl
             onLimitChange(Number(val))
             onPageChange(1) // Reset to first page
           }}
-          className="rounded-md border-transparent bg-surface-hover py-1 px-2 text-content-primary focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+          className="py-1 px-2"
           options={[
             { value: 10, label: '10' },
             { value: 25, label: '25' },
@@ -44,14 +44,14 @@ export function Pagination({ page, limit, total, onPageChange, onLimitChange, cl
           <button
             onClick={() => onPageChange(page - 1)}
             disabled={page <= 1}
-            className="rounded-md p-1 text-content-secondary hover:bg-surface-hover hover:text-content-primary disabled:opacity-50 disabled:hover:bg-transparent"
+            className="rounded-md p-1 text-content-secondary transition-colors hover:bg-primary/10 hover:text-primary disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-content-secondary"
           >
             <ChevronLeft size={20} />
           </button>
           <button
             onClick={() => onPageChange(page + 1)}
             disabled={page >= totalPages}
-            className="rounded-md p-1 text-content-secondary hover:bg-surface-hover hover:text-content-primary disabled:opacity-50 disabled:hover:bg-transparent"
+            className="rounded-md p-1 text-content-secondary transition-colors hover:bg-primary/10 hover:text-primary disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-content-secondary"
           >
             <ChevronRight size={20} />
           </button>
