@@ -220,7 +220,7 @@ export function ItemCollection({ items, loading, error, reload, empty, showLocat
     <div className="relative flex h-full max-sm:h-auto max-sm:flex-1">
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Barra de herramientas */}
-        <div className="sticky top-0 z-20 -mx-4 px-4 py-3 sm:static sm:mx-0 sm:px-0 sm:py-0 mb-3 bg-canvas flex flex-col sm:flex-row sm:h-9 sm:items-center justify-between gap-3 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)] sm:shadow-none">
+        <div className="sticky top-0 z-20 -mx-4 px-4 py-3 sm:static sm:mx-0 sm:px-0 sm:py-0 mb-3 max-sm:bg-canvas/80 max-sm:backdrop-blur-md flex flex-col sm:flex-row sm:h-9 sm:items-center justify-between gap-3 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)] sm:shadow-none">
           {selected.size > 0 ? (
             <div className="flex min-w-0 flex-wrap items-center gap-2">
               <IconButton icon={X} label="Deseleccionar" size="sm" onClick={clearSelection} />
@@ -249,7 +249,7 @@ export function ItemCollection({ items, loading, error, reload, empty, showLocat
               }}
               className={cn(
                 'sm:hidden rounded-lg px-3 py-1.5 text-sm font-medium transition-colors',
-                isSelectMode ? 'bg-primary text-primary-content' : 'bg-surface-container text-content-primary hover:bg-surface-hover'
+                isSelectMode ? 'bg-gradient-to-r from-gradient-start to-gradient-end text-btn-text' : 'bg-slate-900/[0.05] text-content-primary hover:bg-slate-900/[0.08] dark:bg-white/[0.06] dark:hover:bg-white/[0.1]'
               )}
             >
               {isSelectMode ? 'Listo' : 'Seleccionar'}
@@ -291,7 +291,7 @@ export function ItemCollection({ items, loading, error, reload, empty, showLocat
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-40 bg-overlay/60 lg:hidden"
+              className="fixed inset-0 z-40 bg-overlay/60 backdrop-blur-sm lg:hidden"
               onClick={() => setShowDetails(false)}
             />
             <motion.div 
@@ -299,7 +299,7 @@ export function ItemCollection({ items, loading, error, reload, empty, showLocat
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 50 }}
               transition={{ duration: 0.2 }}
-              className="fixed inset-y-0 right-0 z-50 w-80 shrink-0 overflow-hidden border-l border-border bg-surface shadow-elevation-3 lg:static lg:ml-4 lg:rounded-drive lg:border lg:shadow-none lg:block"
+              className="glass-strong fixed inset-y-0 right-0 z-50 w-80 shrink-0 overflow-hidden border-y-0 border-r-0 lg:static lg:ml-4 lg:rounded-drive lg:border lg:block"
             >
               <DetailsPanel
                 items={selectedItems}

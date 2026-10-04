@@ -35,7 +35,7 @@ export function DetailsPanel({ items, onClose, onOpenPublicUrls }: DetailsPanelP
   const selectedFiles = items.filter((i) => i.type === 'file')
 
   return (
-    <aside className="flex h-full w-full flex-col bg-surface">
+    <aside className="flex h-full w-full flex-col">
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <h2 className="text-base font-medium text-content-primary">Detalles</h2>
         <IconButton icon={X} label="Cerrar" size="sm" onClick={onClose} />
@@ -49,7 +49,7 @@ export function DetailsPanel({ items, onClose, onOpenPublicUrls }: DetailsPanelP
           </div>
         ) : items.length > 1 ? (
           <div className="flex h-full flex-col items-center p-6">
-            <div className="mb-4 flex h-24 w-24 items-center justify-center rounded-drive bg-surface-container">
+            <div className="mb-4 flex h-24 w-24 items-center justify-center rounded-drive bg-slate-900/[0.04] dark:bg-white/[0.05]">
               <FileStack size={48} className="text-content-secondary opacity-80" strokeWidth={1.5} />
             </div>
             <p className="text-base font-medium text-content-primary">{items.length} elementos seleccionados</p>
@@ -62,7 +62,7 @@ export function DetailsPanel({ items, onClose, onOpenPublicUrls }: DetailsPanelP
             </div>
 
             {selectedFiles.length > 0 && onOpenPublicUrls && (
-              <div className="mt-6 w-full rounded-xl border border-border bg-surface-container/60 p-4 text-center">
+              <div className="glass-lite mt-6 w-full rounded-xl p-4 text-center">
                 <p className="mb-3 text-xs text-content-secondary">
                   Obtener URLs de {selectedFiles.length} elemento{selectedFiles.length > 1 ? 's' : ''} seleccionado{selectedFiles.length > 1 ? 's' : ''}
                 </p>
@@ -92,7 +92,7 @@ function SingleItemDetails({ item, copied, onCopyUrl }: { item: DriveItem, copie
   return (
     <>
       <div className="flex flex-col items-center gap-3 border-b border-border px-4 py-6">
-        <div className="relative flex h-24 w-24 items-center justify-center rounded-drive bg-surface-container">
+        <div className="relative flex h-24 w-24 items-center justify-center rounded-drive bg-slate-900/[0.04] dark:bg-white/[0.05]">
           <Icon size={48} className={cn('opacity-80', className)} strokeWidth={1.5} />
           {item.blocked_actions && item.blocked_actions.length > 0 && (
             <div className="absolute right-0 top-0 rounded-full bg-danger-subtle p-1.5 text-danger shadow-sm">
@@ -145,7 +145,7 @@ function SingleItemDetails({ item, copied, onCopyUrl }: { item: DriveItem, copie
         {item.type === 'file' && (
           <div className="mt-4">
             <p className="mb-1 text-xs font-medium text-content-tertiary">URL pública</p>
-            <div className="flex items-center gap-2 rounded-lg border border-border bg-surface-container px-3 py-2">
+            <div className="input-glass flex items-center gap-2 rounded-lg px-3 py-2">
               <LinkIcon size={16} className="shrink-0 text-content-tertiary" />
               <span className="min-w-0 flex-1 truncate text-xs text-content-secondary">{item.url}</span>
             </div>

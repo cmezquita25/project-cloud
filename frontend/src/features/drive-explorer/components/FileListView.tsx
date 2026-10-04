@@ -38,10 +38,10 @@ export function FileListView({
   capabilities,
 }: FileListViewProps) {
   return (
-    <div className="overflow-hidden rounded-drive border border-border bg-surface">
+    <div className="glass-lite overflow-hidden rounded-drive">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-border text-left text-xs font-medium text-content-tertiary">
+          <tr className="border-b border-slate-900/[0.08] text-left text-xs font-medium text-content-tertiary dark:border-white/[0.08]">
             <th className="w-12 py-3 pl-4 pr-2" />
             <th className="w-full px-4 py-3 font-medium">Nombre</th>
             <th className="hidden w-32 whitespace-nowrap px-4 py-3 font-medium md:table-cell">Tipo</th>
@@ -91,12 +91,12 @@ export function FileListView({
                 onContextMenu={(e) => interactions?.onItemContextMenu?.(item, e)}
                 {...folderDnd}
                 className={cn(
-                  'group cursor-pointer border-b border-border/60 last:border-0 transition-colors',
+                  'group cursor-pointer border-b border-slate-900/[0.05] dark:border-white/[0.06] last:border-0 transition-colors',
                   isDropTarget
-                    ? 'bg-primary-subtle ring-2 ring-inset ring-primary'
+                    ? 'bg-primary/15 ring-2 ring-inset ring-primary'
                     : isSelected
-                      ? 'bg-primary-subtle'
-                      : 'hover:bg-surface-hover'
+                      ? 'bg-primary/10'
+                      : 'hover:bg-slate-900/[0.04] dark:hover:bg-white/[0.05]'
                 )}
               >
                 <td className="py-3 pl-4 pr-2">

@@ -83,14 +83,14 @@ export function MoveDialog({ open, mode, sourceMode = 'drive', items, onClose, o
       title={mode === 'move' ? 'Mover a' : 'Copiar a'}
       size="md"
     >
-      <div className="rounded-drive border border-border">
+      <div className="glass-lite rounded-drive">
 
         {/* Cabecera de navegación */}
         <div className="flex items-center gap-1 border-b border-border px-2 py-2">
           {current !== 'root' && (
             <button
               onClick={() => setCurrent(parentRef)}
-              className="rounded-lg p-1 text-content-secondary hover:bg-surface-hover"
+              className="rounded-lg p-1 text-content-secondary hover:bg-slate-900/[0.06] dark:hover:bg-white/[0.08]"
               aria-label="Atrás"
             >
               <ChevronLeft size={18} />
@@ -124,7 +124,7 @@ export function MoveDialog({ open, mode, sourceMode = 'drive', items, onClose, o
                     'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors',
                     disabled
                       ? 'cursor-not-allowed opacity-40'
-                      : 'hover:bg-surface-hover text-content-primary'
+                      : 'hover:bg-slate-900/[0.04] dark:hover:bg-white/[0.05] text-content-primary'
                   )}
                 >
                   <Folder size={18} className="shrink-0 text-content-secondary" />

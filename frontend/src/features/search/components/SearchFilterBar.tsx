@@ -18,7 +18,7 @@ export function SearchFilterBar({ type, date, onChange }: SearchFilterBarProps) 
         icon={<FileText size={14} className={type ? "text-primary" : "text-content-tertiary"} />}
         className={cn(
           "rounded-pill border font-medium",
-          type ? "border-primary bg-primary-subtle text-primary" : "border-border bg-surface text-content-secondary"
+          type ? "border-primary/40 bg-primary/10 text-primary" : "glass-subtle text-content-secondary"
         )}
         options={[
           { value: 'document', label: 'Documentos' },
@@ -37,7 +37,7 @@ export function SearchFilterBar({ type, date, onChange }: SearchFilterBarProps) 
         icon={<Calendar size={14} className={date ? "text-primary" : "text-content-tertiary"} />}
         className={cn(
           "rounded-pill border font-medium",
-          date ? "border-primary bg-primary-subtle text-primary" : "border-border bg-surface text-content-secondary"
+          date ? "border-primary/40 bg-primary/10 text-primary" : "glass-subtle text-content-secondary"
         )}
         options={[
           { value: 'today', label: 'Hoy' },

@@ -71,7 +71,7 @@ export function PublicUrlsModal({ open, onClose, items, title = 'Listado de URLs
         </div>
       }
     >
-      <div className="max-h-96 divide-y divide-border overflow-y-auto rounded-xl border border-border bg-surface-container/50">
+      <div className="glass-lite max-h-96 divide-y divide-slate-900/[0.06] overflow-y-auto rounded-xl dark:divide-white/[0.06]">
         {items.length === 0 ? (
           <div className="p-6 text-center text-sm text-content-tertiary">
             No hay elementos para mostrar
@@ -84,8 +84,8 @@ export function PublicUrlsModal({ open, onClose, items, title = 'Listado de URLs
             const isUploading = item.status === 'uploading' || item.status === 'queued'
 
             return (
-              <div key={itemKey} className="flex items-center gap-3 p-3 transition-colors hover:bg-surface-hover">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface shadow-sm border border-border/50">
+              <div key={itemKey} className="flex items-center gap-3 p-3 transition-colors hover:bg-slate-900/[0.04] dark:hover:bg-white/[0.05]">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-900/[0.04] ring-1 ring-inset ring-slate-900/[0.06] dark:bg-white/[0.05] dark:ring-white/[0.08]">
                   <Icon size={22} className={cn('opacity-90', iconColor)} />
                 </div>
 
@@ -101,7 +101,7 @@ export function PublicUrlsModal({ open, onClose, items, title = 'Listado de URLs
                     )}
                   </div>
                   {item.url ? (
-                    <p className="mt-1 truncate font-mono text-[11px] text-content-secondary select-all bg-surface-container px-2 py-0.5 rounded border border-border/60">
+                    <p className="mt-1 truncate font-mono text-[11px] text-content-secondary select-all bg-slate-900/[0.04] px-2 py-0.5 rounded border border-slate-900/[0.06] dark:bg-white/[0.05] dark:border-white/[0.08]">
                       {item.url}
                     </p>
                   ) : isUploading ? (

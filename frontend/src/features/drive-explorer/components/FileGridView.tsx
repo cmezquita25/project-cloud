@@ -108,12 +108,14 @@ function FolderChip({ item, selected, onOpen, onAction, interactions, capabiliti
         {...itemHandlers(item, onOpen, interactions)}
         {...dnd}
         className={cn(
-          'group relative flex items-center gap-3 rounded-xl border px-3 py-3 transition-colors cursor-pointer h-full',
+          // `glass-lite`: aspecto glass SIN desenfoque (puede haber cientos).
+          // Los estados de destino de soltado y selección se mantienen.
+          'group relative flex items-center gap-3 rounded-xl border px-3 py-3 transition-all duration-300 cursor-pointer h-full',
           isDropTarget
-            ? 'border-primary bg-primary-subtle ring-2 ring-primary'
+            ? 'border-primary bg-primary/15 ring-2 ring-primary'
             : isSelected
-              ? 'border-primary bg-primary-subtle'
-              : 'border-border bg-surface hover:bg-surface-hover'
+              ? 'border-primary bg-primary/10 ring-1 ring-primary/40'
+              : 'glass-lite glass-hover'
         )}
       >
       <Icon size={22} className={cn('shrink-0', className)} />
@@ -139,14 +141,14 @@ function FileCard({ item, selected, onOpen, onAction, interactions, capabilities
         data-sel-key={itemKey(item)}
         {...itemHandlers(item, onOpen, interactions)}
         className={cn(
-          'group relative flex flex-col overflow-hidden rounded-xl border transition-shadow cursor-pointer h-full',
+          'group relative flex flex-col overflow-hidden rounded-xl border transition-all duration-300 cursor-pointer h-full',
           isSelected
-            ? 'border-primary bg-primary-subtle'
-            : 'border-border bg-surface hover:shadow-elevation-1'
+            ? 'border-primary bg-primary/10 ring-1 ring-primary/40'
+            : 'glass-lite glass-hover'
         )}
       >
       {/* Previsualización cuadrada */}
-      <div className="flex aspect-square items-center justify-center overflow-hidden bg-surface-container">
+      <div className="flex aspect-square items-center justify-center overflow-hidden bg-slate-900/[0.03] dark:bg-white/[0.03]">
         {isImage(item) ? (
           <img
             src={item.thumbnail_url || `/api/v1/files/${item.id}/thumb?s=400`}
@@ -167,7 +169,7 @@ function FileCard({ item, selected, onOpen, onAction, interactions, capabilities
       </div>
 
       {/* Pie: icono + nombre + menú */}
-      <div className="flex items-center gap-2 border-t border-border px-2.5 py-2">
+      <div className="flex items-center gap-2 border-t border-slate-900/[0.05] dark:border-white/[0.06] px-2.5 py-2">
         <Icon size={18} className={cn('shrink-0', className)} />
         <span className="min-w-0 flex-1 truncate text-sm text-content-primary">{item.name}</span>
         {item.is_starred && <Star size={13} className="shrink-0 fill-warning text-warning" />}

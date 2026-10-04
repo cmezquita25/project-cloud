@@ -185,7 +185,7 @@ export function TrashPage() {
       </div>
 
       {!isEmpty && (
-        <p className="mb-4 rounded-drive bg-surface-container px-3 py-2 text-sm text-content-secondary">
+        <p className="glass-subtle mb-4 rounded-drive px-3 py-2 text-sm text-content-secondary">
           Los elementos de la papelera se eliminan definitivamente después de {retentionDays} días.
         </p>
       )}
@@ -206,10 +206,10 @@ export function TrashPage() {
             description="Los archivos y carpetas que elimines aparecerán aquí y podrás restaurarlos."
           />
         ) : (
-          <div className="overflow-hidden rounded-drive border border-border bg-surface">
+          <div className="glass-lite overflow-hidden rounded-drive">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border text-left text-xs font-medium text-content-tertiary">
+                <tr className="border-b border-slate-900/[0.08] text-left text-xs font-medium text-content-tertiary dark:border-white/[0.08]">
                   <th className="w-full py-3 pl-4 pr-4 font-medium">Nombre</th>
                   <th className="hidden w-40 whitespace-nowrap px-4 py-3 font-medium sm:table-cell">Eliminado</th>
                   <th className="hidden w-28 whitespace-nowrap px-4 py-3 font-medium md:table-cell">Tamaño</th>
@@ -309,8 +309,8 @@ function TrashRow({ item, busy, selected, onClick, onRestore, onPurge }: TrashRo
       data-sel-key={key(item)}
       onClick={onClick}
       className={cn(
-        'group cursor-pointer border-b border-border/60 last:border-0 transition-colors',
-        selected ? 'bg-primary-subtle' : 'hover:bg-surface-hover'
+        'group cursor-pointer border-b border-slate-900/[0.05] dark:border-white/[0.06] last:border-0 transition-colors',
+        selected ? 'bg-primary/10' : 'hover:bg-slate-900/[0.04] dark:hover:bg-white/[0.05]'
       )}
     >
       <td className="w-full max-w-0 py-3 pl-4 pr-4">

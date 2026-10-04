@@ -480,7 +480,7 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
     >
       {/* Overlay de arrastre */}
       {dragging && (
-        <div className="pointer-events-none absolute inset-0 z-overlay flex items-center justify-center rounded-drive border-2 border-dashed border-primary bg-primary-subtle/80">
+        <div className="pointer-events-none absolute inset-0 z-overlay flex items-center justify-center rounded-drive border-2 border-dashed border-primary bg-primary/10 backdrop-blur-sm">
           <div className="flex flex-col items-center gap-2 text-primary">
             <UploadCloud size={48} />
             <p className="text-lg font-medium">Suelta para subir aquí</p>
@@ -489,7 +489,7 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="sticky top-0 z-20 -mx-4 px-4 py-1.5 sm:static sm:mx-0 sm:px-0 sm:py-0 mb-1 sm:mb-4 bg-canvas flex flex-col sm:flex-row sm:h-10 sm:items-center justify-between gap-3 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)] sm:shadow-none">
+        <div className="sticky top-0 z-20 -mx-4 px-4 py-1.5 sm:static sm:mx-0 sm:px-0 sm:py-0 mb-1 sm:mb-4 max-sm:bg-canvas/80 max-sm:backdrop-blur-md flex flex-col sm:flex-row sm:h-10 sm:items-center justify-between gap-3 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)] sm:shadow-none">
           {selected.size > 0 ? (
             <div className="flex min-w-0 flex-wrap items-center gap-2">
               <IconButton icon={X} label="Deseleccionar" size="sm" onClick={clearSelection} />
@@ -526,7 +526,7 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
               }}
               className={cn(
                 'sm:hidden rounded-lg px-3 py-1.5 text-sm font-medium transition-colors',
-                isSelectMode ? 'bg-primary text-primary-on' : 'bg-surface-container text-content-primary hover:bg-surface-hover'
+                isSelectMode ? 'bg-gradient-to-r from-gradient-start to-gradient-end text-btn-text' : 'bg-slate-900/[0.05] text-content-primary hover:bg-slate-900/[0.08] dark:bg-white/[0.06] dark:hover:bg-white/[0.1]'
               )}
             >
               {isSelectMode ? 'Listo' : 'Seleccionar'}
@@ -540,8 +540,15 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
         <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto max-sm:overflow-visible" onContextMenu={onBackgroundContextMenu}>
           {atRoot && (
             <div className="mb-8 flex flex-col items-center px-2 pt-4 text-center sm:pt-8">
-              <h1 className="mb-6 text-2xl font-normal text-content-primary sm:text-[28px]">
-                {adapter.mode === 'assets' ? (assetsAccess?.folder_alias || 'Unidad compartida') : `Te damos la bienvenida a ${settings?.organization_name || 'Drive'}`}
+              <h1 className="mb-6 text-2xl font-semibold text-content-primary sm:text-[28px]">
+                {adapter.mode === 'assets' ? (
+                  assetsAccess?.folder_alias || 'Unidad compartida'
+                ) : (
+                  <>
+                    Te damos la bienvenida a{' '}
+                    <span className="text-gradient">{settings?.organization_name || 'Drive'}</span>
+                  </>
+                )}
               </h1>
               {adapter.mode === 'assets' && q && (
                 <div className="mb-4 text-sm text-content-secondary">
@@ -552,7 +559,7 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
               <form
                 onSubmit={submitHeroSearch}
                 role="search"
-                className="flex h-12 w-full max-w-2xl items-center gap-3 rounded-pill border border-border bg-surface px-5 text-content-secondary transition-colors focus-within:shadow-elevation-1"
+                className="glass ring-glow-focus flex h-12 w-full max-w-2xl items-center gap-3 rounded-pill px-5 text-content-secondary"
               >
                 <button type="submit" aria-label="Buscar" className="shrink-0 focus-visible:outline-focus">
                   <Search size={20} />
@@ -583,7 +590,7 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
               {assetsAccess?.allowed && (
                 <button
                   onClick={() => navigate('/assets')}
-                  className="group flex flex-1 min-w-[220px] max-w-xs items-center gap-3 rounded-xl border border-border bg-surface px-3.5 py-3 text-left transition-colors hover:bg-surface-hover"
+                  className="glass-lite glass-hover group flex flex-1 min-w-[220px] max-w-xs items-center gap-3 rounded-xl px-3.5 py-3 text-left"
                 >
                   <FolderSymlink size={22} className="shrink-0 text-primary" />
                   <div className="min-w-0">
@@ -596,7 +603,7 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
                 <button
                   key={`shortcut-folder-${folder.id}`}
                   onClick={() => navigate(`/folder/${folder.id}`)}
-                  className="group flex flex-1 min-w-[220px] max-w-xs items-center gap-3 rounded-xl border border-border bg-surface px-3.5 py-3 text-left transition-colors hover:bg-surface-hover"
+                  className="glass-lite glass-hover group flex flex-1 min-w-[220px] max-w-xs items-center gap-3 rounded-xl px-3.5 py-3 text-left"
                 >
                   <FolderSymlink size={22} className="shrink-0 text-primary" />
                   <div className="min-w-0">
@@ -609,7 +616,7 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
                 <button
                   key={`shortcut-file-${file.id}`}
                   onClick={() => navigate(file.folder_id ? `/folder/${file.folder_id}` : '/')}
-                  className="group flex flex-1 min-w-[220px] max-w-xs items-center gap-3 rounded-xl border border-border bg-surface px-3.5 py-3 text-left transition-colors hover:bg-surface-hover"
+                  className="glass-lite glass-hover group flex flex-1 min-w-[220px] max-w-xs items-center gap-3 rounded-xl px-3.5 py-3 text-left"
                 >
                   <FolderSymlink size={22} className="shrink-0 text-primary" />
                   <div className="min-w-0">
@@ -696,7 +703,7 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-40 bg-overlay/60 lg:hidden"
+              className="fixed inset-0 z-40 bg-overlay/60 backdrop-blur-sm lg:hidden"
               onClick={() => setShowDetails(false)}
             />
             <motion.div 
@@ -704,7 +711,7 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 50 }}
               transition={{ duration: 0.2 }}
-              className="fixed inset-y-0 right-0 z-50 w-[85vw] max-w-[320px] shrink-0 overflow-hidden border-l border-border bg-surface shadow-elevation-3 sm:w-80 lg:static lg:ml-4 lg:rounded-drive lg:border lg:shadow-none lg:block"
+              className="glass-strong fixed inset-y-0 right-0 z-50 w-[85vw] max-w-[320px] shrink-0 overflow-hidden border-y-0 border-r-0 sm:w-80 lg:static lg:ml-4 lg:rounded-drive lg:border lg:block"
             >
               <DetailsPanel
                 items={selectedItems}

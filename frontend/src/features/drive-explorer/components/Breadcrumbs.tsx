@@ -22,8 +22,8 @@ export function Breadcrumbs({ crumbs, onNavigate, rootLabel = 'Mi unidad' }: Bre
       className={cn(
         'rounded-lg px-2 py-1 text-lg font-normal transition-colors whitespace-nowrap',
         active
-          ? 'font-medium text-content-primary'
-          : 'text-content-secondary hover:bg-surface-hover'
+          ? 'font-semibold text-content-primary'
+          : 'text-content-secondary hover:bg-slate-900/[0.05] hover:text-content-primary dark:hover:bg-white/[0.07]'
       )}
     >
       {label}

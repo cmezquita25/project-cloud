@@ -203,7 +203,7 @@ export function ShareDialog({
 
               {/* Lista desplegable de sugerencias */}
               {showSuggestions && (
-                <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-56 overflow-y-auto rounded-xl border border-border bg-surface p-1.5 shadow-elevation-3">
+                <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-56 overflow-y-auto glass-panel rounded-xl p-1.5 ring-1 ring-slate-900/5 dark:ring-white/10">
                   {loadingSuggestions ? (
                     <div className="flex items-center justify-center p-3 text-xs text-content-tertiary">
                       <Spinner size={16} className="mr-2" /> Buscando miembros...
@@ -218,7 +218,7 @@ export function ShareDialog({
                         key={u.id}
                         type="button"
                         onClick={() => selectUser(u)}
-                        className="flex w-full items-center gap-3 rounded-lg p-2 text-left transition-colors hover:bg-surface-hover"
+                        className="flex w-full items-center gap-3 rounded-lg p-2 text-left transition-colors hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.07]"
                       >
                         <Avatar src={u.avatar_url} name={u.display_name} size={32} />
                         <div className="min-w-0 flex-1">
@@ -273,7 +273,7 @@ export function ShareDialog({
               {collaborators.map((c) => (
                 <div
                   key={c.id}
-                  className="flex items-center justify-between gap-3 p-3 rounded-xl border border-border/50 bg-surface-variant/40 hover:bg-surface-hover transition-colors"
+                  className="flex items-center justify-between gap-3 p-3 rounded-xl glass-lite glass-hover"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <Avatar
@@ -291,7 +291,7 @@ export function ShareDialog({
 
                   <div className="flex items-center gap-2 shrink-0">
                     {c.role === 'owner' ? (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-pill text-xs font-medium bg-primary-subtle text-primary border border-primary/20">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-pill text-xs font-medium bg-primary/10 text-primary border border-primary/20">
                         <Shield size={13} />
                         Propietario
                       </span>
@@ -303,7 +303,7 @@ export function ShareDialog({
                             c.share_id &&
                             handleUpdatePermission(c.share_id, e.target.value as 'read' | 'full')
                           }
-                          className="text-xs bg-surface border border-border rounded-lg px-2.5 py-1.5 text-content-primary focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all cursor-pointer"
+                          className="input-glass ring-glow-focus text-xs rounded-lg px-2.5 py-1.5 text-content-primary cursor-pointer"
                         >
                           <option value="read">Solo lectura</option>
                           <option value="full">Control total</option>

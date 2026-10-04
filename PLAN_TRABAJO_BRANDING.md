@@ -315,15 +315,20 @@ Mayor palanca: estas piezas aparecen en toda la app.
 - ⚠️ **Pendiente para la Fase 5:** varios formularios del admin (`AdminPage`, `AdminCharts`, `SmtpSettings`, `UserFormDialog`, `ReportBugDialog`) pasan a `Select` su propio estilo antiguo (`bg-surface border-border-strong`), que gana al del componente. Se limpian en el barrido de campos de la Fase 5.
 - **Verificado:** `npm run build` sin errores; capturas del login (oscuro) y de recuperar contraseña (claro) con los nuevos `Input`, `Checkbox` y `Button`.
 
-### Fase 4: Explorador de archivos (máximo cuidado)
-**Archivos:** `ExplorerLayout`, `FileGridView`, `FileListView`, `Breadcrumbs`, `DetailsPanel`, `SortControl`, `ViewToggle`, `ItemActionsMenu`, diálogos de `dialogs/`, `ShareDialog`, `PublicUrlsModal`, `library/ItemCollection`.
-- [ ] Tarjetas de carpeta/archivo: `glass-lite` + `glass-hover` (N4, **sin blur**). Thumbnail con `bg-surface-container/60`.
-- [ ] **Estados funcionales intactos:** seleccionado (`ring-2 ring-primary bg-primary-subtle`), drop-target, foco de teclado, opacidad de acciones en hover. Solo cambia el valor del token.
-- [ ] Filas de lista: hover translúcido; cabecera `glass-subtle` sticky (verificar que `sticky` siga funcionando).
-- [ ] `DetailsPanel`: `glass` (escritorio) / `glass-panel` (drawer móvil).
-- [ ] `SortControl` y `ViewToggle`: segmento activo con degradado.
-- [ ] Breadcrumbs: último nivel con `text-gradient` (opcional).
-- [ ] **Prueba R1:** selección por arrastre (marquee), drag & drop entre carpetas, menú contextual (clic derecho), atajos, vista grid ↔ lista, con scroll.
+### Fase 4: Explorador de archivos ✅ (completada; pendiente prueba funcional con backend)
+**Archivos:** `ExplorerLayout`, `FileGridView`, `FileListView`, `Breadcrumbs`, `DetailsPanel`, `SortControl`, `ViewToggle`, `MoveDialog`, `ShareDialog`, `PublicUrlsModal`, `library/ItemCollection`, `TrashPage`, `SearchFilterBar`. (`ItemActionsMenu`, `DeleteDialog`, `NamePromptDialog`, `RecentPage`, `StarredPage` y `SearchPage` no tenían estilos propios: heredan de la Fase 3.)
+- [x] Tarjetas de carpeta y archivo: `glass-lite glass-hover` (N4, **sin blur**). Miniatura sobre tinte translúcido; pie con borde translúcido.
+- [x] **Estados funcionales intactos:** destino de soltado (`border-primary bg-primary/15 ring-2 ring-primary`), seleccionado (`border-primary bg-primary/10 ring-1 ring-primary/40`), acciones visibles en hover/foco. Los manejadores (`data-sel-key`, drag & drop, clic, doble clic, menú contextual) no se tocaron.
+- [x] Lista y papelera: contenedor `glass-lite`, cabecera y filas con bordes translúcidos, hover translúcido, seleccionado `bg-primary/10`, destino de soltado con anillo.
+- [x] `DetailsPanel` (explorador y colecciones): contenedor `glass-strong` en escritorio y en el drawer móvil (overlay con `backdrop-blur-sm`). Interiores con tintes y `glass-lite`.
+- [x] `SortControl` y `ViewToggle`: `input-glass`; el modo activo de la vista lleva el degradado de marca. Breadcrumbs: hover translúcido y último nivel en `font-semibold`.
+- [x] Barra de herramientas sticky en móvil: `bg-canvas/80` + blur **solo en `max-sm:`** (en escritorio no hay `backdrop-filter`, así no crea bloque contenedor). Botón «Seleccionar/Listo» con el degradado de marca cuando está activo.
+- [x] Portada de Mi unidad: bienvenida con el nombre de la organización en `text-gradient`, buscador `glass` con foco de marca, accesos directos `glass-lite glass-hover`. Overlay de «Suelta para subir aquí» translúcido con blur.
+- [x] Filtros de búsqueda: `glass-subtle`; activos con tinte de marca.
+- [x] Diálogos: lista de carpetas de Mover y lista de URLs públicas en `glass-lite`; autocompletado de Compartir en `glass-panel`; filas de miembros `glass-lite glass-hover`; `<select>` de permisos con `input-glass`. Se corrigió de paso una clase inexistente (`bg-surface-variant/40`).
+- [x] **R1 respetado:** ni `ExplorerLayout`, ni `ItemCollection`, ni el área de scroll llevan `backdrop-filter`/`filter`/`transform` nuevos; el recuadro de selección (`marqueeOverlay`) queda fuera de cualquier superficie glass.
+- **Verificado:** `npm run build` sin errores; ningún resto de `bg-surface`, `bg-canvas` opaco, `shadow-elevation` o `primary-subtle` en explorador y colecciones.
+- ⚠️ **Pendiente:** recorrido funcional real (marquee, drag & drop, menú contextual, grid/lista, detalles) con backend levantado; en local MySQL está apagado.
 
 ### Fase 5: Resto de features
 - [ ] **UploadDock:** `glass-strong`, barra de progreso con degradado + shimmer.

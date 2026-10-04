@@ -113,7 +113,7 @@ export function SortControl({ value, onChange, showOwner = true }: SortControlPr
         type="button"
         onClick={menu.toggle}
         className={cn(
-          'flex h-8 items-center gap-1.5 rounded-pill border border-border bg-surface px-3 text-sm font-medium text-content-secondary transition-colors hover:bg-surface-hover'
+          'input-glass flex h-8 items-center gap-1.5 rounded-pill px-3 text-sm font-medium text-content-secondary hover:border-primary/40 hover:text-primary'
         )}
         aria-label="Ordenar"
         title={`Ordenar por ${FIELD_LABEL[value.field]} (${value.dir === 'asc' ? 'ascendente' : 'descendente'})`}
