@@ -8,6 +8,6 @@ declare(strict_types=1);
  */
 return [
     'version'     => '2.2.1',
-    'schema'      => 4,
+    'schema'      => 5,
     'released_at' => '2026-10-17',
 ];

@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS `users` (
     `max_upload_bytes` BIGINT UNSIGNED NOT NULL DEFAULT 2147483648,  -- 2 GB por archivo
     `used_bytes`       BIGINT UNSIGNED NOT NULL DEFAULT 0,           -- uso agregado (cache)
     `status`           ENUM('active','suspended') NOT NULL DEFAULT 'active',
+    `default_visibility` ENUM('public','private') NOT NULL DEFAULT 'public', -- subidas nuevas
     `created_at`       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at`       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
@@ -61,6 +62,7 @@ CREATE TABLE IF NOT EXISTS `folders` (
     `parent_id`  BIGINT UNSIGNED NULL DEFAULT NULL,
     `name`       VARCHAR(255)  NOT NULL,
     `path`       VARCHAR(1024) NOT NULL,                            -- ruta virtual materializada (relativa a la raíz del usuario)
+    `visibility` ENUM('public','private') NOT NULL DEFAULT 'public', -- private: todo su contenido es privado
     `is_starred` TINYINT(1) NOT NULL DEFAULT 0,
     `deleted_at` DATETIME NULL DEFAULT NULL,                        -- soft delete (papelera)
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -84,6 +86,7 @@ CREATE TABLE IF NOT EXISTS `files` (
     `size_bytes` BIGINT UNSIGNED NOT NULL DEFAULT 0,
     `mime_type`  VARCHAR(150) NULL DEFAULT NULL,
     `extension`  VARCHAR(32)  NULL DEFAULT NULL,
+    `visibility` ENUM('public','private') NOT NULL DEFAULT 'public', -- private: binario en storage/.private, sin URL directa
     `is_starred` TINYINT(1) NOT NULL DEFAULT 0,
     `deleted_at` DATETIME NULL DEFAULT NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -132,7 +135,7 @@ INSERT INTO `settings` (`key`, `value`) VALUES
     ('assets_quota_bytes', '1073741824'),
     ('support_email', ''),
     ('primary_color', '#3b82f6'),
-    ('schema_version', '4')
+    ('schema_version', '5')
 ON DUPLICATE KEY UPDATE `key` = `key`;
 
 -- --------------------------------------------------------------------------

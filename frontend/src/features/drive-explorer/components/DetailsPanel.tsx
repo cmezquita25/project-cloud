@@ -1,4 +1,5 @@
 import { X, Link as LinkIcon, Check, Info, FileStack, Lock } from 'lucide-react'
+import { LockKeyhole } from 'lucide-react'
 import { useState } from 'react'
 import { IconButton, Button, Avatar, AvatarGroup } from '@shared/ui'
 import { cn } from '@shared/lib/cn'
@@ -142,7 +143,16 @@ function SingleItemDetails({ item, copied, onCopyUrl }: { item: DriveItem, copie
           </div>
         )}
 
-        {item.type === 'file' && (
+        {item.type === 'file' && item.visibility === 'private' && (
+          <div className="mt-4 flex items-start gap-2 rounded-lg border border-border p-3 text-xs text-content-secondary">
+            <LockKeyhole size={16} className="mt-0.5 shrink-0 text-content-tertiary" />
+            <span>
+              <span className="block font-medium text-content-primary">Archivo privado</span>
+              No tiene URL pública. Solo lo ven tú y las personas con acceso.
+            </span>
+          </div>
+        )}
+        {item.type === 'file' && item.visibility !== 'private' && (
           <div className="mt-4">
             <p className="mb-1 text-xs font-medium text-content-tertiary">URL pública</p>
             <div className="input-glass flex items-center gap-2 rounded-lg px-3 py-2">

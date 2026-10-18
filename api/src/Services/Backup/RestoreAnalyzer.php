@@ -11,6 +11,7 @@ use ProjectCloud\Core\Database;
 use ProjectCloud\Core\Paths;
 use ProjectCloud\Services\AssetsService;
 use ProjectCloud\Services\DatabaseManagerService;
+use ProjectCloud\Services\PrivateFileStore;
 use ProjectCloud\Services\StorageCapacity;
 use ZipArchive;
 
@@ -231,11 +232,18 @@ final class RestoreAnalyzer
         $list = [];
         $bytes = 0;
 
-        $stmt = $this->pdo->prepare('SELECT u.username, f.path, f.size_bytes FROM files f JOIN users u ON u.id = f.user_id WHERE f.deleted_at IS NULL AND f.created_at > ?');
+        $store = new PrivateFileStore();
+        $stmt = $this->pdo->prepare('SELECT u.username, f.* FROM files f JOIN users u ON u.id = f.user_id WHERE f.deleted_at IS NULL AND f.created_at > ?');
         $stmt->execute([$createdSql]);
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-            $rel = 'storage/' . $row['username'] . '/' . ltrim((string) $row['path'], '/');
-            $abs = $storage . DIRECTORY_SEPARATOR . $row['username'] . DIRECTORY_SEPARATOR . ltrim((string) $row['path'], '/');
+            if (($row['visibility'] ?? 'public') === 'private') {
+                // Los privados se guardan por id en storage/.private/{usuario}/.
+                $abs = $store->path((string) $row['username'], (int) $row['id'], $row['extension']);
+                $rel = 'storage/' . str_replace(DIRECTORY_SEPARATOR, '/', substr($abs, strlen($storage) + 1));
+            } else {
+                $rel = 'storage/' . $row['username'] . '/' . ltrim((string) $row['path'], '/');
+                $abs = $storage . DIRECTORY_SEPARATOR . $row['username'] . DIRECTORY_SEPARATOR . ltrim((string) $row['path'], '/');
+            }
             if ($zip->locateName($rel) === false && is_file($abs)) {
                 $list[] = ['abs' => $abs, 'rel' => $rel];
                 $bytes += (int) $row['size_bytes'];

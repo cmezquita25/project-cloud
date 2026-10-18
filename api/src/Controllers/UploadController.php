@@ -154,7 +154,7 @@ final class UploadController
             'mime_type'  => $f['mime_type'] !== null ? (string) $f['mime_type'] : null,
             'extension'  => $f['extension'] !== null ? (string) $f['extension'] : null,
             'is_starred' => (bool) $f['is_starred'],
-            'url'        => FileService::publicUrl($username, (string) $f['path']),
+            ...\ProjectCloud\Services\FileLinks::for($f, $username),
             'created_at' => $f['created_at'] ?? null,
             'updated_at' => $f['updated_at'] ?? null,
         ];

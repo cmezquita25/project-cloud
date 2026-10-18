@@ -261,6 +261,7 @@ final class AdminController
         // Elimina físicamente su carpeta de almacenamiento.
         $fs = new FileSystemService();
         $fs->delete($fs->userRoot($username));
+        (new \ProjectCloud\Services\PrivateFileStore($fs))->deleteUser($username); // sus archivos privados
 
         ActivityLogger::log($request, 'user.delete', 'user', $id, ['username' => $username]);
         return Response::success(['ok' => true]);

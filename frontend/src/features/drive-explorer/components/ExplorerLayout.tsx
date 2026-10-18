@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { publicUrlOf } from '@features/drive-explorer/lib/publicUrl'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { cn } from '@shared/lib/cn'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -26,6 +27,7 @@ import { usePreview } from '@features/preview'
 import { useAssetsAccess } from '@features/assets/hooks/useAssetsAccess'
 import { useHeaderSearch } from '@app/layouts/HeaderSearchContext'
 import { usePlatformSettings } from '@shared/hooks/usePlatformSettings'
+import { VisibilityDialog } from './dialogs/VisibilityDialog'
 import { useAuth } from '@features/auth/AuthProvider'
 import { useFolderContents } from '../hooks/useFolderContents'
 import type { IExplorerAdapter } from '../adapters/types'
@@ -59,6 +61,7 @@ type DialogState =
   | { kind: 'block'; item: DriveItem }
   | { kind: 'share'; item: DriveItem }
   | { kind: 'shareUnit' }
+  | { kind: 'visibility'; item: DriveItem }
   | null
 
 
@@ -352,7 +355,11 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
 
   async function copyUrl(item: DriveItem) {
     if (item.type !== 'file') return
-    await navigator.clipboard.writeText(item.url)
+    if (item.visibility === 'private' || item.public_url === null) {
+      toast.error('Es un archivo privado: no tiene URL pública.')
+      return
+    }
+    await navigator.clipboard.writeText(item.public_url ?? item.url)
     toast.success('URL pública copiada')
   }
 
@@ -390,6 +397,8 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
             toast.success('Duplicado')
           })
           .catch((e) => toast.error(e.message))
+      case 'visibility':
+        return setDialog({ kind: 'visibility', item })
       case 'rename':
         return setDialog({ kind: 'rename', item })
       case 'move':
@@ -731,6 +740,14 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
         onClose={() => setDialog(null)}
         onConfirm={createFolder}
       />
+      {dialog?.kind === 'visibility' && adapter.setVisibility && (
+        <VisibilityDialog
+          item={dialog.item}
+          onClose={() => setDialog(null)}
+          onConfirm={adapter.setVisibility}
+          onDone={reload}
+        />
+      )}
       <NamePromptDialog
         open={dialog?.kind === 'rename'}
         title="Cambiar nombre"
@@ -835,7 +852,7 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
                     onSelect: () => setDialog({ kind: 'delete', items: selectedItems }),
                   }] : []),
                 ]
-                : buildItemMenu(ctxMenu.item, (a: ItemAction) => onAction(ctxMenu.item!, a), adapter.capabilities)
+                : buildItemMenu(ctxMenu.item, (a: ItemAction) => onAction(ctxMenu.item!, a), adapter.capabilities, user?.id)
           }
         />
       )}
@@ -848,7 +865,7 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
           name: i.name,
           size_bytes: i.type === 'file' ? i.size_bytes : undefined,
           mime_type: i.type === 'file' ? i.mime_type : null,
-          url: (i as any).url,
+          url: publicUrlOf(i) ?? undefined,
         }))}
       />
     </div>

@@ -59,6 +59,10 @@ final class FolderService
         $path = PathHelper::join($parentPath, $name);
         $this->fs->makeDir($ownerUsername, $path);
         $id = $this->folders->create($ownerUserId, $parentId, $name, $path);
+        // Dentro de una carpeta privada, todo es privado.
+        if ((new VisibilityService($this->pdo))->folderIsPrivate($parentId)) {
+            $this->pdo->prepare("UPDATE folders SET visibility = 'private' WHERE id = ?")->execute([$id]);
+        }
 
         return $this->folders->findAnyById($id) ?? [];
     }
@@ -130,6 +134,7 @@ final class FolderService
             $this->files->rewritePathPrefix($ownerUserId, $oldPath, $newPath);
             $this->fs->move($ownerUsername, $oldPath, $newPath);
         });
+        (new VisibilityService($this->pdo))->enforceFolder($id);
 
         return $this->folders->findAnyById($id) ?? [];
     }
@@ -201,6 +206,7 @@ final class FolderService
 
             // Recrea la carpeta raíz de la copia.
             $newRootId = $this->folders->create($ownerUserId, $targetParentId, $newName, $newRootPath);
+            $this->copyFolderVisibility($folder, $newRootId);
 
             // Mapea oldFolderId -> newFolderId para recolocar padres.
             $map = [(int) $folder['id'] => $newRootId];
@@ -215,6 +221,7 @@ final class FolderService
                 $oldParent = $sub['parent_id'] !== null ? (int) $sub['parent_id'] : null;
                 $newParent = $oldParent !== null ? ($map[$oldParent] ?? $newRootId) : $newRootId;
                 $map[$subId] = $this->folders->create($ownerUserId, $newParent, (string) $sub['name'], $newSubPath);
+                $this->copyFolderVisibility($sub, $map[$subId]);
             }
 
             // Recrea archivos del subárbol.
@@ -223,7 +230,7 @@ final class FolderService
                 $newFilePath = $newRootPath . substr((string) $file['path'], strlen($oldRootPath));
                 $oldFolder = $file['folder_id'] !== null ? (int) $file['folder_id'] : null;
                 $newFolder = $oldFolder !== null ? ($map[$oldFolder] ?? $newRootId) : $newRootId;
-                $this->files->create(
+                $newFileId = $this->files->create(
                     $ownerUserId,
                     $newFolder,
                     (string) $file['name'],
@@ -232,6 +239,11 @@ final class FolderService
                     $file['mime_type'] !== null ? (string) $file['mime_type'] : null,
                     $file['extension'] !== null ? (string) $file['extension'] : null,
                 );
+                if (($file['visibility'] ?? 'public') === 'private') {
+                    // La copia física de /storage no incluye los privados: se copia su binario.
+                    $this->pdo->prepare("UPDATE files SET visibility = 'private' WHERE id = ?")->execute([$newFileId]);
+                    (new PrivateFileStore($this->fs))->copy($ownerUsername, (int) $file['id'], $file['extension'], $newFileId, $file['extension']);
+                }
                 $copiedBytes += (int) $file['size_bytes'];
             }
             if ($copiedBytes > 0) {
@@ -239,10 +251,20 @@ final class FolderService
             }
         });
 
+        (new VisibilityService($this->pdo))->enforceFolder($newRootId);
+
         return $this->folders->findAnyById($newRootId) ?? [];
     }
 
     // --- Helpers ---
+
+    /** @param array<string,mixed> $source */
+    private function copyFolderVisibility(array $source, int $newId): void
+    {
+        if (($source['visibility'] ?? 'public') === 'private') {
+            $this->pdo->prepare("UPDATE folders SET visibility = 'private' WHERE id = ?")->execute([$newId]);
+        }
+    }
 
     private function require(int $id, int $userId, string $requiredPermission = 'read'): array
     {

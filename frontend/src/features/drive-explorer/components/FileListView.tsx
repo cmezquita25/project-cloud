@@ -1,4 +1,4 @@
-import { Star, Lock } from 'lucide-react'
+import { Star, LockKeyhole, Lock } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { cn } from '@shared/lib/cn'
 import { Checkbox, AvatarGroup } from '@shared/ui'
@@ -112,6 +112,9 @@ export function FileListView({
                   <div className="flex min-w-0 items-center gap-3">
                     <Icon size={20} className={cn('shrink-0', className)} />
                     <span className="truncate font-medium text-content-primary" title={item.name}>{item.name}</span>
+                    {item.visibility === 'private' && (
+                      <LockKeyhole size={14} className="shrink-0 text-content-tertiary" aria-label="Privado" />
+                    )}
                     {item.is_starred && (
                       <Star size={14} className="shrink-0 fill-warning text-warning" />
                     )}

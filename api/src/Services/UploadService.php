@@ -234,17 +234,32 @@ final class UploadService
         $name = (string) $meta['name'];
         $path = PathHelper::join((string) $meta['folder_path'], $name);
 
+        // Privado si la carpeta lo es o si el propietario sube en privado por defecto.
+        $visibility = (new VisibilityService())->defaultFor($targetUserId, $folderId);
+
         $newId = 0;
-        $this->transaction(function () use ($targetUserId, $targetUsername, $folderId, $name, $path, $partPath, $actual, $mime, &$newId) {
-            $dst = $this->fs->abs($targetUsername, $path);
-            $this->fs->ensureDir(dirname($dst));
-            if (file_exists($dst)) {
+        $this->transaction(function () use ($targetUserId, $targetUsername, $folderId, $name, $path, $partPath, $actual, $mime, $visibility, &$newId) {
+            if ($this->files->existsByName($targetUserId, $folderId, $name)) {
                 throw new HttpException(409, 'NAME_EXISTS', 'Ya existe un archivo con ese nombre.');
             }
+            $extension = PathHelper::extension($name);
+            $newId = $this->files->create($targetUserId, $folderId, $name, $path, $actual, $mime, $extension);
+
+            if ($visibility === 'private') {
+                $store = new PrivateFileStore($this->fs);
+                $store->ensureWebBlock();
+                $dst = $store->path($targetUsername, $newId, $extension);
+                $this->pdo->prepare("UPDATE files SET visibility = 'private' WHERE id = ?")->execute([$newId]);
+            } else {
+                $dst = $this->fs->abs($targetUsername, $path);
+                if (file_exists($dst)) {
+                    throw new HttpException(409, 'NAME_EXISTS', 'Ya existe un archivo con ese nombre.');
+                }
+            }
+            $this->fs->ensureDir(dirname($dst));
             if (!@rename($partPath, $dst)) {
                 throw new HttpException(500, 'FS_ERROR', 'No se pudo guardar el archivo.');
             }
-            $newId = $this->files->create($targetUserId, $folderId, $name, $path, $actual, $mime, PathHelper::extension($name));
             $this->users->addUsedBytes($targetUserId, $actual);
         });
 

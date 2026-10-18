@@ -21,6 +21,7 @@ final class ItemPresenter
             'name'       => (string) $f['name'],
             'path'       => (string) $f['path'],
             'is_starred' => (bool) $f['is_starred'],
+            'visibility' => (string) ($f['visibility'] ?? 'public'),
             'location'   => isset($f['location_name']) && $f['location_name'] !== null ? (string) $f['location_name'] : null,
             'deleted_at' => $f['deleted_at'] ?? null,
             'created_at' => $f['created_at'] ?? null,
@@ -41,7 +42,7 @@ final class ItemPresenter
             'mime_type'  => $f['mime_type'] !== null ? (string) $f['mime_type'] : null,
             'extension'  => $f['extension'] !== null ? (string) $f['extension'] : null,
             'is_starred' => (bool) $f['is_starred'],
-            'url'        => FileService::publicUrl($username, (string) $f['path']),
+            ...FileLinks::for($f, $username), // url, public_url, thumbnail_url, visibility
             'location'   => isset($f['location_name']) && $f['location_name'] !== null ? (string) $f['location_name'] : null,
             'deleted_at' => $f['deleted_at'] ?? null,
             'created_at' => $f['created_at'] ?? null,

@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import { MoreVertical } from 'lucide-react'
 import { IconButton, Menu } from '@shared/ui'
 import { useDisclosure } from '@shared/hooks/useDisclosure'
+import { useAuth } from '@features/auth/AuthProvider'
 import { buildItemMenu } from './itemMenu'
 import type { DriveItem, ItemAction } from '../types'
 import type { ExplorerCapabilities } from '../adapters/types'
@@ -27,6 +28,7 @@ const DEFAULT_CAPS: ExplorerCapabilities = {
 
 /** Botón ⋮ que abre el menú contextual de un elemento (dropdown/bottom sheet). */
 export function ItemActionsMenu({ item, onAction, size = 'sm', capabilities = DEFAULT_CAPS }: ItemActionsMenuProps) {
+  const { user } = useAuth()
   const { isOpen, toggle, close } = useDisclosure()
   const anchor = useRef<HTMLDivElement>(null)
 
@@ -45,7 +47,7 @@ export function ItemActionsMenu({ item, onAction, size = 'sm', capabilities = DE
       <Menu
         open={isOpen}
         onClose={close}
-        items={buildItemMenu(item, (a) => onAction(item, a), capabilities)}
+        items={buildItemMenu(item, (a) => onAction(item, a), capabilities, user?.id)}
         title={item.name}
         align="right"
         anchorRef={anchor}

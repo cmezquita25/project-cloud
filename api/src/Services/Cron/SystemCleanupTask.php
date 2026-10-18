@@ -63,6 +63,8 @@ final class SystemCleanupTask implements ScheduledTask
         // El constructor mueve las copias de storage/backups (pública) a
         // api/var/backups y bloquea la ruta antigua. Idempotente.
         new DatabaseManagerService();
+        // Y que /storage/.private quede bloqueada para la web (instalaciones previas).
+        (new \ProjectCloud\Services\PrivateFileStore())->ensureWebBlock();
 
         return [
             'sesiones_caducadas' => (int) $sessions,

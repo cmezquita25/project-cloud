@@ -686,7 +686,7 @@ Servicio central: `ShareLinkPolicy::canCreate(user, target)`, junto a `SharePerm
 | **3. Copias programadas** ✅ *implementada y probada en local (ver §11)* | Programación · rotación estricta 1–3 · cola pre-actualización · contenido y extensiones · estimación de tamaño · job por pasos | La copia programada corre sola y nunca hay más de N | M |
 | **4. Restauración con diagnóstico** ✅ *implementada y probada en local (ver §12)* | `backup.json` · analizador · restauración con runner y mantenimiento · cuarentena de huérfanos | El informe detecta los faltantes por filtro y las copias más nuevas que la plataforma | M |
 | **→ Release v2.2.0** | **Primera actualización OTA real** (prueba de fuego del actualizador) | — | — |
-| **5. Visibilidad privada** | Columna `visibility` · `storage/.private` · mover binarios · proteger thumbs · default de subidas en el perfil | Un archivo privado da 404 en `/storage/…` y funciona dentro de la app | M |
+| **5. Visibilidad privada** ✅ *implementada y probada en local (ver §14)* | Columna `visibility` · `storage/.private` · mover binarios · proteger thumbs · default de subidas en el perfil | Un archivo privado da 404 en `/storage/…` y funciona dentro de la app | M |
 | **6. Enlaces + QR** | `share_links` · `ShareLinkPolicy` · página `/s/{token}` · **vista pública de carpeta de solo lectura** (sidebar vacía, migas acotadas, subcarpetas, vista previa y descarga) · diálogo unificado · QR · caducidad · contador · en **Mi unidad y en la unidad compartida** | Carlos crea un QR; Pedro (invitado) no ve la opción; un visitante sin cuenta navega la carpeta pero no puede subir ni salir de ella; el enlace caduca a la hora indicada | L |
 | **7. Panel de enlaces** | Mis enlaces · revocar todos · panel admin · políticas · limpieza de hits | «Revocar todos» deja todos los enlaces en 410 | S |
 | **→ Release v2.3.0** | Fases 5–7, distribuidas por OTA | — | — |
@@ -927,3 +927,45 @@ Paquete en `release/out/`: `manifest.json`, `releases/project-cloud-2.2.0.zip` (
 3. Al terminar: el pie de página dice **v2.2.0** y en **Base de datos** aparecen «Copias automáticas» y el diagnóstico al restaurar.
 
 No hace falta subir nada por FTP a `drive`.
+
+---
+
+## 14. Fase 5 — Archivos privados (2026-10-17)
+
+**Diseño:**
+- **Públicos:** exactamente como antes, en `storage/{usuario}/{ruta}` con su URL directa.
+- **Privados:** el binario vive en `storage/.private/{usuario}/{id}.{ext}`. Se guarda por **id** y no por ruta, así que renombrar o mover carpetas no lo toca y el nombre en disco no revela nada.
+- `/storage/.private` está bloqueada para la web; la regla se añade sola a las instalaciones existentes.
+- Los privados se sirven con un **enlace firmado temporal**: `/api/v1/files/{id}/content?exp=…&sig=…`, una firma HMAC que vale entre 1 y 2 horas y es estable durante la hora para no romper la caché de los listados.
+- El enlace admite rangos (video y audio). HTML, SVG y JS se fuerzan a descarga; el texto se sirve con CSP `sandbox`.
+- Las miniaturas de los privados también van firmadas. El endpoint de miniaturas ya no devuelve archivos que no sean imágenes (antes podía servir un HTML) y la caché `thumbs/` dejó de ser accesible por URL directa.
+
+**Reglas:**
+- Solo el **propietario** cambia la visibilidad (los invitados no, aunque tengan permiso completo).
+- Una **carpeta privada** hace privado todo su contenido, incluido lo que se suba, mueva, copie o restaure dentro después. No se puede hacer público un archivo dentro de una carpeta privada.
+- Una carpeta pública puede tener archivos privados sueltos. Hacer pública una carpeta hace públicos todos sus archivos.
+- Cambiar la visibilidad no altera la fecha de modificación.
+- Preferencia por usuario (perfil → «Privacidad de mis subidas»): **públicas por defecto**.
+
+**Interfaz:**
+- Menú «Hacer privado / Hacer público» con confirmación que explica las consecuencias.
+- Candado 🔒 en cuadrícula y lista.
+- Detalles: «Archivo privado, sin URL pública».
+- «Copiar URL pública» se oculta en los privados.
+- «Descargar» usa el enlace firmado.
+
+**Base de datos:** migración `0005_private_files` (`files.visibility`, `folders.visibility`, `users.default_visibility`; schema 5) y las mismas columnas en `schema.sql` para instalaciones nuevas.
+
+**Probado en local (27 comprobaciones):**
+- Privado y servido por enlace firmado: completo, por rangos, firma alterada o caducada → 403, miniatura sin firma → 404.
+- Permisos de propietario.
+- Renombrar cambiando la extensión.
+- Duplicar.
+- Papelera: conservar, restaurar, purga que borra el binario.
+- Cascada de carpeta y subcarpeta nueva privada.
+- Subida a una carpeta privada.
+- Copia de una carpeta privada.
+- Vuelta a público byte a byte idéntica.
+- Migración idempotente; corregido un `SHOW COLUMNS … LIKE ?` que MySQL no admite con consultas preparadas nativas.
+
+**Alcance:** «Mi unidad». La unidad compartida de la organización sigue siendo pública por URL (como hoy); su privacidad se verá junto con los enlaces (Fase 6).

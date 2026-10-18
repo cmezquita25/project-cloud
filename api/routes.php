@@ -56,6 +56,8 @@ return static function (Router $router): void {
 
     // Miniaturas de imágenes (públicas; los archivos ya son públicos por URL).
     $router->get('/v1/files/{id}/thumb', [FileController::class, 'thumb']);
+    // Archivos privados: con enlace firmado temporal (no requieren sesión).
+    $router->get('/v1/files/{id}/content', [FileController::class, 'content']);
     $router->get('/v1/assets/thumb', [AssetsController::class, 'thumb']);
 
     // --- Fase 2: Instalador ---
@@ -86,11 +88,13 @@ return static function (Router $router): void {
     $router->get('/v1/folders/{id}/children', [FolderController::class, 'children'], $auth);
     $router->post('/v1/folders',              [FolderController::class, 'create'], $auth);
     $router->patch('/v1/folders/{id}',        [FolderController::class, 'update'], $auth);
+    $router->patch('/v1/folders/{id}/visibility', [FolderController::class, 'setVisibility'], $auth);
     $router->post('/v1/folders/{id}/copy',    [FolderController::class, 'copy'], $auth);
     $router->delete('/v1/folders/{id}',       [FolderController::class, 'delete'], $auth);
 
     // Archivos
     $router->patch('/v1/files/{id}',           [FileController::class, 'update'], $auth);
+    $router->patch('/v1/files/{id}/visibility', [FileController::class, 'setVisibility'], $auth);
     $router->post('/v1/files/{id}/duplicate',  [FileController::class, 'duplicate'], $auth);
     $router->post('/v1/files/{id}/copy',       [FileController::class, 'copy'], $auth);
     $router->get('/v1/files/{id}/url',         [FileController::class, 'url'], $auth);

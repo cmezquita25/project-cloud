@@ -280,6 +280,7 @@ final class FolderController
             'name'          => (string) $f['name'],
             'path'          => (string) $f['path'],
             'is_starred'    => (bool) $f['is_starred'],
+            'visibility'    => (string) ($f['visibility'] ?? 'public'),
             'owner'         => $owners[0]['display_name'] ?? null,
             'created_by'    => $createdBy,
             'created_at'    => $f['created_at'] ?? null,
@@ -287,6 +288,18 @@ final class FolderController
             'owners'        => $owners,
             'collaborators' => $collaborators,
         ];
+    }
+
+    /**
+     * PATCH /folders/{id}/visibility — { visibility: public|private }. Se aplica a
+     * todo el contenido de la carpeta (solo el propietario).
+     */
+    public function setVisibility(Request $request): Response
+    {
+        $visibility = (string) ($request->json()['visibility'] ?? '');
+        $result = (new \ProjectCloud\Services\VisibilityService())->setFolder((int) $request->userId(), (int) $request->param('id'), $visibility);
+        \ProjectCloud\Services\ActivityLogger::log($request, 'folder.visibility', 'folder', (int) $result['folder']['id'], ['visibility' => $visibility, 'files' => $result['files']]);
+        return Response::success(['folder' => $this->folderPublic($result['folder']), 'files_changed' => $result['files']]);
     }
 
     /** @param array<string,mixed> $f */
@@ -361,7 +374,7 @@ final class FolderController
             'is_starred'    => (bool) $f['is_starred'],
             'owner'         => $owners[0]['display_name'] ?? null,
             'created_by'    => $createdBy,
-            'url'           => FileService::publicUrl($ownerUsername, (string) $f['path']),
+            ...\ProjectCloud\Services\FileLinks::for($f, $ownerUsername),
             'created_at'    => $f['created_at'] ?? null,
             'updated_at'    => $f['updated_at'] ?? null,
             'owners'        => $owners,
