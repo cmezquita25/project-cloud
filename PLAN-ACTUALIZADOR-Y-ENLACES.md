@@ -969,3 +969,19 @@ No hace falta subir nada por FTP a `drive`.
 - Migración idempotente; corregido un `SHOW COLUMNS … LIKE ?` que MySQL no admite con consultas preparadas nativas.
 
 **Alcance:** «Mi unidad». La unidad compartida de la organización sigue siendo pública por URL (como hoy); su privacidad se verá junto con los enlaces (Fase 6).
+
+---
+
+## 15. Extras tras la Fase 5 (2026-10-17)
+
+- **Auditoría:**
+  - Filtro de periodo (*Hoy · Últimos 7 días* — por defecto · *Últimos 30 días · Este mes · Todo*) y búsqueda por usuario, nombre o correo.
+  - «Limpiar registros»: solo lo que se muestra, o todo escribiendo «Todos los registros». La limpieza queda registrada (`activity.cleared`).
+  - Etiquetas legibles para las acciones nuevas (copias, mantenimiento, actualizaciones, visibilidad…).
+- **Encabezados:** Dashboard, Usuarios y Auditoría tienen descripción.
+- **Parpadeo del título:** las tres secciones eran rutas separadas que desmontaban y volvían a montar `AdminPage`. Ahora comparten una ruta padre y el spinner solo cubre la sección visible.
+- **Temas:**
+  - **Supernova** (rojo → morado; en oscuro, superficies negras zinc).
+  - **Techmaleon** (verde `#00c853` → azul `#1e40af`).
+  - Mismo sistema que Blizzard y Nebula, sin parpadeo al recargar.
+- **Corrección de raíz:** el instalador sembraba `primary_color = #3b82f6`, que se aplicaba como color personalizado encima de cualquier tema (enlaces, casillas y foco siempre azules). La migración `0006` lo borra solo si sigue siendo ese valor exacto; las instalaciones nuevas ya no lo siembran. Schema 6.

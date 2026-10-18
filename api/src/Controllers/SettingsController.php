@@ -34,7 +34,9 @@ final class SettingsController
         // Estilo base de color; sin clave guardada = preset por defecto
         // (Blizzard). Un valor antiguo 'classic' se publica como 'nebula'.
         $storedPreset = $settings->get('theme_preset');
-        $config['theme_preset'] = ($storedPreset === 'nebula' || $storedPreset === 'classic') ? 'nebula' : 'blizzard';
+        $config['theme_preset'] = $storedPreset === 'classic'
+            ? 'nebula'
+            : (in_array($storedPreset, ['nebula', 'supernova', 'techmaleon'], true) ? $storedPreset : 'blizzard');
         $config['ga4_measurement_id'] = $settings->get('ga4_measurement_id');
         $config['ga4_enabled'] = (bool) $settings->getInt('ga4_enabled', 0);
         // Versión del backend: si no coincide con la del frontend en caché, el

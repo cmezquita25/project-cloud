@@ -631,7 +631,7 @@ final class AdminController
             $preset = ['invicter' => 'blizzard', 'classic' => 'nebula'][$preset] ?? $preset;
             if ($preset === '' || $preset === 'blizzard') {
                 $settings->delete('theme_preset');
-            } elseif ($preset === 'nebula') {
+            } elseif (in_array($preset, ['nebula', 'supernova', 'techmaleon'], true)) {
                 $settings->set('theme_preset', $preset);
             } else {
                 throw new HttpException(422, 'INVALID_THEME_PRESET', 'Estilo de color no válido.');
@@ -746,7 +746,8 @@ final class AdminController
     {
         $limit = min(100, max(1, (int) ($request->query['limit'] ?? 30)));
         $page = max(1, (int) ($request->query['page'] ?? 1));
-        $result = (new ActivityRepository())->paginate($limit, ($page - 1) * $limit);
+        $filters = $this->activityFilters($request);
+        $result = (new ActivityRepository())->paginate($limit, ($page - 1) * $limit, $filters);
 
         $items = array_map(static fn (array $r): array => [
             'id'          => (int) $r['id'],
@@ -764,7 +765,36 @@ final class AdminController
             'total' => $result['total'],
             'page'  => $page,
             'limit' => $limit,
+            'range' => $filters['range'],
         ]);
+    }
+
+    /**
+     * DELETE /admin/activity?scope=filtered|all&range=…&q=… — limpia registros.
+     * Deja constancia: el propio borrado se registra después.
+     */
+    public function clearActivity(Request $request): Response
+    {
+        $scope = (string) ($request->query['scope'] ?? 'filtered');
+        $filters = $scope === 'all' ? ['range' => 'all', 'q' => ''] : $this->activityFilters($request);
+        $deleted = (new ActivityRepository())->deleteMatching($filters);
+        ActivityLogger::log($request, 'activity.cleared', 'system', null, [
+            'scope'   => $scope,
+            'range'   => $filters['range'],
+            'q'       => $filters['q'] !== '' ? $filters['q'] : null,
+            'deleted' => $deleted,
+        ]);
+        return Response::success(['deleted' => $deleted]);
+    }
+
+    /** @return array{range:string, q:string} */
+    private function activityFilters(Request $request): array
+    {
+        $range = (string) ($request->query['range'] ?? '7d');
+        return [
+            'range' => in_array($range, ActivityRepository::RANGES, true) ? $range : '7d',
+            'q'     => mb_substr(trim((string) ($request->query['q'] ?? '')), 0, 100),
+        ];
     }
 
     // --- Helpers ---

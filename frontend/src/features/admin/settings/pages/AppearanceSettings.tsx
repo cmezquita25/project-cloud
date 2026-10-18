@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Check } from 'lucide-react'
 import { Button, ProgressBar, useLoader, useToast } from '@shared/ui'
 import { cn } from '@shared/lib/cn'
-import { usePlatformSettings, type ThemePreset } from '@shared/hooks/usePlatformSettings'
+import { normalizeThemePreset, usePlatformSettings, type ThemePreset } from '@shared/hooks/usePlatformSettings'
 import { adminApi } from '../../services/adminApi'
 
 type ColorKey = 'primary_color' | 'btn_gradient_start' | 'btn_gradient_end' | 'btn_text_color'
@@ -33,6 +33,28 @@ const PRESETS: Record<ThemePreset, { label: string; description: string; check: 
       primary_color: '#1a73e8',
       btn_gradient_start: '#1a73e8',
       btn_gradient_end: '#9333ea',
+      btn_text_color: '#ffffff',
+    },
+  },
+  supernova: {
+    label: 'Supernova',
+    description: 'Rojo → morado sobre negros. En oscuro, superficies negras.',
+    check: '#e11d48', // = --color-check de index.css
+    colors: {
+      primary_color: '#e11d48',
+      btn_gradient_start: '#f43f5e',
+      btn_gradient_end: '#9333ea',
+      btn_text_color: '#ffffff',
+    },
+  },
+  techmaleon: {
+    label: 'Techmaleon',
+    description: 'Verde → azul. Los colores de la marca Techmaleon.',
+    check: '#16a34a', // = --color-check de index.css
+    colors: {
+      primary_color: '#16a34a',
+      btn_gradient_start: '#00c853',
+      btn_gradient_end: '#1e40af',
       btn_text_color: '#ffffff',
     },
   },
@@ -72,7 +94,7 @@ export function AppearanceSettings() {
 
   useEffect(() => {
     if (!settings) return
-    setPreset(settings.theme_preset === 'nebula' ? 'nebula' : 'blizzard')
+    setPreset(normalizeThemePreset(settings.theme_preset))
     setCustom({
       primary_color: settings.primary_color || null,
       btn_gradient_start: settings.btn_gradient_start || null,
@@ -165,7 +187,7 @@ export function AppearanceSettings() {
           El estilo base define el degradado de botones, halos y acentos de toda la plataforma.
         </p>
 
-        <div role="radiogroup" aria-label="Estilo de color" className="mb-8 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div role="radiogroup" aria-label="Estilo de color" className="mb-8 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {(Object.keys(PRESETS) as ThemePreset[]).map((id) => {
             const p = PRESETS[id]
             const selected = preset === id

@@ -157,6 +157,7 @@ return static function (Router $router): void {
     $router->put('/v1/admin/assets/folder-name',  [AssetsController::class, 'setFolderName'], $admin);
     $router->get('/v1/admin/migrate-assets',      [AdminController::class, 'migrateAssets'], $admin);
     $router->get('/v1/admin/activity',            [AdminController::class, 'activity'], $admin);
+    $router->delete('/v1/admin/activity',         [AdminController::class, 'clearActivity'], $admin);
     $router->get('/v1/admin/users',               [AdminController::class, 'users'], $admin);
     $router->post('/v1/admin/users',              [AdminController::class, 'createUser'], $admin);
     $router->patch('/v1/admin/users/{id}',        [AdminController::class, 'updateUser'], $admin);

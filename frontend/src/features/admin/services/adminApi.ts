@@ -30,8 +30,11 @@ export const adminApi = {
   resetPassword: (id: number, password: string) =>
     api.patch<{ ok: true }>(`/admin/users/${id}/password`, { password }),
   deleteUser: (id: number) => api.delete<{ ok: true }>(`/admin/users/${id}`),
-  activity: (page = 1, limit = 30) =>
-    api.get<ActivityPage>(`/admin/activity?page=${page}&limit=${limit}`),
+  activity: (page = 1, limit = 30, range = '7d', q = '') =>
+    api.get<ActivityPage>(`/admin/activity?${new URLSearchParams({ page: String(page), limit: String(limit), range, q })}`),
+  /** Borra los registros del filtro actual o todos (solo admins). */
+  clearActivity: (scope: 'filtered' | 'all', range: string, q: string) =>
+    api.delete<{ deleted: number }>(`/admin/activity?${new URLSearchParams({ scope, range, q })}`),
   updateCapacity: (bytes: number, assetsQuota: number, chunkSize?: number) =>
     api.patch<{ server_capacity_bytes: number; user: User | null }>('/admin/settings', {
       server_capacity_bytes: bytes,

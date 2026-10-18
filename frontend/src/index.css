@@ -184,6 +184,82 @@
     --scroll-to: 126 34 206; /* #7e22ce */
   }
 
+  /*
+    Preset «Supernova»: rojo → carmesí → morado sobre negros. Es el único que
+    también cambia las superficies del modo oscuro: negro real (zinc) en vez
+    del azul pizarra, para que se sienta «negro».
+  */
+  :root[data-theme-preset='supernova'] {
+    --color-primary: 225 29 72; /* #e11d48 rose-600 */
+    --color-primary-hover: 190 18 60; /* #be123c rose-700 */
+    --color-primary-active: 159 18 57; /* #9f1239 rose-800 */
+    --color-primary-subtle: 255 228 230; /* #ffe4e6 rose-100 */
+    --color-gradient-start: 244 63 94; /* #f43f5e rose-500 */
+    --color-gradient-end: 147 51 234; /* #9333ea purple-600 */
+    --color-focus: 225 29 72;
+    --glow-c: 190 18 60; /* rose-700 */
+    --color-check: 225 29 72;
+    --text-gradient-from: 225 29 72;
+    --text-gradient-via: 219 39 119; /* pink-600 */
+    --text-gradient-to: 147 51 234;
+    --scroll-from: 253 164 175; /* rose-300 */
+    --scroll-to: 216 180 254; /* purple-300 */
+  }
+  .dark[data-theme-preset='supernova'] {
+    --color-canvas: 9 9 11; /* zinc-950 */
+    --color-surface: 24 24 27; /* zinc-900 */
+    --color-surface-hover: 39 39 42; /* zinc-800 */
+    --color-surface-active: 63 63 70; /* zinc-700 */
+    --color-surface-container: 14 14 17;
+    --color-overlay: 9 9 11;
+    --color-border: 39 39 42; /* zinc-800 */
+    --color-border-strong: 63 63 70; /* zinc-700 */
+    --color-content-secondary: 161 161 170; /* zinc-400 */
+    --color-content-tertiary: 113 113 122; /* zinc-500 */
+    --color-primary: 253 164 175; /* #fda4af rose-300 (contraste sobre negro) */
+    --color-primary-hover: 254 205 211; /* rose-200 */
+    --color-primary-active: 255 228 230; /* rose-100 */
+    --color-primary-subtle: 76 5 25; /* #4c0519 rose-950 */
+    --color-primary-on: 24 24 27;
+    --color-focus: 251 113 133; /* rose-400 */
+    --text-gradient-from: 251 113 133; /* rose-400 */
+    --text-gradient-via: 244 114 182; /* pink-400 */
+    --text-gradient-to: 192 132 252; /* purple-400 */
+    --scroll-from: 190 18 60; /* rose-700 */
+    --scroll-to: 126 34 206; /* purple-700 */
+  }
+
+  /* Preset «Techmaleon»: verde → azul, los colores de la marca. */
+  :root[data-theme-preset='techmaleon'] {
+    --color-primary: 22 163 74; /* #16a34a green-600 */
+    --color-primary-hover: 21 128 61; /* green-700 */
+    --color-primary-active: 22 101 52; /* green-800 */
+    --color-primary-subtle: 220 252 231; /* green-100 */
+    --color-gradient-start: 0 200 83; /* #00c853 */
+    --color-gradient-end: 30 64 175; /* #1e40af blue-800 */
+    --color-focus: 22 163 74;
+    --glow-c: 37 99 235; /* blue-600 */
+    --color-check: 22 163 74;
+    --text-gradient-from: 22 163 74;
+    --text-gradient-via: 13 148 136; /* teal-600 */
+    --text-gradient-to: 37 99 235; /* blue-600 */
+    --scroll-from: 134 239 172; /* green-300 */
+    --scroll-to: 147 197 253; /* blue-300 */
+  }
+  .dark[data-theme-preset='techmaleon'] {
+    --color-primary: 134 239 172; /* #86efac green-300 */
+    --color-primary-hover: 187 247 208; /* green-200 */
+    --color-primary-active: 220 252 231; /* green-100 */
+    --color-primary-subtle: 5 46 22; /* green-950 */
+    --color-primary-on: 15 23 42;
+    --color-focus: 74 222 128; /* green-400 */
+    --text-gradient-from: 74 222 128; /* green-400 */
+    --text-gradient-via: 45 212 191; /* teal-400 */
+    --text-gradient-to: 96 165 250; /* blue-400 */
+    --scroll-from: 21 128 61; /* green-700 */
+    --scroll-to: 29 78 216; /* blue-700 */
+  }
+
   * {
     border-color: rgb(var(--color-border));
   }

@@ -134,8 +134,7 @@ INSERT INTO `settings` (`key`, `value`) VALUES
     ('default_quota_bytes', '5368709120'),
     ('assets_quota_bytes', '1073741824'),
     ('support_email', ''),
-    ('primary_color', '#3b82f6'),
-    ('schema_version', '5')
+    ('schema_version', '6')
 ON DUPLICATE KEY UPDATE `key` = `key`;
 
 -- --------------------------------------------------------------------------

@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useLocation } from 'react-router-dom'
 import { Users, HardDrive, UserPlus, Pencil, Server, Info } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -14,6 +14,8 @@ import { UserFilters } from './components/UserFilters'
 import { UserFormDialog } from './components/UserFormDialog'
 import { PasswordResetDialog } from './components/PasswordResetDialog'
 import { ActivityList } from './components/ActivityList'
+import { ActivityFilters, type ActivityRange } from './components/ActivityFilters'
+import { ClearActivityDialog } from './components/ClearActivityDialog'
 import { ServerLimits } from './components/ServerLimits'
 import { AdminCharts } from './components/AdminCharts'
 import { UserContributionChart } from './components/UserContributionChart'
@@ -51,6 +53,12 @@ const TAB_TITLE: Record<Tab, string> = {
   overview: 'Panel de administración',
   users: 'Usuarios',
   activity: 'Registros de auditoría',
+}
+
+const TAB_DESCRIPTION: Record<Tab, string> = {
+  overview: 'Resumen del almacenamiento, los usuarios y el estado de la plataforma.',
+  users: 'Gestiona los accesos, roles y el almacenamiento de los miembros de tu organización.',
+  activity: 'Quién hizo qué y cuándo en la plataforma.',
 }
 
 export function AdminPage() {
@@ -120,6 +128,17 @@ export function AdminPage() {
 
   const [activityPage, setActivityPage] = useState(1)
   const [activityLimit, setActivityLimit] = useState(30)
+  const [activityRange, setActivityRange] = useState<ActivityRange>('7d')
+  const [activitySearch, setActivitySearch] = useState('')
+  const [activityQuery, setActivityQuery] = useState('')
+  const [clearOpen, setClearOpen] = useState(false)
+  useEffect(() => {
+    const id = setTimeout(() => {
+      setActivityQuery(activitySearch.trim())
+      setActivityPage(1)
+    }, 300)
+    return () => clearTimeout(id)
+  }, [activitySearch])
 
   const { access } = useAssetsAccess()
   const { resolved: theme } = useTheme()
@@ -143,13 +162,18 @@ export function AdminPage() {
   const userTotal = usersData?.total ?? 0
 
   const { data: activityData, isLoading: activityLoading } = useQuery({
-    queryKey: ['admin', 'activity', activityPage, activityLimit],
-    queryFn: () => adminApi.activity(activityPage, activityLimit)
+    queryKey: ['admin', 'activity', activityPage, activityLimit, activityRange, activityQuery],
+    queryFn: () => adminApi.activity(activityPage, activityLimit, activityRange, activityQuery),
+    enabled: tab === 'activity',
+    // Al cambiar filtros se mantiene la lista anterior mientras llega la nueva (sin parpadeo).
+    placeholderData: keepPreviousData,
   })
   const activity = activityData?.items ?? []
   const activityTotal = activityData?.total ?? 0
 
-  const loading = statsLoading || serverInfoLoading || usersLoading || activityLoading
+  // Solo bloquea la sección visible: cambiar de pestaña no debe tapar la página con un spinner.
+  const loading =
+    tab === 'overview' ? statsLoading || serverInfoLoading : tab === 'users' ? usersLoading : activityLoading
 
   const [formOpen, setFormOpen] = useState(false)
   const [editUser, setEditUser] = useState<AdminUser | null>(null)
@@ -283,11 +307,7 @@ export function AdminPage() {
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-content-primary">{TAB_TITLE[tab]}</h1>
-          {tab === 'users' && (
-            <p className="mt-1 text-sm text-content-secondary">
-              Gestiona los accesos, roles y el almacenamiento de los miembros de tu organización.
-            </p>
-          )}
+          <p className="mt-1 text-sm text-content-secondary">{TAB_DESCRIPTION[tab]}</p>
         </div>
         {tab === 'users' && (
           <Button size="sm" leftIcon={UserPlus} onClick={() => { setEditUser(null); setFormOpen(true) }}>
@@ -496,6 +516,18 @@ export function AdminPage() {
             />
           </div>
         ) : (
+          <>
+          <ActivityFilters
+            range={activityRange}
+            onRangeChange={(r) => {
+              setActivityRange(r)
+              setActivityPage(1)
+            }}
+            search={activitySearch}
+            onSearchChange={setActivitySearch}
+            total={activityTotal}
+            onClear={() => setClearOpen(true)}
+          />
           <ActivityList
             items={activity}
             page={activityPage}
@@ -504,7 +536,19 @@ export function AdminPage() {
             onPageChange={setActivityPage}
             onLimitChange={setActivityLimit}
           />
+          </>
         )}
+      <ClearActivityDialog
+        open={clearOpen}
+        onClose={() => setClearOpen(false)}
+        onDone={() => {
+          setActivityPage(1)
+          queryClient.invalidateQueries({ queryKey: ['admin', 'activity'] })
+        }}
+        range={activityRange}
+        search={activityQuery}
+        filteredTotal={activityTotal}
+      />
       </div>
 
       <UserFormDialog open={formOpen} user={editUser} onClose={() => setFormOpen(false)} onSaved={invalidateAdmin} />

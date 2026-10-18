@@ -79,14 +79,21 @@ const router = createBrowserRouter([
               { path: 'profile', element: <ProfilePage /> },
               { path: 'notifications', element: <NotificationsPage /> },
               { path: 'assets/*', element: <AssetsPage /> },
-              // Solo administradores. Cada sección de administración es su
-              // propia ruta (accesible desde el sidebar), todas sobre AdminPage.
+              // Solo administradores. Dashboard, Usuarios y Auditoría comparten UNA
+              // ruta padre: AdminPage queda montada al cambiar de sección (antes se
+              // desmontaba y volvía a montar, y el encabezado parpadeaba).
               {
                 element: <RequireAdmin />,
                 children: [
-                  { path: 'admin', element: <AdminPage /> },
-                  { path: 'admin/users', element: <AdminPage /> },
-                  { path: 'admin/activity', element: <AdminPage /> },
+                  {
+                    path: 'admin',
+                    element: <AdminPage />,
+                    children: [
+                      { index: true, element: null },
+                      { path: 'users', element: null },
+                      { path: 'activity', element: null },
+                    ],
+                  },
                   // Configuración con pestañas verticales (layout propio + subrutas).
                   {
                     path: 'admin/settings',

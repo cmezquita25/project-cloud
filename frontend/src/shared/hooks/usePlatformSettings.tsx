@@ -59,7 +59,9 @@ export function reloadWithFreshCache(): void {
   window.location.reload()
 }
 
-export type ThemePreset = 'blizzard' | 'nebula'
+export type ThemePreset = 'blizzard' | 'nebula' | 'supernova' | 'techmaleon'
+
+const PRESETS_WITH_ATTRIBUTE: ThemePreset[] = ['nebula', 'supernova', 'techmaleon']
 
 /**
  * Normaliza el valor que llega de la API. Acepta los nombres antiguos
@@ -68,7 +70,8 @@ export type ThemePreset = 'blizzard' | 'nebula'
  */
 // eslint-disable-next-line react-refresh/only-export-components
 export function normalizeThemePreset(value: string | null | undefined): ThemePreset {
-  return value === 'nebula' || value === 'classic' ? 'nebula' : 'blizzard'
+  if (value === 'classic') return 'nebula'
+  return (PRESETS_WITH_ATTRIBUTE as string[]).includes(value ?? '') ? (value as ThemePreset) : 'blizzard'
 }
 
 /** Clave de caché local: la lee el script anti-parpadeo de `index.html`. */
@@ -85,10 +88,11 @@ const PRESET_STORAGE_KEY = 'pc-theme-preset'
 // eslint-disable-next-line react-refresh/only-export-components
 export function applyThemePreset(preset: ThemePreset | null | undefined) {
   const root = document.documentElement
-  if (preset === 'nebula') root.setAttribute('data-theme-preset', 'nebula')
+  const withAttribute = !!preset && PRESETS_WITH_ATTRIBUTE.includes(preset)
+  if (withAttribute) root.setAttribute('data-theme-preset', preset)
   else root.removeAttribute('data-theme-preset')
   try {
-    if (preset === 'nebula') localStorage.setItem(PRESET_STORAGE_KEY, 'nebula')
+    if (withAttribute) localStorage.setItem(PRESET_STORAGE_KEY, preset)
     else localStorage.removeItem(PRESET_STORAGE_KEY)
   } catch {
     // Almacenamiento bloqueado: el preset igual se aplica en esta carga.
