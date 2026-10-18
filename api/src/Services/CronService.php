@@ -15,6 +15,7 @@ use ProjectCloud\Services\Cron\ScheduledTask;
 use ProjectCloud\Services\Cron\StaleUploadsTask;
 use ProjectCloud\Services\Cron\SystemCleanupTask;
 use ProjectCloud\Services\Cron\UpdateCheckTask;
+use ProjectCloud\Services\Cron\ScheduledBackupTask;
 
 /**
  * Programador de tareas en segundo plano.
@@ -46,6 +47,7 @@ final class CronService
             new StaleUploadsTask(),
             new SystemCleanupTask($this->pdo),
             new UpdateCheckTask(),
+            new ScheduledBackupTask(),
         ];
         $byKey = [];
         foreach ($tasks as $task) {

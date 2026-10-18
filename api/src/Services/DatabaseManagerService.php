@@ -145,16 +145,24 @@ final class DatabaseManagerService
      * (con papeleras y logos) y la unidad compartida; la de sistema ('system')
      * solo lleva base de datos y configuración (segundos, pocos MB).
      *
-     * @param string      $scope full | system
-     * @param string|null $label Etiqueta en el nombre (p. ej. "pre-update-2.1.1").
+     * @param string        $scope    full | system
+     * @param string|null   $label    Etiqueta en el nombre (p. ej. "pre-update-2.1.1").
+     * @param array|null    $content  Qué incluye la copia completa (ver BackupSettings::content()):
+     *                                users, shared, trash, avatars (bool), ext_mode (all|only|except), extensions (list)
+     * @param callable|null $progress fn(int $files, int $bytes): void — se llama cada cierto número de archivos
      */
-    public function createBackup(string $scope = 'full', ?string $label = null): string
+    public function createBackup(string $scope = 'full', ?string $label = null, ?array $content = null, ?callable $progress = null): string
     {
         if (!class_exists('ZipArchive')) {
             throw new HttpException(500, 'NO_ZIP_ARCHIVE', 'La extensión ZipArchive de PHP no está instalada en el servidor.');
         }
 
         $full = $scope !== 'system';
+        $this->content = ($content ?? []) + ['users' => true, 'shared' => true, 'trash' => true, 'avatars' => true, 'ext_mode' => 'all', 'extensions' => []];
+        $this->content['extensions'] = array_map('strtolower', (array) $this->content['extensions']);
+        $this->progress = $progress;
+        $this->filesAdded = 0;
+        $this->bytesAdded = 0;
         $timestamp = gmdate('Y-m-d_H-i-s');
         $suffix = $label !== null ? '_' . preg_replace('/[^a-z0-9.-]+/', '-', strtolower($label)) : '';
         $filename = "backup_{$timestamp}{$suffix}.zip";
@@ -172,9 +180,11 @@ final class DatabaseManagerService
             // 1. Base de datos
             $zip->addFile($dumpPath, 'database_dump.sql');
 
-            // 2. Storage
+            // 2. Storage: logos siempre; unidades de usuarios y papeleras según la configuración.
             if ($full) {
-                $this->addFolderToZip($this->storageRoot, $zip, 'storage');
+                $this->addFolderToZip($this->storageRoot, $zip, 'storage', 'storage-root');
+            } elseif (is_dir($this->storageRoot . DIRECTORY_SEPARATOR . 'platform')) {
+                $this->addFolderToZip($this->storageRoot . DIRECTORY_SEPARATOR . 'platform', $zip, 'storage/platform', 'always');
             }
 
             // 3. Configuración
@@ -187,9 +197,20 @@ final class DatabaseManagerService
 
             // 4. Unidad compartida (assets)
             $assetsRoot = (new AssetsService())->rootPath();
-            $assetsFolder = $full && is_dir($assetsRoot) ? basename($assetsRoot) : null;
+            $assetsFolder = $full && $this->content['shared'] && is_dir($assetsRoot) ? basename($assetsRoot) : null;
             if ($assetsFolder !== null) {
-                $this->addFolderToZip($assetsRoot, $zip, $assetsFolder);
+                $this->addFolderToZip($assetsRoot, $zip, $assetsFolder, 'shared-root');
+            }
+
+            // 4b. Avatares (carpeta hermana de storage)
+            $avatarsDir = dirname($this->storageRoot) . DIRECTORY_SEPARATOR . 'avatars';
+            $withAvatars = $full && $this->content['avatars'] && is_dir($avatarsDir);
+            if ($withAvatars) {
+                $this->addFolderToZip($avatarsDir, $zip, 'avatars', 'always');
+            }
+
+            if ($this->progress !== null) {
+                ($this->progress)($this->filesAdded, $this->bytesAdded); // total final
             }
 
             // 5. Manifiesto de la copia (lo usará el diagnóstico de restauración).
@@ -204,10 +225,19 @@ final class DatabaseManagerService
                 'includes'    => array_values(array_filter([
                     'database',
                     'config',
-                    $full ? 'storage' : null,
+                    'logos',
+                    $full && $this->content['users'] ? 'storage' : null,
+                    $full && $this->content['trash'] ? 'trash' : null,
                     $assetsFolder !== null ? 'shared_unit' : null,
+                    $withAvatars ? 'avatars' : null,
                 ])),
                 'shared_unit_folder' => $assetsFolder,
+                // Con filtro de extensiones, la BD puede listar archivos que no están en la copia.
+                'extension_filter' => $full && $this->content['ext_mode'] !== 'all'
+                    ? ['mode' => $this->content['ext_mode'], 'extensions' => $this->content['extensions']]
+                    : null,
+                'files'       => $this->filesAdded,
+                'files_bytes' => $this->bytesAdded,
             ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
 
             // close() es quien lee los archivos añadidos: el dump debe existir hasta aquí.
@@ -224,11 +254,23 @@ final class DatabaseManagerService
         return $filename;
     }
 
+    /** Opciones de contenido de la copia en curso (ver createBackup()). */
+    private array $content = [];
+    /** @var callable|null */
+    private $progress = null;
+    private int $filesAdded = 0;
+    private int $bytesAdded = 0;
+
     /**
-     * Añade recursivamente los archivos al zip. En la raíz de storage excluye
-     * las carpetas temporales y la antigua carpeta de backups.
+     * Añade recursivamente los archivos al zip respetando el contenido elegido.
+     *
+     * $kind indica qué es la carpeta:
+     *   storage-root → raíz de storage: excluye temporales; unidades y .trash según opciones; platform siempre
+     *   shared-root  → raíz de la unidad compartida: .trash según opciones
+     *   files        → archivos de usuarios: aplica el filtro de extensiones
+     *   always       → se copia entero (logos, avatares)
      */
-    private function addFolderToZip(string $folder, ZipArchive $zip, string $zipDir = ''): void
+    private function addFolderToZip(string $folder, ZipArchive $zip, string $zipDir, string $kind = 'files'): void
     {
         $handle = opendir($folder);
         if ($handle === false) {
@@ -240,21 +282,50 @@ final class DatabaseManagerService
                 continue;
             }
 
-            if ($folder === $this->storageRoot && in_array($entry, self::STORAGE_ROOT_EXCLUDES, true)) {
+            $path = $folder . DIRECTORY_SEPARATOR . $entry;
+            $localPath = $zipDir !== '' ? $zipDir . '/' . $entry : $entry;
+            $childKind = $kind === 'always' ? 'always' : 'files';
+
+            if ($kind === 'storage-root') {
+                if (in_array($entry, self::STORAGE_ROOT_EXCLUDES, true)) {
+                    continue;
+                }
+                if ($entry === 'platform') {
+                    $childKind = 'always';
+                } elseif ($entry === '.trash' ? !$this->content['trash'] : !$this->content['users']) {
+                    continue;
+                }
+            } elseif ($kind === 'shared-root' && $entry === '.trash' && !$this->content['trash']) {
                 continue;
             }
 
-            $path = $folder . DIRECTORY_SEPARATOR . $entry;
-            $localPath = $zipDir !== '' ? $zipDir . '/' . $entry : $entry;
-
             if (is_dir($path)) {
                 $zip->addEmptyDir($localPath);
-                $this->addFolderToZip($path, $zip, $localPath);
+                $this->addFolderToZip($path, $zip, $localPath, $childKind);
             } elseif (is_file($path)) {
+                if ($kind !== 'always' && $kind !== 'storage-root' && !$this->extensionAllowed($entry)) {
+                    continue;
+                }
                 $zip->addFile($path, $localPath);
+                $this->filesAdded++;
+                $this->bytesAdded += (int) @filesize($path);
+                if ($this->progress !== null && $this->filesAdded % 100 === 0) {
+                    ($this->progress)($this->filesAdded, $this->bytesAdded);
+                }
             }
         }
         closedir($handle);
+    }
+
+    private function extensionAllowed(string $filename): bool
+    {
+        $mode = $this->content['ext_mode'] ?? 'all';
+        if ($mode === 'all') {
+            return true;
+        }
+        $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+        $listed = in_array($ext, $this->content['extensions'], true);
+        return $mode === 'only' ? $listed : !$listed;
     }
 
     /**

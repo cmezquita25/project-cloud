@@ -57,21 +57,6 @@ final class DatabaseController
         return Response::success(['backups' => $backups]);
     }
 
-    /** POST /admin/database/backups */
-    public function createBackup(Request $request): Response
-    {
-        // Esto podría tardar en bases de datos muy pesadas
-        set_time_limit(300);
-
-        $filename = $this->service()->createBackup();
-        
-        ActivityLogger::log($request, 'backup_create', 'system', 0, [
-            'filename' => $filename,
-        ]);
-
-        return Response::created(['ok' => true, 'filename' => $filename]);
-    }
-
     /** POST /admin/database/backups/{filename}/restore */
     public function restoreBackup(Request $request): Response
     {

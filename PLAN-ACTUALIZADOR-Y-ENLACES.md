@@ -683,7 +683,7 @@ Servicio central: `ShareLinkPolicy::canCreate(user, target)`, junto a `SharePerm
 | **1. Pipeline de releases** ✅ *implementada y probada en local (llave generada, ZIP firmado verificable en Node y PHP, 13 casos de alteración rechazados)* | Llaves Ed25519 · `scripts/release/build.mjs` · `release.json` · `manifest.json` · carpeta `techmaleon.com.mx/project-cloud/` · marcadores en `.htaccess` | Un ZIP firmado de `2.1.0` y su manifiesto, verificables en local | S |
 | **2. Actualizador** ✅ *implementada y probada de punta a punta en un sitio aislado (ver §9)* | Detección por cron · notificación, banner y badges · página Actualizaciones · modal previo · runner por pasos · `old-files` · rollback · eliminar respaldo · migraciones versionadas | Todos los escenarios de 3.8 pasan con `2.1.0 → 2.1.1 → 2.1.2` contra el servidor local | L |
 | **→ Release v2.1.0** | Fases 0–2. **Instalación manual única** en `drive` (con copia completa previa) | — | — |
-| **3. Copias programadas** | Programación · rotación estricta 1–3 · cola pre-actualización · contenido y extensiones · estimación de tamaño · job por pasos | La copia programada corre sola y nunca hay más de N | M |
+| **3. Copias programadas** ✅ *implementada y probada en local (ver §11)* | Programación · rotación estricta 1–3 · cola pre-actualización · contenido y extensiones · estimación de tamaño · job por pasos | La copia programada corre sola y nunca hay más de N | M |
 | **4. Restauración con diagnóstico** | `backup.json` · analizador · restauración con runner y mantenimiento · cuarentena de huérfanos | El informe detecta los faltantes por filtro y las copias más nuevas que la plataforma | M |
 | **→ Release v2.2.0** | **Primera actualización OTA real** (prueba de fuego del actualizador) | — | — |
 | **5. Visibilidad privada** | Columna `visibility` · `storage/.private` · mover binarios · proteger thumbs · default de subidas en el perfil | Un archivo privado da 404 en `/storage/…` y funciona dentro de la app | M |
@@ -864,3 +864,20 @@ Es idéntico, archivo por archivo, al ZIP firmado del actualizador (mismo `colle
 - Configuración → Tareas Cron: configurar la tarea de Plesk con la guía y pulsar «Verificar configuración».
 - Configuración → Base de datos: las copias antiguas siguen listadas (se movieron solas a `api/var/backups`) y `https://drive.techmaleon.com.mx/storage/backups/` responde 404.
 - Una URL pública de un archivo cualquiera sigue funcionando.
+
+---
+
+## 11. Fase 3 — Copias programadas (2026-10-17)
+
+**Qué hace:**
+- **Configuración → Base de datos → Copias automáticas:** frecuencia (desactivadas, diaria, semanal, cada 15 días, mensual), hora (se elige en la hora local del navegador y se guarda en UTC), copias a conservar (1–3) y tipo (completa o solo sistema).
+- **Contenido de la copia completa:** unidades de usuarios, unidad compartida, papeleras y fotos de perfil (estas últimas antes no se respaldaban). Filtro por tipo de archivo: todos, solo los seleccionados o todos excepto los seleccionados; las extensiones se listan con su número de archivos y tamaño, sacados de la BD. Siempre van base de datos, configuración y logos; nunca miniaturas.
+- **Estimación** del tamaño con los cambios aún sin guardar, espacio libre del servidor y pico durante la rotación. Si no alcanza, la copia no empieza y se explica por qué.
+- **«Crear copia ahora» en segundo plano:** con PHP-FPM (Plesk) responde al instante y la pantalla muestra el avance; se puede salir de la página. Sin FPM, responde al terminar.
+- **Rotación FIFO:** al terminar bien, se borran las más antiguas (manuales y programadas) hasta el máximo. Las pre-actualización no cuentan (cola propia de 1).
+- **Tarea de cron «Copias de seguridad programadas»** (revisa cada 10 min). Si una copia programada falla o no hay espacio, se notifica a los admins.
+- `backup.json` registra el contenido y el filtro de extensiones (lo usará el diagnóstico de la Fase 4).
+
+**Probado en local:** validación (máximo 1–3, filtro sin extensiones), estimación ≈ tamaño real (57.8 MB estimados / 57 MB reales), filtro «excepto .zip» (24 MB, sin .zip, con las imágenes), rotación con máximo 2 (la tercera copia borró la más antigua solo tras terminar), copia programada por el cron (se crea al vencer y no se repite en la siguiente pasada), interfaz en claro, oscuro y móvil.
+
+**Publicación:** el plan agrupa las fases 3 y 4 en la **v2.2.0**, que llegará a `drive` por el actualizador (sin subida manual). No subas el `frontend/dist` actual a mano: contiene la Fase 3 con el número 2.1.0.
