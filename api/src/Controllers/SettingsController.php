@@ -34,9 +34,18 @@ final class SettingsController
         // Estilo base de color; sin clave guardada = preset por defecto
         // (Blizzard). Un valor antiguo 'classic' se publica como 'nebula'.
         $storedPreset = $settings->get('theme_preset');
-        $config['theme_preset'] = ($storedPreset === 'nebula' || $storedPreset === 'classic') ? 'nebula' : 'blizzard';
+        $config['theme_preset'] = $storedPreset === 'classic'
+            ? 'nebula'
+            : (in_array($storedPreset, ['nebula', 'supernova', 'techmaleon'], true) ? $storedPreset : 'blizzard');
+        // Logo al centro de los QR de los enlaces (none | platform | custom).
+        $config += QrSettingsController::publicConfig($settings);
         $config['ga4_measurement_id'] = $settings->get('ga4_measurement_id');
         $config['ga4_enabled'] = (bool) $settings->getInt('ga4_enabled', 0);
+        // Versión del backend: si no coincide con la del frontend en caché, el
+        // cliente recarga para no quedarse con bundles de la versión anterior.
+        $version = \ProjectCloud\Core\AppVersion::info();
+        $config['app_version'] = $version['version'];
+        $config['app_released_at'] = $version['released_at'];
         return Response::success($config);
     }
 

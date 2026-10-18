@@ -2,7 +2,8 @@ import { useRef, useState, useEffect } from 'react'
 import { Plus, FolderPlus, FileUp, FolderUp, Folder, HardDrive as HardDriveIcon } from 'lucide-react'
 import { NavLink, useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { cn } from '@shared/lib/cn'
-import { Button, Menu, type MenuItem, IconButton } from '@shared/ui'
+import { Button, Menu, type MenuItem, IconButton, UpdateDot } from '@shared/ui'
+import { useUpdateBadge } from '@features/admin/hooks/useUpdateBadge'
 import { ChevronDown, ChevronRight, Search, X } from 'lucide-react'
 import { useDisclosure } from '@shared/hooks/useDisclosure'
 import { StorageIndicator } from '@features/storage-quota/components/StorageIndicator'
@@ -27,6 +28,8 @@ function SidebarItem({ item, onNavigate }: { item: NavItem, onNavigate?: () => v
   const [open, setOpen] = useState(false)
   const location = useLocation()
   const { access } = useAssetsAccess()
+  const updateVersion = useUpdateBadge()
+  const updateLabel = updateVersion ? `v${updateVersion} disponible` : undefined
 
   useEffect(() => {
     if (item.subItems?.some(s => location.pathname === s.to || location.pathname.startsWith(s.to + '/'))) {
@@ -49,6 +52,7 @@ function SidebarItem({ item, onNavigate }: { item: NavItem, onNavigate?: () => v
         >
           <Icon size={20} />
           <span className="flex-1">{displayLabel}</span>
+          {!open && updateVersion && item.subItems.some((s) => s.updateBadge) && <UpdateDot label={updateLabel} />}
           {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
         </button>
         {open && (
@@ -69,7 +73,8 @@ function SidebarItem({ item, onNavigate }: { item: NavItem, onNavigate?: () => v
                   }
                 >
                   <SubIcon size={18} />
-                  <span>{sub.label}</span>
+                  <span className="flex-1">{sub.label}</span>
+                  {sub.updateBadge && updateVersion && <UpdateDot label={updateLabel} />}
                 </NavLink>
               )
             })}

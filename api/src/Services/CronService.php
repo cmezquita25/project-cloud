@@ -5,113 +5,188 @@ declare(strict_types=1);
 namespace ProjectCloud\Services;
 
 use PDO;
-use ProjectCloud\Core\Config;
 use ProjectCloud\Core\Database;
-use ProjectCloud\Repositories\FileRepository;
+use ProjectCloud\Core\HttpException;
+use ProjectCloud\Core\MaintenanceMode;
+use ProjectCloud\Core\Paths;
 use ProjectCloud\Repositories\SettingsRepository;
-use ProjectCloud\Repositories\UserRepository;
+use ProjectCloud\Services\Cron\QuotaCheckTask;
+use ProjectCloud\Services\Cron\ScheduledTask;
+use ProjectCloud\Services\Cron\StaleUploadsTask;
+use ProjectCloud\Services\Cron\SystemCleanupTask;
+use ProjectCloud\Services\Cron\UpdateCheckTask;
+use ProjectCloud\Services\Cron\ScheduledBackupTask;
+use ProjectCloud\Services\Cron\LinkHitsCleanupTask;
 
 /**
- * Servicio encargado de las tareas en segundo plano (Cron).
- * Se ejecuta automáticamente cada 60s vía CLI (cPanel/Plesk) o botón de administrador.
+ * Programador de tareas en segundo plano.
+ *
+ * El cron del servidor llama a `api/cron.php` cada minuto (CLI) o a
+ * `/api/v1/system/cron?token=…` (HTTP). En cada pasada solo se ejecutan las
+ * tareas cuyo intervalo ya venció. Un candado de archivo impide que dos
+ * pasadas se pisen si una tarda más de un minuto.
  */
 final class CronService
 {
+    /** Modos de invocación: cli/http = cron real del servidor; manual = botón del admin. */
+    public const MODES = ['cli', 'http', 'manual'];
+
     private PDO $pdo;
     private SettingsRepository $settings;
 
     public function __construct(?PDO $pdo = null, ?SettingsRepository $settings = null)
     {
         $this->pdo = $pdo ?? Database::pdo();
-        $this->settings = $settings ?? new SettingsRepository();
+        $this->settings = $settings ?? new SettingsRepository($this->pdo);
+    }
+
+    /** @return array<string,ScheduledTask> */
+    public function tasks(): array
+    {
+        $tasks = [
+            new QuotaCheckTask($this->pdo, $this->settings),
+            new StaleUploadsTask(),
+            new SystemCleanupTask($this->pdo),
+            new UpdateCheckTask(),
+            new ScheduledBackupTask(),
+            new LinkHitsCleanupTask(),
+        ];
+        $byKey = [];
+        foreach ($tasks as $task) {
+            $byKey[$task->key()] = $task;
+        }
+        return $byKey;
     }
 
     /**
-     * Ejecuta el ciclo completo del cron.
+     * Ejecuta una pasada del programador.
      *
-     * @return array{ok:true, executed_at:string, tasks:array<string,mixed>}
+     * @param string      $mode  cli | http | manual
+     * @param bool        $force Ejecuta aunque el intervalo no haya vencido.
+     * @param string|null $only  Ejecuta solo esta tarea.
+     * @return array{ok:bool, executed_at:string, mode:string, skipped?:string, tasks:array<string,mixed>}
      */
-    public function run(): array
+    public function run(string $mode = 'cli', bool $force = false, ?string $only = null): array
     {
         $now = gmdate('c');
-        $tasks = [
-            'quotas_checked' => 0,
-            'quota_warnings_sent' => 0,
-            'stale_uploads_cleaned' => 0,
-        ];
+        $result = ['ok' => true, 'executed_at' => $now, 'mode' => $mode, 'tasks' => []];
 
-        // 1. Revisión masiva de cuotas de almacenamiento para todos los usuarios activos
-        $userRepo = new UserRepository($this->pdo);
-        $fileRepo = new FileRepository($this->pdo);
-        $quotaService = new QuotaService($userRepo, $fileRepo);
-        $notifService = new NotificationService();
-
-        $stmt = $this->pdo->query("SELECT id, display_name, email, quota_bytes, used_bytes FROM users WHERE status = 'active'");
-        $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        foreach ($users as $u) {
-            $userId = (int) $u['id'];
-            $tasks['quotas_checked']++;
-
-            $usage = $quotaService->usage($userId);
-            $percent = (float) $usage['percent'];
-            $flagKey = 'quota_warned_' . $userId;
-
-            if ($percent >= 90.0) {
-                // Notificar si no se le ha advertido en este cruce
-                if ($this->settings->get($flagKey) === null) {
-                    $usedHuman = self::humanBytes((int) $usage['used_bytes']);
-                    $quotaHuman = self::humanBytes((int) $usage['quota_bytes']);
-
-                    // Notificación en plataforma web + correo
-                    $notifService->notifyQuotaWarning($userId, $percent, $usedHuman, $quotaHuman);
-                    $quotaService->checkQuotaWarning($userId);
-
-                    $this->settings->set($flagKey, $now);
-                    $tasks['quota_warnings_sent']++;
-                }
-            } else {
-                // Al bajar de 90%, reiniciar la marca de advertencia
-                if ($this->settings->get($flagKey) !== null) {
-                    $this->settings->delete($flagKey);
-                }
+        $tasks = $this->tasks();
+        if ($only !== null) {
+            if (!isset($tasks[$only])) {
+                throw HttpException::notFound('La tarea no existe.');
             }
+            $tasks = [$only => $tasks[$only]];
         }
 
-        // 2. Limpieza de archivos temporales de subida por chunks más antiguos de 24h
-        $uploadsDir = rtrim((string) Config::get('storage.path', ''), '/\\') . '/.uploads';
-        if (is_dir($uploadsDir)) {
-            $files = glob($uploadsDir . '/*/*');
-            if (is_array($files)) {
-                $nowTs = time();
-                foreach ($files as $file) {
-                    if (is_file($file) && ($nowTs - filemtime($file)) > 86400) {
-                        @unlink($file);
-                        $tasks['stale_uploads_cleaned']++;
-                    }
-                }
-            }
+        // Solo el cron real del servidor cuenta como "el cron funciona".
+        if ($mode !== 'manual') {
+            $this->settings->set('cron_last_run', $now);
+            $this->settings->set('cron_last_mode', $mode);
         }
 
-        // 3. Registrar última ejecución en settings
-        $this->settings->set('cron_last_run', $now);
+        // Durante una actualización o restauración no se toca nada.
+        if (MaintenanceMode::isActive()) {
+            return $result + ['skipped' => 'maintenance'];
+        }
 
-        return [
-            'ok'          => true,
-            'executed_at' => $now,
-            'tasks'       => $tasks,
-        ];
+        $lock = fopen(Paths::var('locks') . DIRECTORY_SEPARATOR . 'cron.lock', 'c');
+        if ($lock === false || !flock($lock, LOCK_EX | LOCK_NB)) {
+            return $result + ['skipped' => 'locked'];
+        }
+
+        try {
+            foreach ($tasks as $key => $task) {
+                $state = $this->taskState($key);
+                $lastRun = isset($state['last_run']) ? strtotime((string) $state['last_run']) : false;
+                $due = $lastRun === false || (time() - $lastRun) >= $task->intervalSeconds();
+                if (!$force && !$due) {
+                    continue;
+                }
+
+                $started = microtime(true);
+                try {
+                    $metrics = $task->run();
+                    $state = ['last_run' => gmdate('c'), 'ok' => true, 'result' => $metrics, 'error' => null];
+                } catch (\Throwable $e) {
+                    error_log("[ProjectCloud][cron:$key] " . $e->getMessage());
+                    $state = ['last_run' => gmdate('c'), 'ok' => false, 'result' => null, 'error' => mb_substr($e->getMessage(), 0, 500)];
+                    $result['ok'] = false;
+                }
+                $state['duration_ms'] = (int) round((microtime(true) - $started) * 1000);
+                $state['mode'] = $mode;
+                $this->settings->set(self::stateKey($key), (string) json_encode($state, JSON_UNESCAPED_UNICODE));
+                $result['tasks'][$key] = $state;
+            }
+        } finally {
+            flock($lock, LOCK_UN);
+            fclose($lock);
+        }
+
+        return $result;
     }
 
-    /** Formato de bytes ligero. */
-    private static function humanBytes(int $bytes): string
+    /**
+     * Estado de cada tarea para la pantalla de administración.
+     *
+     * @return list<array<string,mixed>>
+     */
+    public function status(): array
     {
-        if ($bytes <= 0) return '0 B';
-        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
-        $i = (int) floor(log($bytes, 1024));
-        $i = max(0, min($i, count($units) - 1));
-        $value = $bytes / (1024 ** $i);
-        return rtrim(rtrim(number_format($value, 1, '.', ''), '0'), '.') . ' ' . $units[$i];
+        $list = [];
+        foreach ($this->tasks() as $key => $task) {
+            $state = $this->taskState($key);
+            $lastRun = $state['last_run'] ?? null;
+            $list[] = [
+                'key'              => $key,
+                'label'            => $task->label(),
+                'description'      => $task->description(),
+                'interval_seconds' => $task->intervalSeconds(),
+                'last_run'         => $lastRun,
+                'next_run'         => $lastRun ? gmdate('c', (int) strtotime((string) $lastRun) + $task->intervalSeconds()) : null,
+                'ok'               => $state['ok'] ?? null,
+                'result'           => $state['result'] ?? null,
+                'error'            => $state['error'] ?? null,
+                'duration_ms'      => $state['duration_ms'] ?? null,
+                'mode'             => $state['mode'] ?? null,
+            ];
+        }
+        return $list;
+    }
+
+    /** Token secreto para el cron por HTTP (se crea la primera vez). */
+    public function secret(): string
+    {
+        $secret = (string) $this->settings->get('cron_secret', '');
+        if ($secret === '') {
+            $secret = $this->regenerateSecret();
+        }
+        return $secret;
+    }
+
+    public function regenerateSecret(): string
+    {
+        $secret = bin2hex(random_bytes(16));
+        $this->settings->set('cron_secret', $secret);
+        return $secret;
+    }
+
+    public function isValidSecret(string $token): bool
+    {
+        $secret = (string) $this->settings->get('cron_secret', '');
+        return $secret !== '' && $token !== '' && hash_equals($secret, $token);
+    }
+
+    /** @return array<string,mixed> */
+    private function taskState(string $key): array
+    {
+        $raw = $this->settings->get(self::stateKey($key));
+        $data = $raw !== null ? json_decode($raw, true) : null;
+        return is_array($data) ? $data : [];
+    }
+
+    private static function stateKey(string $key): string
+    {
+        return 'cron_task:' . $key;
     }
 }
-

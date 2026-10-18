@@ -1,0 +1,16 @@
+{
+  "min_from_version": "2.1.0",
+  "requirements": {
+    "php": "8.1",
+    "extensions": ["zip", "pdo_mysql", "curl", "sodium", "mbstring"]
+  },
+  "migrations": {
+    "reversible": true
+  },
+  "changelog": [
+    { "type": "fix", "text": "El espacio libre de copias, restauraciones y actualizaciones se calcula con la capacidad asignada a la plataforma (Límites del Servidor), no con el disco físico del servidor." },
+    { "type": "fix", "text": "Las copias de seguridad existentes cuentan como espacio ocupado." },
+    { "type": "fix", "text": "La restauración solo exige el espacio que la copia trae de más, porque reemplaza los archivos actuales." }
+  ],
+  "features": ["maintenance_mode", "scheduled_tasks", "ota_updater", "scheduled_backups", "restore_diagnostics"]
+}

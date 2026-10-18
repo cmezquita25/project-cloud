@@ -17,6 +17,8 @@ export function useDriveAdapter(): IExplorerAdapter {
       canDownload: true,
       canDelete: true,
       canShare: true,
+      canChangeVisibility: true,
+      canCreateLinks: true,
     },
 
     loadContents: async (folderId, sort, signal, offset, limit, _q, type, date, ownerId) => {
@@ -75,6 +77,15 @@ export function useDriveAdapter(): IExplorerAdapter {
       }
     },
 
+    setVisibility: async (item: DriveItem, visibility) => {
+      if (item.type === 'folder') {
+        const res = await driveApi.setFolderVisibility(item.id, visibility)
+        return { filesChanged: res.files_changed }
+      }
+      await driveApi.setFileVisibility(item.id, visibility)
+      return { filesChanged: 1 }
+    },
+
     starItem: async (item: DriveItem, starred: boolean) => {
       if (item.type === 'folder') {
         await driveApi.starFolder(Number(item.id), starred)
@@ -90,7 +101,8 @@ export function useDriveAdapter(): IExplorerAdapter {
     },
 
     getDownloadUrl: (item: DriveItem) => {
-      if (item.type === 'file') return item.url
+      // Privado: su enlace firmado, pidiendo descarga en vez de mostrarlo.
+      if (item.type === 'file') return item.visibility === 'private' ? `${item.url}&download=1` : item.url
       return ''
     }
   }), [])

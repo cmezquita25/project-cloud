@@ -1,5 +1,11 @@
+# BEGIN Project Cloud
+# --------------------------------------------------------------------------
+#  El actualizador reemplaza SOLO lo que está entre «BEGIN Project Cloud» y
+#  «END Project Cloud». Si necesitas reglas propias, ponlas ANTES o DESPUÉS
+#  de estos marcadores y se conservarán en cada actualización.
+# --------------------------------------------------------------------------
 # ==========================================================================
-#  Project Cloud — .htaccess raíz (producción · drive.techmaleon.mx)
+#  Project Cloud — .htaccess raíz (producción · drive.techmaleon.com.mx)
 #  Sirve el SPA de React (build de Vite) + enruta la API PHP + hardening.
 #  Este archivo vive en la raíz del front (httpdocs de Plesk).
 # ==========================================================================
@@ -120,3 +126,4 @@ DirectoryIndex index.html
         Deny from all
     </IfModule>
 </FilesMatch>
+# END Project Cloud

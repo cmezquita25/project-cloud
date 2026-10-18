@@ -36,6 +36,10 @@ export const driveApi = {
   moveFile: (id: string | number, folderId: FolderRef) =>
     api.patch<FileItem>(`/files/${id}`, { folder_id: ref(folderId) }),
   starFile: (id: string | number, is_starred: boolean) => api.patch<FileItem>(`/files/${id}`, { is_starred }),
+  setFileVisibility: (id: string | number, visibility: 'public' | 'private') =>
+    api.patch<FileItem>(`/files/${id}/visibility`, { visibility }),
+  setFolderVisibility: (id: string | number, visibility: 'public' | 'private') =>
+    api.patch<{ files_changed: number }>(`/folders/${id}/visibility`, { visibility }),
   duplicateFile: (id: string | number) => api.post<FileItem>(`/files/${id}/duplicate`),
   copyFile: (id: string | number, targetFolderId: FolderRef) =>
     api.post<FileItem>(`/files/${id}/copy`, { target_folder_id: ref(targetFolderId) }),

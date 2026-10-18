@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { publicUrlOf } from '@features/drive-explorer/lib/publicUrl'
 import {
   X,
   Download,
@@ -53,15 +54,20 @@ export function PreviewModal({ items, index, onIndex, onClose }: PreviewModalPro
 
   if (!item) return null
 
+  const publicUrl = publicUrlOf(item)
   const copyUrl = async () => {
-    await navigator.clipboard.writeText(item.url)
+    if (!publicUrl) return
+    await navigator.clipboard.writeText(publicUrl)
     setCopied(true)
     window.setTimeout(() => setCopied(false), 1500)
   }
 
+  // Enlaces públicos: `download_url` (null = el enlace no permite descargar).
+  const downloadHref = item.download_url === undefined ? item.url : item.download_url
   const download = () => {
+    if (!downloadHref) return
     const a = document.createElement('a')
-    a.href = item.url
+    a.href = downloadHref
     a.download = item.name
     a.rel = 'noopener'
     document.body.appendChild(a)
@@ -84,13 +90,17 @@ export function PreviewModal({ items, index, onIndex, onClose }: PreviewModalPro
             <p className="truncate text-sm font-medium">{item.name}</p>
             <p className="truncate text-xs text-white/60">{formatBytes(item.size_bytes)}</p>
           </div>
-          <IconButton icon={Download} label="Descargar" onClick={download} className="text-white hover:bg-white/15" />
-          <IconButton
-            icon={copied ? Check : LinkIcon}
-            label="Copiar URL pública"
-            onClick={copyUrl}
-            className="text-white hover:bg-white/15"
-          />
+          {downloadHref && (
+            <IconButton icon={Download} label="Descargar" onClick={download} className="text-white hover:bg-white/15" />
+          )}
+          {publicUrl && (
+            <IconButton
+              icon={copied ? Check : LinkIcon}
+              label="Copiar URL pública"
+              onClick={copyUrl}
+              className="text-white hover:bg-white/15"
+            />
+          )}
           <a
             href={item.url}
             target="_blank"
@@ -137,8 +147,8 @@ export function PreviewModal({ items, index, onIndex, onClose }: PreviewModalPro
   )
 }
 
-/** Renderiza el visor adecuado al tipo de archivo. */
-function PreviewContent({ item }: { item: FileItem }) {
+/** Renderiza el visor adecuado al tipo de archivo (también lo usa la página de un enlace). */
+export function PreviewContent({ item }: { item: FileItem }) {
   const kind = getFileKind(item.name)
   const ext = extOf(item.name)
 

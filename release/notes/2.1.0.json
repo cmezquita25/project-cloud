@@ -1,0 +1,20 @@
+{
+  "min_from_version": "2.0.0",
+  "requirements": {
+    "php": "8.1",
+    "extensions": ["zip", "pdo_mysql", "curl", "sodium", "mbstring"]
+  },
+  "migrations": {
+    "reversible": true
+  },
+  "changelog": [
+    { "type": "security", "text": "Las copias de seguridad se guardan fuera de la carpeta pública y ya no se pueden descargar por URL." },
+    { "type": "feature", "text": "Actualizador integrado: busca, descarga y aplica versiones nuevas desde Configuración, con respaldo y reversión." },
+    { "type": "feature", "text": "Modo mantenimiento con pantalla de aviso y cierre de todas las sesiones." },
+    { "type": "feature", "text": "Tareas Cron: estado en tiempo real, guía de configuración para Plesk, cPanel y VPS, y ejecución por tarea." },
+    { "type": "fix", "text": "La restauración de copias ya no daña datos que contienen «;» o «--» (por ejemplo, plantillas de correo)." },
+    { "type": "fix", "text": "Las copias de seguridad incluyen la unidad compartida y los logos de la plataforma." },
+    { "type": "fix", "text": "El cron por URL para servicios externos vuelve a funcionar." }
+  ],
+  "features": ["maintenance_mode", "scheduled_tasks", "ota_updater"]
+}

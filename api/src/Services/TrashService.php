@@ -69,6 +69,7 @@ final class TrashService
             $this->users->addUsedBytes($userId, (int) $file['size_bytes']);
         });
 
+        (new VisibilityService())->enforceFile($id); // restaurado dentro de una carpeta privada
         return $this->files->find($id, $userId) ?? [];
     }
 
@@ -123,6 +124,7 @@ final class TrashService
             }
         });
 
+        (new VisibilityService())->enforceFolder($id);
         return $this->folders->find($id, $userId) ?? [];
     }
 
@@ -137,6 +139,9 @@ final class TrashService
         $this->transaction(function () use ($id, $username, $file) {
             $this->files->purge($id);
             $this->fs->deleteFromTrash($username, 'f' . $id, (string) $file['path']);
+            if (($file['visibility'] ?? 'public') === 'private') {
+                (new PrivateFileStore($this->fs))->delete($username, $id, $file['extension']);
+            }
         });
     }
 
@@ -148,6 +153,8 @@ final class TrashService
         }
         $path = (string) $folder['path'];
         $this->transaction(function () use ($id, $userId, $username, $path) {
+            // Los binarios privados no están en la papelera física: se borran por id.
+            (new PrivateFileStore($this->fs))->deleteUnderPath($userId, $username, $path);
             $this->files->purgeUnderPath($userId, $path);
             $this->folders->purgeSubtree($userId, $id, $path);
             $this->fs->deleteFromTrash($username, 'd' . $id, $path);

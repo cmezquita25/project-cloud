@@ -86,6 +86,18 @@ final class AuthService
     }
 
     /**
+     * Emite una sesión nueva para un usuario ya autenticado por otra vía
+     * (p. ej. el admin que acaba de cerrar todas las sesiones y debe seguir dentro).
+     *
+     * @param array<string,mixed> $user
+     * @return array<string,mixed>
+     */
+    public function issueFor(array $user, ?string $userAgent, ?string $ip): array
+    {
+        return $this->issueTokens($user, null, $userAgent, $ip);
+    }
+
+    /**
      * Emite un par de tokens y persiste el refresh (hasheado).
      *
      * @param array<string,mixed> $user
@@ -116,6 +128,7 @@ final class AuthService
             'email'    => (string) $user['email'],
             'display_name' => (string) $user['display_name'],
             'jti'      => bin2hex(random_bytes(16)), // id único por token
+            'ep'       => SessionRevoker::currentEpoch(), // época de sesión (cierre global)
         ], $accessTtl);
 
         return [
@@ -145,6 +158,7 @@ final class AuthService
             'used_bytes'       => (int) $user['used_bytes'],
             'max_upload_bytes' => (int) $user['max_upload_bytes'],
             'avatar_url'       => AvatarService::urlFor((int) $user['id']),
+            'default_visibility' => (string) ($user['default_visibility'] ?? 'public'),
             'created_at'       => $user['created_at'] ?? null,
         ];
     }

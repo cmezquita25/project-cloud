@@ -211,6 +211,13 @@ final class AssetsController
                 if (preg_match('/[^a-zA-Z0-9_-]/', $name)) {
                     throw HttpException::badRequest('Nombre de carpeta inválido.');
                 }
+                // La unidad compartida vive junto a las carpetas del sistema en la
+                // raíz del sitio: compartir nombre mezclaría sus archivos con los
+                // de la app (y el actualizador los reemplazaría).
+                $systemFolders = ['api', 'app-assets', 'storage', 'avatars', 'thumbs', 'old-files', 'var'];
+                if (in_array(strtolower($name), $systemFolders, true)) {
+                    throw HttpException::badRequest('Ese nombre lo usa una carpeta del sistema. Elige otro.', 'RESERVED_FOLDER_NAME');
+                }
                 $settings->set('assets_folder_name', $name);
                 (new AssetsService())->createRoot();
             }

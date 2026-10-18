@@ -1,6 +1,8 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { cn } from '@shared/lib/cn'
+import { UpdateDot } from '@shared/ui'
 import { SETTINGS_NAV } from './settingsNav'
+import { useUpdateBadge } from '../hooks/useUpdateBadge'
 
 /**
  * Configuración con navegación vertical a la izquierda y contenido a ancho
@@ -8,6 +10,8 @@ import { SETTINGS_NAV } from './settingsNav'
  * En móvil la navegación pasa a una tira horizontal con scroll.
  */
 export function SettingsLayout() {
+  const updateVersion = useUpdateBadge()
+
   return (
     <div className="flex h-full flex-col">
       <h1 className="mb-4 text-2xl font-semibold text-content-primary">Configuración</h1>
@@ -30,6 +34,7 @@ export function SettingsLayout() {
             >
               <item.icon size={18} className="shrink-0" />
               <span className="truncate">{item.label}</span>
+              {item.updateBadge && updateVersion && <UpdateDot className="ml-auto" label={`v${updateVersion} disponible`} />}
             </NavLink>
           ))}
         </nav>

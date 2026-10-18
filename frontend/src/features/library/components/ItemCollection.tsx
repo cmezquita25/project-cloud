@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
+import { publicUrlOf } from '@features/drive-explorer/lib/publicUrl'
 import { useNavigate } from 'react-router-dom'
 import { cn } from '@shared/lib/cn'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -7,6 +8,7 @@ import { PublicUrlsModal } from '@features/drive-explorer/components/PublicUrlsM
 import { EmptyState, Spinner, IconButton, Menu, useToast } from '@shared/ui'
 import { usePreview } from '@features/preview'
 import { useAuth } from '@features/auth/AuthProvider'
+import { VisibilityDialog } from '@features/drive-explorer/components/dialogs/VisibilityDialog'
 import { driveApi } from '@features/drive-explorer/services/driveApi'
 import { useDriveAdapter } from '@features/drive-explorer/adapters/useDriveAdapter'
 import { ViewToggle } from '@features/drive-explorer/components/ViewToggle'
@@ -41,6 +43,7 @@ type DialogState =
   | { kind: 'rename'; item: DriveItem }
   | { kind: 'move'; mode: 'move' | 'copy'; items: DriveItem[] }
   | { kind: 'delete'; items: DriveItem[] }
+  | { kind: 'visibility'; item: DriveItem }
   | null
 
 const key = (i: DriveItem) => `${i.type}-${i.id}`
@@ -148,7 +151,11 @@ export function ItemCollection({ items, loading, error, reload, empty, showLocat
 
   async function copyUrl(item: DriveItem) {
     if (item.type !== 'file') return
-    await navigator.clipboard.writeText(item.url)
+    if (item.visibility === 'private' || item.public_url === null) {
+      toast.error('Es un archivo privado: no tiene URL pública.')
+      return
+    }
+    await navigator.clipboard.writeText(item.public_url ?? item.url)
     toast.success('URL pública copiada')
   }
 
@@ -183,6 +190,8 @@ export function ItemCollection({ items, loading, error, reload, empty, showLocat
             toast.success('Duplicado')
           })
           .catch((e) => toast.error(e.message))
+      case 'visibility':
+        return setDialog({ kind: 'visibility', item })
       case 'rename':
         return setDialog({ kind: 'rename', item })
       case 'move':
@@ -312,6 +321,9 @@ export function ItemCollection({ items, loading, error, reload, empty, showLocat
       </AnimatePresence>
 
       {/* Diálogos */}
+      {dialog?.kind === 'visibility' && driveAdapter.setVisibility && (
+        <VisibilityDialog item={dialog.item} onClose={() => setDialog(null)} onConfirm={driveAdapter.setVisibility} onDone={reload} />
+      )}
       <NamePromptDialog
         open={dialog?.kind === 'rename'}
         title="Cambiar nombre"
@@ -358,7 +370,7 @@ export function ItemCollection({ items, loading, error, reload, empty, showLocat
                   { id: 'copy', label: 'Copiar a', icon: Copy, onSelect: () => setDialog({ kind: 'move', mode: 'copy', items: selectedItems }) },
                   { id: 'delete', label: 'Enviar a la papelera', icon: Trash2, danger: true, divider: true, onSelect: () => setDialog({ kind: 'delete', items: selectedItems }) },
                 ]
-              : buildItemMenu(ctxMenu.item, (a) => onAction(ctxMenu.item, a), driveAdapter.capabilities)
+              : buildItemMenu(ctxMenu.item, (a) => onAction(ctxMenu.item, a), driveAdapter.capabilities, user?.id)
           }
         />
       )}
@@ -371,7 +383,7 @@ export function ItemCollection({ items, loading, error, reload, empty, showLocat
           name: i.name,
           size_bytes: i.type === 'file' ? i.size_bytes : undefined,
           mime_type: i.type === 'file' ? i.mime_type : null,
-          url: (i as any).url,
+          url: publicUrlOf(i) ?? undefined,
         }))}
       />
     </div>

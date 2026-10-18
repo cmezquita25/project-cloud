@@ -19,6 +19,7 @@ use ProjectCloud\Services\EmailTemplateService;
 use ProjectCloud\Services\FileSystemService;
 use ProjectCloud\Services\MailService;
 use ProjectCloud\Services\PasswordResetService;
+use ProjectCloud\Services\ReservedUsernames;
 use ProjectCloud\Services\UrlBuilder;
 use ProjectCloud\Services\ConfigManager;
 use ProjectCloud\Core\Config;
@@ -75,6 +76,9 @@ final class AdminController
 
         $users = new UserRepository();
         $username = strtolower((string) $data['username']);
+        if (ReservedUsernames::isReserved($username)) {
+            throw HttpException::validation(['username' => ['Ese nombre de usuario está reservado por el sistema. Elige otro.']]);
+        }
         if ($users->existsByUsernameOrEmail($username, (string) $data['email'])) {
             throw new HttpException(409, 'USER_EXISTS', 'Ya existe un usuario con ese nombre o correo.');
         }
@@ -257,6 +261,7 @@ final class AdminController
         // Elimina físicamente su carpeta de almacenamiento.
         $fs = new FileSystemService();
         $fs->delete($fs->userRoot($username));
+        (new \ProjectCloud\Services\PrivateFileStore($fs))->deleteUser($username); // sus archivos privados
 
         ActivityLogger::log($request, 'user.delete', 'user', $id, ['username' => $username]);
         return Response::success(['ok' => true]);
@@ -626,7 +631,7 @@ final class AdminController
             $preset = ['invicter' => 'blizzard', 'classic' => 'nebula'][$preset] ?? $preset;
             if ($preset === '' || $preset === 'blizzard') {
                 $settings->delete('theme_preset');
-            } elseif ($preset === 'nebula') {
+            } elseif (in_array($preset, ['nebula', 'supernova', 'techmaleon'], true)) {
                 $settings->set('theme_preset', $preset);
             } else {
                 throw new HttpException(422, 'INVALID_THEME_PRESET', 'Estilo de color no válido.');
@@ -741,7 +746,8 @@ final class AdminController
     {
         $limit = min(100, max(1, (int) ($request->query['limit'] ?? 30)));
         $page = max(1, (int) ($request->query['page'] ?? 1));
-        $result = (new ActivityRepository())->paginate($limit, ($page - 1) * $limit);
+        $filters = $this->activityFilters($request);
+        $result = (new ActivityRepository())->paginate($limit, ($page - 1) * $limit, $filters);
 
         $items = array_map(static fn (array $r): array => [
             'id'          => (int) $r['id'],
@@ -759,7 +765,36 @@ final class AdminController
             'total' => $result['total'],
             'page'  => $page,
             'limit' => $limit,
+            'range' => $filters['range'],
         ]);
+    }
+
+    /**
+     * DELETE /admin/activity?scope=filtered|all&range=…&q=… — limpia registros.
+     * Deja constancia: el propio borrado se registra después.
+     */
+    public function clearActivity(Request $request): Response
+    {
+        $scope = (string) ($request->query['scope'] ?? 'filtered');
+        $filters = $scope === 'all' ? ['range' => 'all', 'q' => ''] : $this->activityFilters($request);
+        $deleted = (new ActivityRepository())->deleteMatching($filters);
+        ActivityLogger::log($request, 'activity.cleared', 'system', null, [
+            'scope'   => $scope,
+            'range'   => $filters['range'],
+            'q'       => $filters['q'] !== '' ? $filters['q'] : null,
+            'deleted' => $deleted,
+        ]);
+        return Response::success(['deleted' => $deleted]);
+    }
+
+    /** @return array{range:string, q:string} */
+    private function activityFilters(Request $request): array
+    {
+        $range = (string) ($request->query['range'] ?? '7d');
+        return [
+            'range' => in_array($range, ActivityRepository::RANGES, true) ? $range : '7d',
+            'q'     => mb_substr(trim((string) ($request->query['q'] ?? '')), 0, 100),
+        ];
     }
 
     // --- Helpers ---
@@ -809,38 +844,5 @@ final class AdminController
             'k' => $num * 1024,
             default => (int) $val,
         };
-    }
-
-    /** GET /admin/cron — Estado y comandos del Cron */
-    public function cronStatus(Request $request): Response
-    {
-        $settings = new SettingsRepository();
-        $cronSecret = $settings->get('cron_secret');
-        if (!$cronSecret) {
-            $cronSecret = bin2hex(random_bytes(16));
-            $settings->set('cron_secret', $cronSecret);
-        }
-
-        $cronLastRun = $settings->get('cron_last_run');
-        $cronPath = realpath(__DIR__ . '/../../cron.php') ?: (getcwd() . '/cron.php');
-
-        $cronCommand = "* * * * * php " . $cronPath . " >/dev/null 2>&1";
-        $cronUrl = \ProjectCloud\Services\UrlBuilder::fullUrl("/cron.php?token=" . $cronSecret);
-
-        return Response::success([
-            'cron_last_run' => $cronLastRun,
-            'cron_secret'   => $cronSecret,
-            'cron_command'  => $cronCommand,
-            'cron_url'      => $cronUrl,
-        ]);
-    }
-
-    /** POST /admin/cron/run — Ejecuta manualmente el Cron ahora */
-    public function runCron(Request $request): Response
-    {
-        $cronService = new \ProjectCloud\Services\CronService();
-        $result = $cronService->run();
-        ActivityLogger::log($request, 'cron.run', 'system', null, $result['tasks']);
-        return Response::success($result);
     }
 }

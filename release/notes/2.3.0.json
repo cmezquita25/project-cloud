@@ -1,0 +1,23 @@
+{
+  "min_from_version": "2.1.0",
+  "requirements": {
+    "php": "8.1",
+    "extensions": ["zip", "pdo_mysql", "curl", "sodium", "mbstring"]
+  },
+  "migrations": {
+    "reversible": true
+  },
+  "changelog": [
+    { "type": "feature", "text": "Archivos y carpetas privados en Mi unidad: sin URL pública, solo con sesión o enlace. Cada usuario elige si sus subidas son públicas o privadas." },
+    { "type": "feature", "text": "Enlaces compartidos y QR para archivos y carpetas, en Mi unidad (el propietario) y en la unidad compartida (los admins): cualquiera con el enlace o solo miembros, contraseña, caducidad editable, permitir o no la descarga y contador de visitas." },
+    { "type": "feature", "text": "Vista pública de carpeta de solo lectura: quien recibe el enlace navega la carpeta y sus subcarpetas, ve y descarga, sin cuenta y sin salir de lo compartido." },
+    { "type": "feature", "text": "Mis enlaces y Administración → Enlaces: filtros, accesos, revocar seleccionados o todos." },
+    { "type": "feature", "text": "Políticas de enlaces en Espacio de trabajo (permitirlos, caducidad máxima, sin caducidad, cualquiera con el enlace) y apariencia de los QR en Configuración visual (sin logo, logo de la plataforma o imagen propia)." },
+    { "type": "feature", "text": "Auditoría con filtros por periodo y usuario, y limpieza de registros." },
+    { "type": "feature", "text": "Nuevos estilos de color: Supernova y Techmaleon." },
+    { "type": "fix", "text": "Los estilos de color ya no quedan tapados por el azul que sembraba el instalador." },
+    { "type": "fix", "text": "El encabezado de Administración ya no parpadea al cambiar de sección, y los diálogos largos se desplazan dentro de la ventana." },
+    { "type": "security", "text": "Las miniaturas solo se sirven para imágenes, y las de archivos privados requieren enlace firmado." }
+  ],
+  "features": ["maintenance_mode", "scheduled_tasks", "ota_updater", "scheduled_backups", "restore_diagnostics", "private_files", "share_links", "link_panel"]
+}

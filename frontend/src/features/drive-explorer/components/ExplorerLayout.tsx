@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { publicUrlOf } from '@features/drive-explorer/lib/publicUrl'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { cn } from '@shared/lib/cn'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -26,6 +27,7 @@ import { usePreview } from '@features/preview'
 import { useAssetsAccess } from '@features/assets/hooks/useAssetsAccess'
 import { useHeaderSearch } from '@app/layouts/HeaderSearchContext'
 import { usePlatformSettings } from '@shared/hooks/usePlatformSettings'
+import { VisibilityDialog } from './dialogs/VisibilityDialog'
 import { useAuth } from '@features/auth/AuthProvider'
 import { useFolderContents } from '../hooks/useFolderContents'
 import type { IExplorerAdapter } from '../adapters/types'
@@ -47,6 +49,7 @@ import { useMarqueeSelection } from '../hooks/useMarqueeSelection'
 import { dragState, isInternalDrag, PC_DND_MIME } from '../services/dragState'
 import { PublicUrlsModal } from './PublicUrlsModal'
 import { Link as LinkIcon } from 'lucide-react'
+import type { LinkTarget } from '@features/share-links/types'
 import type { DriveItem, FolderItem, FolderRef, ItemAction, ItemInteractions, ViewMode } from '../types'
 
 const key = (i: DriveItem) => `${i.type}-${i.id}`
@@ -57,8 +60,9 @@ type DialogState =
   | { kind: 'move'; mode: 'move' | 'copy'; items: DriveItem[] }
   | { kind: 'delete'; items: DriveItem[] }
   | { kind: 'block'; item: DriveItem }
-  | { kind: 'share'; item: DriveItem }
+  | { kind: 'share'; item: DriveItem; tab: 'people' | 'link' }
   | { kind: 'shareUnit' }
+  | { kind: 'visibility'; item: DriveItem }
   | null
 
 
@@ -352,7 +356,11 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
 
   async function copyUrl(item: DriveItem) {
     if (item.type !== 'file') return
-    await navigator.clipboard.writeText(item.url)
+    if (item.visibility === 'private' || item.public_url === null) {
+      toast.error('Es un archivo privado: no tiene URL pública.')
+      return
+    }
+    await navigator.clipboard.writeText(item.public_url ?? item.url)
     toast.success('URL pública copiada')
   }
 
@@ -373,7 +381,9 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
       case 'open':
         return openItem(item)
       case 'share':
-        return setDialog({ kind: 'share', item })
+        return setDialog({ kind: 'share', item, tab: 'people' })
+      case 'link':
+        return setDialog({ kind: 'share', item, tab: 'link' })
       case 'details':
         return setShowDetails(true)
       case 'download':
@@ -390,6 +400,8 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
             toast.success('Duplicado')
           })
           .catch((e) => toast.error(e.message))
+      case 'visibility':
+        return setDialog({ kind: 'visibility', item })
       case 'rename':
         return setDialog({ kind: 'rename', item })
       case 'move':
@@ -408,6 +420,16 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
       case 'block':
         return setDialog({ kind: 'block', item })
     }
+  }
+
+  /** Destino de enlaces del elemento, solo si el usuario puede crearlos. */
+  function linkTargetOf(item: DriveItem): LinkTarget | null {
+    const ownerId = item.owners?.[0]?.id
+    const owner = ownerId === undefined || user?.id === undefined || ownerId === user.id
+    if (!adapter.capabilities.canCreateLinks || !owner) return null
+    return adapter.mode === 'assets'
+      ? { scope: 'org', target_type: item.type, target_path: String(item.id), name: item.name }
+      : { scope: 'drive', target_type: item.type, target_id: Number(item.id), name: item.name }
   }
 
   // --- Handlers de diálogos ---
@@ -731,6 +753,14 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
         onClose={() => setDialog(null)}
         onConfirm={createFolder}
       />
+      {dialog?.kind === 'visibility' && adapter.setVisibility && (
+        <VisibilityDialog
+          item={dialog.item}
+          onClose={() => setDialog(null)}
+          onConfirm={adapter.setVisibility}
+          onDone={reload}
+        />
+      )}
       <NamePromptDialog
         open={dialog?.kind === 'rename'}
         title="Cambiar nombre"
@@ -769,6 +799,24 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
           targetId={dialog.item.id}
           targetName={dialog.item.name}
           onShareSuccess={() => reload()}
+          initialTab={dialog.tab}
+          showPeople={adapter.mode === 'drive' && adapter.capabilities.canShare}
+          linkTarget={linkTargetOf(dialog.item)}
+          publicUrl={publicUrlOf(dialog.item)}
+          onMakePrivate={
+            adapter.setVisibility
+              ? async () => {
+                  const item = dialog.item
+                  try {
+                    await adapter.setVisibility!(item, 'private')
+                    toast.success(item.type === 'file' ? 'El archivo ahora es privado' : 'La carpeta ahora es privada')
+                    reload()
+                  } catch (e) {
+                    toast.error(e instanceof Error ? e.message : 'No se pudo hacer privado')
+                  }
+                }
+              : undefined
+          }
         />
       )}
       {dialog?.kind === 'shareUnit' && (
@@ -835,7 +883,7 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
                     onSelect: () => setDialog({ kind: 'delete', items: selectedItems }),
                   }] : []),
                 ]
-                : buildItemMenu(ctxMenu.item, (a: ItemAction) => onAction(ctxMenu.item!, a), adapter.capabilities)
+                : buildItemMenu(ctxMenu.item, (a: ItemAction) => onAction(ctxMenu.item!, a), adapter.capabilities, user?.id)
           }
         />
       )}
@@ -848,7 +896,7 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
           name: i.name,
           size_bytes: i.type === 'file' ? i.size_bytes : undefined,
           mime_type: i.type === 'file' ? i.mime_type : null,
-          url: (i as any).url,
+          url: publicUrlOf(i) ?? undefined,
         }))}
       />
     </div>

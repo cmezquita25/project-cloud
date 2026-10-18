@@ -1,5 +1,6 @@
 import { ApiError } from './ApiError'
 import { session } from './session'
+import { maintenance, MAINTENANCE_BYPASS_HEADER } from './maintenance'
 import type { ApiEnvelope } from './types'
 
 /**
@@ -11,7 +12,25 @@ import type { ApiEnvelope } from './types'
  *   (single-flight: peticiones concurrentes comparten el mismo refresh) y
  *   reintenta la petición original.
  * - Desempaqueta el envelope { success, data, error } y lanza ApiError.
+ * - Modo mantenimiento: un 503 MAINTENANCE activa la pantalla de mantenimiento
+ *   (sin cerrar la sesión local) y el token de paso del admin viaja en cada
+ *   petición.
  */
+
+/** Cabeceras comunes: token de paso del modo mantenimiento (si lo hay). */
+function maintenanceHeaders(): Record<string, string> {
+  const bypass = maintenance.getBypass()
+  return bypass ? { [MAINTENANCE_BYPASS_HEADER]: bypass } : {}
+}
+
+/** Si la respuesta es un 503 de mantenimiento, lo registra y devuelve el error. */
+async function asMaintenanceError(res: Response): Promise<ApiError | null> {
+  if (res.status !== 503) return null
+  const envelope = (await res.clone().json().catch(() => null)) as ApiEnvelope<unknown> | null
+  if (envelope?.error?.code !== 'MAINTENANCE') return null
+  maintenance.reportActive(envelope.error.message, envelope.error.details)
+  return new ApiError('MAINTENANCE', envelope.error.message, 503, envelope.error.details)
+}
 
 const BASE_URL = '/api/v1'
 
@@ -42,9 +61,13 @@ async function doRefresh(): Promise<void> {
 
   const res = await fetch(`${BASE_URL}/auth/refresh`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...maintenanceHeaders() },
     body: JSON.stringify({ refresh_token: refreshToken }),
   })
+  // En mantenimiento la sesión sigue siendo válida: no se borra.
+  const maintenanceError = await asMaintenanceError(res)
+  if (maintenanceError) throw maintenanceError
+
   const envelope = (await res.json().catch(() => null)) as ApiEnvelope<{
     access_token: string
     refresh_token: string
@@ -76,8 +99,8 @@ export function forceRefresh(): Promise<void> {
 }
 
 async function raw(method: Method, path: string, body: unknown, options: RequestOptions): Promise<Response> {
-  const headers: Record<string, string> = {}
-  
+  const headers: Record<string, string> = maintenanceHeaders()
+
   let fetchBody: BodyInit | undefined = undefined
   if (body !== undefined) {
     if (body instanceof FormData) {
@@ -142,6 +165,7 @@ async function request<T>(
       await refreshOnce()
       res = await raw(method, path, body, options)
     } catch (refreshErr) {
+      if (refreshErr instanceof ApiError && refreshErr.code === 'MAINTENANCE') throw refreshErr
       const code = refreshErr instanceof ApiError ? refreshErr.code : 'SESSION_EXPIRED'
       const msg = refreshErr instanceof ApiError ? refreshErr.message : 'Tu sesión expiró. Inicia de nuevo.'
       session.clear()
@@ -149,6 +173,9 @@ async function request<T>(
       throw new ApiError(code, msg, 401)
     }
   }
+
+  const maintenanceError = await asMaintenanceError(res)
+  if (maintenanceError) throw maintenanceError
 
   if (res.status === 204) {
     return undefined as T

@@ -28,6 +28,13 @@ use ProjectCloud\Controllers\AssetsController;
 use ProjectCloud\Controllers\DatabaseController;
 use ProjectCloud\Controllers\ShareController;
 use ProjectCloud\Controllers\NotificationController;
+use ProjectCloud\Controllers\CronController;
+use ProjectCloud\Controllers\SystemController;
+use ProjectCloud\Controllers\UpdateController;
+use ProjectCloud\Controllers\BackupController;
+use ProjectCloud\Controllers\RestoreController;
+use ProjectCloud\Controllers\ShareLinkController;
+use ProjectCloud\Controllers\QrSettingsController;
 use ProjectCloud\Middleware\AuthMiddleware;
 use ProjectCloud\Middleware\AdminOnly;
 use ProjectCloud\Middleware\RateLimit;
@@ -37,16 +44,31 @@ return static function (Router $router): void {
     $router->get('/v1/health', [HealthController::class, 'index']);
     $router->get('/health', [HealthController::class, 'index']); // alias de conveniencia
 
+    // --- Sistema: estado (mantenimiento/versión) y cron por HTTP (con token) ---
+    $router->get('/v1/system/status', [SystemController::class, 'status']);
+    $router->get('/v1/system/cron',   [SystemController::class, 'cron'], [new RateLimit('cron_http', 10, 60)]);
+    $router->get('/v1/system/restore-progress', [RestoreController::class, 'progress'], [new RateLimit('restore_progress', 120, 60)]);
+
     // --- Fase 9: Configuraciones públicas ---
     $router->get('/v1/settings/public', [SettingsController::class, 'publicConfig']);
     $router->get('/v1/settings/logo/{type}', [SettingsController::class, 'serveLogo']);
+    $router->get('/v1/settings/qr-logo', [QrSettingsController::class, 'serve']);
 
     // Avatares de usuario (públicos, como los logos).
     $router->get('/v1/auth/avatar/{id}', [AuthController::class, 'serveAvatar']);
 
     // Miniaturas de imágenes (públicas; los archivos ya son públicos por URL).
     $router->get('/v1/files/{id}/thumb', [FileController::class, 'thumb']);
+    // Archivos privados: con enlace firmado temporal (no requieren sesión).
+    $router->get('/v1/files/{id}/content', [FileController::class, 'content']);
     $router->get('/v1/assets/thumb', [AssetsController::class, 'thumb']);
+
+    // --- Enlaces compartidos: lado del visitante (sin sesión, solo lectura) ---
+    $router->get('/v1/public/links/{token}',          [ShareLinkController::class, 'open'], [new RateLimit('link_open', 60, 60)]);
+    $router->post('/v1/public/links/{token}/unlock',  [ShareLinkController::class, 'unlock'], [new RateLimit('link_unlock', 10, 300)]);
+    $router->get('/v1/public/links/{token}/items',    [ShareLinkController::class, 'items'], [new RateLimit('link_items', 120, 60)]);
+    $router->get('/v1/public/links/{token}/content',  [ShareLinkController::class, 'content'], [new RateLimit('link_content', 300, 60)]);
+    $router->get('/v1/public/links/{token}/thumb',    [ShareLinkController::class, 'thumb'], [new RateLimit('link_thumb', 600, 60)]);
 
     // --- Fase 2: Instalador ---
     $router->get('/v1/install/status',    [InstallController::class, 'status']);
@@ -76,11 +98,13 @@ return static function (Router $router): void {
     $router->get('/v1/folders/{id}/children', [FolderController::class, 'children'], $auth);
     $router->post('/v1/folders',              [FolderController::class, 'create'], $auth);
     $router->patch('/v1/folders/{id}',        [FolderController::class, 'update'], $auth);
+    $router->patch('/v1/folders/{id}/visibility', [FolderController::class, 'setVisibility'], $auth);
     $router->post('/v1/folders/{id}/copy',    [FolderController::class, 'copy'], $auth);
     $router->delete('/v1/folders/{id}',       [FolderController::class, 'delete'], $auth);
 
     // Archivos
     $router->patch('/v1/files/{id}',           [FileController::class, 'update'], $auth);
+    $router->patch('/v1/files/{id}/visibility', [FileController::class, 'setVisibility'], $auth);
     $router->post('/v1/files/{id}/duplicate',  [FileController::class, 'duplicate'], $auth);
     $router->post('/v1/files/{id}/copy',       [FileController::class, 'copy'], $auth);
     $router->get('/v1/files/{id}/url',         [FileController::class, 'url'], $auth);
@@ -118,6 +142,15 @@ return static function (Router $router): void {
     $router->patch('/v1/shares/{id}',          [ShareController::class, 'update'], $auth);
     $router->delete('/v1/shares/{id}',         [ShareController::class, 'delete'], $auth);
 
+    // --- Enlaces compartidos y QR (los crea el propietario; en la unidad compartida, un admin) ---
+    $router->get('/v1/links',          [ShareLinkController::class, 'index'], $auth);
+    $router->get('/v1/links/mine',     [ShareLinkController::class, 'mine'], $auth);
+    $router->post('/v1/links/revoke',  [ShareLinkController::class, 'revokeMine'], $auth);
+    $router->get('/v1/links/{id}/hits', [ShareLinkController::class, 'hits'], $auth);
+    $router->post('/v1/links',         [ShareLinkController::class, 'create'], $auth);
+    $router->patch('/v1/links/{id}',   [ShareLinkController::class, 'update'], $auth);
+    $router->delete('/v1/links/{id}',  [ShareLinkController::class, 'revoke'], $auth);
+
 
     // --- Fase 7: Papelera ---
     $router->get('/v1/trash',                      [TrashController::class, 'index'], $auth);
@@ -136,13 +169,22 @@ return static function (Router $router): void {
     $router->get('/v1/admin/server-info',         [AdminController::class, 'serverInfo'], $admin);
     $router->patch('/v1/admin/settings',          [AdminController::class, 'updateSettings'], $admin);
     $router->post('/v1/admin/settings/logo',      [AdminController::class, 'uploadLogo'], $admin);
+    $router->get('/v1/admin/settings/qr',         [QrSettingsController::class, 'show'], $admin);
+    $router->put('/v1/admin/settings/qr',         [QrSettingsController::class, 'update'], $admin);
+    $router->post('/v1/admin/settings/qr-logo',   [QrSettingsController::class, 'upload'], $admin);
+    $router->delete('/v1/admin/settings/qr-logo', [QrSettingsController::class, 'delete'], $admin);
     $router->get('/v1/admin/assets/permissions',  [AssetsController::class, 'permissions'], $admin);
     $router->put('/v1/admin/assets/permissions',  [AssetsController::class, 'setPermissions'], $admin);
     $router->put('/v1/admin/assets/block-actions',[AssetsController::class, 'setBlockedActions'], $admin);
     $router->post('/v1/admin/assets/activate',    [AssetsController::class, 'activate'], $admin);
     $router->put('/v1/admin/assets/folder-name',  [AssetsController::class, 'setFolderName'], $admin);
     $router->get('/v1/admin/migrate-assets',      [AdminController::class, 'migrateAssets'], $admin);
+    $router->get('/v1/admin/links',               [ShareLinkController::class, 'adminIndex'], $admin);
+    $router->post('/v1/admin/links/revoke',       [ShareLinkController::class, 'adminRevoke'], $admin);
+    $router->get('/v1/admin/links/policy',        [ShareLinkController::class, 'policy'], $admin);
+    $router->put('/v1/admin/links/policy',        [ShareLinkController::class, 'savePolicy'], $admin);
     $router->get('/v1/admin/activity',            [AdminController::class, 'activity'], $admin);
+    $router->delete('/v1/admin/activity',         [AdminController::class, 'clearActivity'], $admin);
     $router->get('/v1/admin/users',               [AdminController::class, 'users'], $admin);
     $router->post('/v1/admin/users',              [AdminController::class, 'createUser'], $admin);
     $router->patch('/v1/admin/users/{id}',        [AdminController::class, 'updateUser'], $admin);
@@ -164,14 +206,35 @@ return static function (Router $router): void {
     $router->post('/v1/admin/database/migrate',               [\ProjectCloud\Controllers\DatabaseController::class, 'migrate'], $admin);
     $router->post('/v1/admin/database/migrate-auto',          [\ProjectCloud\Controllers\DatabaseController::class, 'migrateAuto'], $admin);
     $router->get('/v1/admin/database/backups',                [\ProjectCloud\Controllers\DatabaseController::class, 'listBackups'], $admin);
-    $router->post('/v1/admin/database/backups',               [\ProjectCloud\Controllers\DatabaseController::class, 'createBackup'], $admin);
+    $router->post('/v1/admin/database/backups',               [BackupController::class, 'create'], $admin);
+    $router->get('/v1/admin/backups/settings',                [BackupController::class, 'settings'], $admin);
+    $router->put('/v1/admin/backups/settings',                [BackupController::class, 'saveSettings'], $admin);
+    $router->post('/v1/admin/backups/estimate',               [BackupController::class, 'estimate'], $admin);
+    $router->get('/v1/admin/backups/extensions',              [BackupController::class, 'extensions'], $admin);
+    $router->get('/v1/admin/backups/job',                     [BackupController::class, 'job'], $admin);
     $router->delete('/v1/admin/database/backups/{filename}',  [\ProjectCloud\Controllers\DatabaseController::class, 'deleteBackup'], $admin);
-    $router->post('/v1/admin/database/backups/{filename}/restore', [\ProjectCloud\Controllers\DatabaseController::class, 'restoreBackup'], $admin);
+    $router->post('/v1/admin/database/backups/{filename}/analyze', [RestoreController::class, 'analyze'], $admin);
+    $router->post('/v1/admin/database/backups/{filename}/restore', [RestoreController::class, 'start'], $admin);
     $router->get('/v1/admin/database/backups/{filename}/download', [\ProjectCloud\Controllers\DatabaseController::class, 'downloadBackup'], $admin);
 
     // Tareas Cron de Administración
-    $router->get('/v1/admin/cron',     [AdminController::class, 'cronStatus'], $admin);
-    $router->post('/v1/admin/cron/run', [AdminController::class, 'runCron'], $admin);
+    $router->get('/v1/admin/cron',                  [CronController::class, 'status'], $admin);
+    $router->post('/v1/admin/cron/run',             [CronController::class, 'runAll'], $admin);
+    $router->post('/v1/admin/cron/tasks/{key}/run', [CronController::class, 'runTask'], $admin);
+    $router->post('/v1/admin/cron/secret',          [CronController::class, 'regenerateSecret'], $admin);
+
+    // Modo mantenimiento
+    $router->post('/v1/admin/maintenance', [SystemController::class, 'setMaintenance'], $admin);
+
+    // Actualizaciones (OTA)
+    $router->get('/v1/admin/updates',              [UpdateController::class, 'status'], $admin);
+    $router->get('/v1/admin/updates/badge',        [UpdateController::class, 'badge'], $admin);
+    $router->post('/v1/admin/updates/check',       [UpdateController::class, 'check'], $admin);
+    $router->post('/v1/admin/updates/start',       [UpdateController::class, 'start'], $admin);
+    $router->post('/v1/admin/updates/step',        [UpdateController::class, 'step'], $admin);
+    $router->post('/v1/admin/updates/cancel',      [UpdateController::class, 'cancel'], $admin);
+    $router->post('/v1/admin/updates/revert',      [UpdateController::class, 'revert'], $admin);
+    $router->delete('/v1/admin/updates/old-files', [UpdateController::class, 'deleteOldFiles'], $admin);
 
     // Notificaciones de Usuario
     $router->get('/v1/notifications',              [NotificationController::class, 'list'], $auth);

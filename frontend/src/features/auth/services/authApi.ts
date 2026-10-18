@@ -38,7 +38,7 @@ export const authApi = {
   },
 
   /** Actualiza el perfil propio (nombre visible y/o correo). */
-  updateProfile(payload: { display_name?: string; email?: string }): Promise<User> {
+  updateProfile(payload: { display_name?: string; email?: string; default_visibility?: 'public' | 'private' }): Promise<User> {
     return api.patch<User>('/auth/me', payload)
   },
 

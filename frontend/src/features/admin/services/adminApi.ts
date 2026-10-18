@@ -13,6 +13,18 @@ import type {
   UpdateUserPayload,
 } from '../types'
 
+/** Qué va al centro de los QR de los enlaces compartidos. */
+export type QrLogoMode = 'none' | 'platform' | 'custom'
+export interface QrSettings {
+  mode: QrLogoMode
+  has_custom: boolean
+  has_platform: boolean
+  max_px: number
+  /** Lo que se usa de verdad (si falta la imagen, queda en «none»). */
+  qr_logo_mode: QrLogoMode
+  qr_logo_url: string | null
+}
+
 /** Cliente del panel de administración (endpoints /admin/*). */
 export const adminApi = {
   stats: () => api.get<AdminStats>('/admin/stats'),
@@ -30,8 +42,11 @@ export const adminApi = {
   resetPassword: (id: number, password: string) =>
     api.patch<{ ok: true }>(`/admin/users/${id}/password`, { password }),
   deleteUser: (id: number) => api.delete<{ ok: true }>(`/admin/users/${id}`),
-  activity: (page = 1, limit = 30) =>
-    api.get<ActivityPage>(`/admin/activity?page=${page}&limit=${limit}`),
+  activity: (page = 1, limit = 30, range = '7d', q = '') =>
+    api.get<ActivityPage>(`/admin/activity?${new URLSearchParams({ page: String(page), limit: String(limit), range, q })}`),
+  /** Borra los registros del filtro actual o todos (solo admins). */
+  clearActivity: (scope: 'filtered' | 'all', range: string, q: string) =>
+    api.delete<{ deleted: number }>(`/admin/activity?${new URLSearchParams({ scope, range, q })}`),
   updateCapacity: (bytes: number, assetsQuota: number, chunkSize?: number) =>
     api.patch<{ server_capacity_bytes: number; user: User | null }>('/admin/settings', {
       server_capacity_bytes: bytes,
@@ -54,6 +69,16 @@ export const adminApi = {
     formData.append('file', file)
     return api.post<{ ok: true; filename: string }>('/admin/settings/logo', formData)
   },
+
+  // --- Apariencia de los QR ---
+  getQrSettings: () => api.get<QrSettings>('/admin/settings/qr'),
+  setQrMode: (mode: QrLogoMode) => api.put<QrSettings>('/admin/settings/qr', { mode }),
+  uploadQrLogo(file: File) {
+    const formData = new FormData()
+    formData.append('file', file)
+    return api.post<QrSettings & { resized: boolean; original: { width: number; height: number } }>('/admin/settings/qr-logo', formData)
+  },
+  deleteQrLogo: () => api.delete<QrSettings>('/admin/settings/qr-logo'),
 
   // --- Correo saliente (SMTP) ---
   getSmtp: () => api.get<SmtpSettings>('/admin/smtp'),

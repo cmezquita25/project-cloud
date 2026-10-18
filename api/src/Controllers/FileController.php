@@ -99,10 +99,42 @@ final class FileController
         $owner = (new UserRepository())->findById((int) $file['user_id']);
         $ownerUsername = (string) ($owner['username'] ?? '');
 
+        $links = \ProjectCloud\Services\FileLinks::for($file, $ownerUsername);
         return Response::success([
-            'url'  => FileService::publicUrl($ownerUsername, (string) $file['path']),
-            'name' => (string) $file['name'],
+            'url'        => $links['url'],         // privado: enlace firmado temporal
+            'public_url' => $links['public_url'],  // privado: null (no tiene URL directa)
+            'visibility' => $links['visibility'],
+            'name'       => (string) $file['name'],
         ]);
+    }
+
+    /** PATCH /files/{id}/visibility — { visibility: public|private } (solo el propietario). */
+    public function setVisibility(Request $request): Response
+    {
+        $visibility = (string) ($request->json()['visibility'] ?? '');
+        $file = (new \ProjectCloud\Services\VisibilityService())->setFile((int) $request->userId(), (int) $request->param('id'), $visibility);
+        \ProjectCloud\Services\ActivityLogger::log($request, 'file.visibility', 'file', (int) $file['id'], ['visibility' => $visibility]);
+        return Response::success($this->filePublic($file, (string) ($request->user()['username'] ?? '')));
+    }
+
+    /**
+     * GET /files/{id}/content?exp=…&sig=…[&download=1] — sirve un archivo privado
+     * con su enlace firmado (las etiquetas <img>/<video> no pueden mandar la
+     * sesión). Admite rangos (vídeo y audio).
+     */
+    public function content(Request $request): void
+    {
+        $id = (int) $request->param('id');
+        if (!\ProjectCloud\Core\SignedUrl::verify($id, 'content', $request->input('exp'), $request->input('sig'))) {
+            throw HttpException::forbidden('El enlace caducó o no es válido.', 'LINK_EXPIRED');
+        }
+        $file = (new FileRepository())->findAnyById($id);
+        $owner = $file !== null ? (new UserRepository())->findById((int) $file['user_id']) : null;
+        if ($file === null || $owner === null || $file['deleted_at'] !== null) {
+            throw HttpException::notFound('Archivo no encontrado');
+        }
+        $path = (new \ProjectCloud\Services\PrivateFileStore())->physicalPath((string) $owner['username'], $file);
+        \ProjectCloud\Services\FileStreamer::send($path, (string) $file['name'], $file['mime_type'], (bool) $request->input('download'));
     }
 
 
@@ -117,11 +149,15 @@ final class FileController
         if ($user === null) {
             throw HttpException::notFound('Archivo no encontrado');
         }
-        $abs = (new FileSystemService())->userRoot((string) $user['username'])
-            . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, (string) $file['path']);
+        // Las miniaturas de archivos privados solo con su enlace firmado.
+        if (($file['visibility'] ?? 'public') === 'private'
+            && !\ProjectCloud\Core\SignedUrl::verify((int) $file['id'], 'thumb', $request->input('exp'), $request->input('sig'))) {
+            throw HttpException::notFound('Archivo no encontrado');
+        }
+        $abs = (new \ProjectCloud\Services\PrivateFileStore())->physicalPath((string) $user['username'], $file);
 
         $size = (int) $request->input('s', 400);
-        (new ThumbnailService())->stream($abs, max(64, min(1024, $size)));
+        (new ThumbnailService())->stream($abs, max(64, min(1024, $size)), ($file['visibility'] ?? 'public') === 'private');
     }
 
     // --- Helpers ---
@@ -161,7 +197,7 @@ final class FileController
             'mime_type'  => $f['mime_type'] !== null ? (string) $f['mime_type'] : null,
             'extension'  => $f['extension'] !== null ? (string) $f['extension'] : null,
             'is_starred' => (bool) $f['is_starred'],
-            'url'        => FileService::publicUrl($ownerUsername, (string) $f['path']),
+            ...\ProjectCloud\Services\FileLinks::for($f, $ownerUsername),
             'created_at' => $f['created_at'] ?? null,
             'updated_at' => $f['updated_at'] ?? null,
         ];

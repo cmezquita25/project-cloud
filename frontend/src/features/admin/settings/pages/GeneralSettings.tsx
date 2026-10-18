@@ -3,6 +3,7 @@ import { Button, Input, useLoader, useToast } from '@shared/ui'
 import { usePlatformSettings } from '@shared/hooks/usePlatformSettings'
 import { getVersionLabel, getLastUpdatedLabel } from '@shared/config/version'
 import { adminApi } from '../../services/adminApi'
+import { MaintenanceCard } from '../../components/MaintenanceCard'
 
 const SLOGAN_MAX = 150
 
@@ -150,6 +151,9 @@ export function GeneralSettings() {
           </div>
         </div>
       </div>
+
+      {/* Card 3: Modo mantenimiento */}
+      <MaintenanceCard />
     </div>
   )
 }

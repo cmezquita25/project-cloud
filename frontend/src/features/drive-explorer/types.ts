@@ -35,7 +35,12 @@ export interface FolderItem {
   created_by?: Owner | null
   collaborators?: Collaborator[]
   blocked_actions?: string[]
+  /** private: todo su contenido es privado (sin URL pública). */
+  visibility?: Visibility
 }
+
+/** public: URL directa de /storage · private: solo con sesión o enlace firmado. */
+export type Visibility = 'public' | 'private'
 
 export interface FileItem {
   type: 'file'
@@ -47,7 +52,13 @@ export interface FileItem {
   mime_type: string | null
   extension: string | null
   is_starred: boolean
+  /** Público: URL directa. Privado: enlace firmado temporal (vista previa y descarga). */
   url: string
+  /** URL directa de /storage; null si el archivo es privado. */
+  public_url?: string | null
+  /** Descarga (enlaces públicos). null = el enlace no permite descargar; sin definir = `url`. */
+  download_url?: string | null
+  visibility?: Visibility
   thumbnail_url?: string
   /** Nombre de la carpeta padre (Recientes/Destacados/Búsqueda). null = raíz. */
   location?: string | null
@@ -93,6 +104,8 @@ export type ItemAction =
   | 'delete'
   | 'restore'
   | 'block'
+  | 'visibility'
+  | 'link'
 
 
 export type ViewMode = 'list' | 'grid'

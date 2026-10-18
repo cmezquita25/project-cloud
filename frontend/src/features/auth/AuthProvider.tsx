@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { session, setOnSessionExpired } from '@shared/api'
+import { ApiError, session, setOnSessionExpired } from '@shared/api'
 import { useQueryClient } from '@tanstack/react-query'
 import { useToast } from '@shared/ui'
 import { authApi } from './services/authApi'
@@ -47,8 +47,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUserState(u)
         setStatus('authenticated')
       })
-      .catch(() => {
+      .catch((err) => {
         if (!active) return
+        // En mantenimiento la sesión sigue siendo válida: no se borra. La
+        // pantalla de mantenimiento cubre la app y recarga al terminar.
+        if (err instanceof ApiError && err.code === 'MAINTENANCE') return
         session.clear()
         setStatus('unauthenticated')
       })

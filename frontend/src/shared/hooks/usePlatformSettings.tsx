@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { api } from '../api'
+import { APP_VERSION } from '../config/version'
 
 interface PlatformSettings {
   logo_favicon: boolean
@@ -15,11 +16,55 @@ interface PlatformSettings {
   btn_text_color?: string | null
   /** Estilo base de color. Los colores personalizados de arriba van encima. */
   theme_preset?: string | null
+  /** Logo al centro de los QR de los enlaces (lo decide el admin en Apariencia). */
+  qr_logo_mode?: 'none' | 'platform' | 'custom'
+  qr_logo_url?: string | null
   ga4_measurement_id?: string | null
   ga4_enabled?: boolean
+  /** Versión instalada en el servidor. */
+  app_version?: string
+  app_released_at?: string | null
 }
 
-export type ThemePreset = 'blizzard' | 'nebula'
+/** Marca para no recargar en bucle si la versión no llegara a coincidir. */
+const VERSION_RELOAD_KEY = 'pc-version-reload'
+
+/**
+ * Si el servidor ya tiene otra versión (se actualizó mientras la pestaña
+ * seguía abierta o el navegador sirvió un index.html viejo), recarga una vez
+ * para traer los archivos nuevos.
+ */
+function reloadIfVersionChanged(serverVersion: string | undefined): boolean {
+  if (!serverVersion || serverVersion === APP_VERSION) return false
+  try {
+    if (sessionStorage.getItem(VERSION_RELOAD_KEY) === serverVersion) return false
+    // Las respuestas en caché son de la versión anterior: se descartan.
+    sessionStorage.clear()
+    sessionStorage.setItem(VERSION_RELOAD_KEY, serverVersion)
+  } catch {
+    return false // sin almacenamiento no hay forma segura de evitar el bucle
+  }
+  window.location.reload()
+  return true
+}
+
+/**
+ * Recarga la app descartando las respuestas guardadas en esta pestaña (caché
+ * de la API y de React Query). Se usa tras actualizar o revertir la plataforma.
+ */
+// eslint-disable-next-line react-refresh/only-export-components
+export function reloadWithFreshCache(): void {
+  try {
+    sessionStorage.clear()
+  } catch {
+    /* sin almacenamiento: la recarga igual trae los archivos nuevos */
+  }
+  window.location.reload()
+}
+
+export type ThemePreset = 'blizzard' | 'nebula' | 'supernova' | 'techmaleon'
+
+const PRESETS_WITH_ATTRIBUTE: ThemePreset[] = ['nebula', 'supernova', 'techmaleon']
 
 /**
  * Normaliza el valor que llega de la API. Acepta los nombres antiguos
@@ -28,7 +73,8 @@ export type ThemePreset = 'blizzard' | 'nebula'
  */
 // eslint-disable-next-line react-refresh/only-export-components
 export function normalizeThemePreset(value: string | null | undefined): ThemePreset {
-  return value === 'nebula' || value === 'classic' ? 'nebula' : 'blizzard'
+  if (value === 'classic') return 'nebula'
+  return (PRESETS_WITH_ATTRIBUTE as string[]).includes(value ?? '') ? (value as ThemePreset) : 'blizzard'
 }
 
 /** Clave de caché local: la lee el script anti-parpadeo de `index.html`. */
@@ -45,14 +91,23 @@ const PRESET_STORAGE_KEY = 'pc-theme-preset'
 // eslint-disable-next-line react-refresh/only-export-components
 export function applyThemePreset(preset: ThemePreset | null | undefined) {
   const root = document.documentElement
-  if (preset === 'nebula') root.setAttribute('data-theme-preset', 'nebula')
+  const withAttribute = !!preset && PRESETS_WITH_ATTRIBUTE.includes(preset)
+  if (withAttribute) root.setAttribute('data-theme-preset', preset)
   else root.removeAttribute('data-theme-preset')
   try {
-    if (preset === 'nebula') localStorage.setItem(PRESET_STORAGE_KEY, 'nebula')
+    if (withAttribute) localStorage.setItem(PRESET_STORAGE_KEY, preset)
     else localStorage.removeItem(PRESET_STORAGE_KEY)
   } catch {
     // Almacenamiento bloqueado: el preset igual se aplica en esta carga.
   }
+}
+
+const SETTINGS_PATCH_EVENT = 'pc:platform-settings-patch'
+
+/** Actualiza la configuración pública en memoria sin recargar. */
+// eslint-disable-next-line react-refresh/only-export-components
+export function patchPlatformSettings(patch: Partial<PlatformSettings>): void {
+  window.dispatchEvent(new CustomEvent(SETTINGS_PATCH_EVENT, { detail: patch }))
 }
 
 const PlatformSettingsContext = createContext<PlatformSettings | null>(null)
@@ -65,6 +120,7 @@ export function PlatformSettingsProvider({ children }: { children: ReactNode }) 
     api.get<PlatformSettings>('/settings/public')
       .then((data) => {
         if (!active) return
+        if (reloadIfVersionChanged(data.app_version)) return
         setSettings(data)
         applyThemePreset(normalizeThemePreset(data.theme_preset))
 
@@ -161,6 +217,17 @@ export function PlatformSettingsProvider({ children }: { children: ReactNode }) 
       .catch(console.error)
 
     return () => { active = false }
+  }, [])
+
+  // Cambios hechos desde Configuración que no requieren recargar la página
+  // (p. ej. el logo de los QR): se fusionan en la configuración en memoria.
+  useEffect(() => {
+    const onPatch = (e: Event) => {
+      const patch = (e as CustomEvent<Partial<PlatformSettings>>).detail
+      setSettings((prev) => (prev ? { ...prev, ...patch } : prev))
+    }
+    window.addEventListener(SETTINGS_PATCH_EVENT, onPatch)
+    return () => window.removeEventListener(SETTINGS_PATCH_EVENT, onPatch)
   }, [])
 
   return (

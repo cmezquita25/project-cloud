@@ -80,7 +80,8 @@ export function Dialog({
         */}
         <div
           className={cn(
-            'glass-strong relative z-10 w-full rounded-2xl p-6 ring-1 ring-slate-900/5 dark:ring-white/10',
+            // Alto máximo de la ventana: el contenido largo se desplaza dentro del panel.
+            'glass-strong relative z-10 max-h-[calc(100dvh-2rem)] w-full overflow-y-auto overscroll-contain rounded-2xl p-6 ring-1 ring-slate-900/5 dark:ring-white/10',
             closing ? 'animate-scale-out' : 'animate-scale-in',
             SIZES[size]
           )}

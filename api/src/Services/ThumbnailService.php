@@ -18,16 +18,24 @@ use ProjectCloud\Core\HttpException;
 final class ThumbnailService
 {
     private readonly string $cacheDir;
+    private bool $private = false;
 
     public function __construct(?string $cacheDir = null)
     {
         $storage = rtrim((string) Config::get('storage.path', ''), "/\\");
         $this->cacheDir = rtrim($cacheDir ?? (dirname($storage) . DIRECTORY_SEPARATOR . 'thumbs'), "/\\");
+        // Las miniaturas se sirven siempre por /api/v1/files/{id}/thumb (que
+        // comprueba los permisos de los privados): nunca por URL directa.
+        $deny = $this->cacheDir . DIRECTORY_SEPARATOR . '.htaccess';
+        if (is_dir($this->cacheDir) && !is_file($deny)) {
+            @file_put_contents($deny, "# Caché de miniaturas: solo se sirve a través de la API.\nRequire all denied\n");
+        }
     }
 
     /** Emite (streaming) una miniatura JPEG del archivo, o el original si no aplica. */
-    public function stream(string $absSource, int $max = 400): void
+    public function stream(string $absSource, int $max = 400, bool $private = false): void
     {
+        $this->private = $private;
         if (!is_file($absSource)) {
             throw HttpException::notFound('Archivo no encontrado');
         }
@@ -38,6 +46,11 @@ final class ThumbnailService
             $mime = is_array($info) && isset($info['mime'])
                 ? (string) $info['mime']
                 : (mime_content_type($absSource) ?: 'application/octet-stream');
+            // Solo imágenes: devolver el original de un HTML o un SVG ejecutaría
+            // código en el dominio de la app.
+            if (!str_starts_with($mime, 'image/') || str_contains($mime, 'svg')) {
+                throw HttpException::notFound('Sin miniatura');
+            }
             $this->emit($absSource, $mime);
             return;
         }
@@ -107,7 +120,8 @@ final class ThumbnailService
     {
         header('Content-Type: ' . $mime);
         header('Content-Length: ' . (string) filesize($path));
-        header('Cache-Control: public, max-age=86400');
+        header('Cache-Control: ' . ($this->private ? 'private' : 'public') . ', max-age=86400');
+        header('X-Content-Type-Options: nosniff');
         readfile($path);
         exit;
     }

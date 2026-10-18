@@ -15,6 +15,7 @@ import { GeneralSettings } from '@features/admin/settings/pages/GeneralSettings'
 import { AppearanceSettings } from '@features/admin/settings/pages/AppearanceSettings'
 import { IntegrationsSettings } from '@features/admin/settings/pages/IntegrationsSettings'
 import { CronSettings } from '@features/admin/settings/pages/CronSettings'
+import { UpdatesSettings } from '@features/admin/settings/pages/UpdatesSettings'
 import { EmailSettings } from '@features/admin/settings/pages/EmailSettings'
 import { EmailTemplatesSettings } from '@features/admin/settings/pages/EmailTemplatesSettings'
 import { EmailTemplateEditor } from '@features/admin/settings/pages/EmailTemplateEditor'
@@ -27,6 +28,8 @@ import { AssetsPage } from '@features/assets/AssetsPage'
 import { LoginPage } from '@features/auth/LoginPage'
 import { ForgotPasswordPage } from '@features/auth/ForgotPasswordPage'
 import { ResetPasswordPage } from '@features/auth/ResetPasswordPage'
+import { PublicLinkPage } from '@features/public-link/PublicLinkPage'
+import { MyLinksPage } from '@features/share-links/pages/MyLinksPage'
 
 /**
  * Rutas de la aplicación.
@@ -60,6 +63,9 @@ const router = createBrowserRouter([
         ],
       },
 
+      // Enlace compartido: sin sesión y de solo lectura (con o sin sesión abierta).
+      { path: '/s/:token', element: <PublicLinkPage /> },
+
       // App autenticada.
       {
         element: <RequireAuth />,
@@ -77,15 +83,24 @@ const router = createBrowserRouter([
               { path: 'quota', element: <StoragePage /> },
               { path: 'profile', element: <ProfilePage /> },
               { path: 'notifications', element: <NotificationsPage /> },
+              { path: 'links', element: <MyLinksPage /> },
               { path: 'assets/*', element: <AssetsPage /> },
-              // Solo administradores. Cada sección de administración es su
-              // propia ruta (accesible desde el sidebar), todas sobre AdminPage.
+              // Solo administradores. Dashboard, Usuarios y Auditoría comparten UNA
+              // ruta padre: AdminPage queda montada al cambiar de sección (antes se
+              // desmontaba y volvía a montar, y el encabezado parpadeaba).
               {
                 element: <RequireAdmin />,
                 children: [
-                  { path: 'admin', element: <AdminPage /> },
-                  { path: 'admin/users', element: <AdminPage /> },
-                  { path: 'admin/activity', element: <AdminPage /> },
+                  {
+                    path: 'admin',
+                    element: <AdminPage />,
+                    children: [
+                      { index: true, element: null },
+                      { path: 'users', element: null },
+                      { path: 'activity', element: null },
+                      { path: 'links', element: null },
+                    ],
+                  },
                   // Configuración con pestañas verticales (layout propio + subrutas).
                   {
                     path: 'admin/settings',
@@ -95,6 +110,7 @@ const router = createBrowserRouter([
                       { path: 'appearance', element: <AppearanceSettings /> },
                       { path: 'integrations', element: <IntegrationsSettings /> },
                       { path: 'cron', element: <CronSettings /> },
+                      { path: 'updates', element: <UpdatesSettings /> },
                       { path: 'email', element: <EmailSettings /> },
                       { path: 'email-templates', element: <EmailTemplatesSettings /> },
                       { path: 'email-templates/:key', element: <EmailTemplateEditor /> },

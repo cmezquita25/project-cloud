@@ -43,14 +43,11 @@ final class DatabaseController
     /** POST /admin/database/migrate-auto */
     public function migrateAuto(Request $request): Response
     {
-        $migrator = new \ProjectCloud\Services\SchemaMigrator();
-        $count = $migrator->run();
-        
-        ActivityLogger::log($request, 'database_migrate_auto', 'system', 0, [
-            'statements_executed' => $count,
-        ]);
+        $result = (new \ProjectCloud\Services\MigrationRunner())->run();
 
-        return Response::success(['ok' => true, 'statements' => $count]);
+        ActivityLogger::log($request, 'database_migrate_auto', 'system', 0, $result);
+
+        return Response::success(['ok' => true, 'statements' => count($result['applied']), 'schema' => $result]);
     }
 
     /** GET /admin/database/backups */
@@ -58,36 +55,6 @@ final class DatabaseController
     {
         $backups = $this->service()->listBackups();
         return Response::success(['backups' => $backups]);
-    }
-
-    /** POST /admin/database/backups */
-    public function createBackup(Request $request): Response
-    {
-        // Esto podría tardar en bases de datos muy pesadas
-        set_time_limit(300);
-
-        $filename = $this->service()->createBackup();
-        
-        ActivityLogger::log($request, 'backup_create', 'system', 0, [
-            'filename' => $filename,
-        ]);
-
-        return Response::created(['ok' => true, 'filename' => $filename]);
-    }
-
-    /** POST /admin/database/backups/{filename}/restore */
-    public function restoreBackup(Request $request): Response
-    {
-        set_time_limit(600);
-        $filename = (string) $request->param('filename');
-        
-        $this->service()->restoreBackup($filename);
-        
-        ActivityLogger::log($request, 'backup_restore', 'system', 0, [
-            'filename' => $filename,
-        ]);
-
-        return Response::success(['ok' => true]);
     }
 
     /** DELETE /admin/database/backups/{filename} */

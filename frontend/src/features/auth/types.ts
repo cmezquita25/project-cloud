@@ -8,6 +8,8 @@ export interface User {
   used_bytes: number
   max_upload_bytes: number
   avatar_url: string | null
+  /** Visibilidad de las subidas nuevas (las de carpetas privadas siempre son privadas). */
+  default_visibility?: 'public' | 'private'
   created_at: string | null
 }
 

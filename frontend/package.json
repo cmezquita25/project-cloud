@@ -1,12 +1,14 @@
 {
   "name": "project-cloud-frontend",
   "private": true,
-  "version": "2.0.0",
+  "version": "2.3.0",
   "type": "module",
   "description": "Project Cloud — clon de Google Drive auto-hosteado (frontend)",
   "scripts": {
     "dev": "vite",
+    "prebuild": "node ../scripts/sync-version.mjs",
     "build": "tsc -b && vite build",
+    "postbuild": "node ../scripts/deploy-dist.mjs",
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx"
   },
@@ -19,6 +21,7 @@
     "clsx": "^2.1.1",
     "framer-motion": "^12.42.2",
     "lucide-react": "^0.454.0",
+    "qrcode": "^1.5.4",
     "react": "^18.3.1",
     "react-apexcharts": "^2.1.1",
     "react-dom": "^18.3.1",
@@ -27,6 +30,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.8.0",
+    "@types/qrcode": "^1.5.5",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.3",

@@ -1,4 +1,4 @@
-import { LogIn, UploadCloud, Trash2, UserPlus, UserCog, UserX, KeyRound, Activity } from 'lucide-react'
+import { LogIn, UploadCloud, Trash2, UserPlus, UserCog, UserX, KeyRound, Activity, DatabaseBackup, History, Settings2, ShieldAlert, ShieldCheck, DownloadCloud, Undo2, Clock, LockKeyhole, Eraser, Link2, Link2Off, PencilLine } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@shared/lib/cn'
 import { formatRelative } from '@shared/lib/formatDate'
@@ -13,6 +13,27 @@ const ACTIONS: Record<string, { label: string; icon: LucideIcon; className: stri
   'user.update': { label: 'actualizó un usuario', icon: UserCog, className: 'text-primary' },
   'user.delete': { label: 'eliminó un usuario', icon: UserX, className: 'text-danger' },
   'user.password_reset': { label: 'restableció una contraseña', icon: KeyRound, className: 'text-warning' },
+  backup_create: { label: 'creó una copia de seguridad', icon: DatabaseBackup, className: 'text-success' },
+  backup_restore: { label: 'restauró una copia de seguridad', icon: History, className: 'text-warning' },
+  backup_delete: { label: 'eliminó una copia de seguridad', icon: Trash2, className: 'text-danger' },
+  'backup.settings_updated': { label: 'cambió las copias automáticas', icon: Settings2, className: 'text-primary' },
+  'maintenance.enabled': { label: 'activó el modo mantenimiento', icon: ShieldAlert, className: 'text-warning' },
+  'maintenance.disabled': { label: 'desactivó el modo mantenimiento', icon: ShieldCheck, className: 'text-success' },
+  'update.started': { label: 'inició una actualización', icon: DownloadCloud, className: 'text-primary' },
+  'update.cancelled': { label: 'canceló una actualización', icon: DownloadCloud, className: 'text-content-tertiary' },
+  'update.reverted': { label: 'revirtió la plataforma a la versión anterior', icon: Undo2, className: 'text-warning' },
+  'update.old_files_deleted': { label: 'eliminó el respaldo de la versión anterior', icon: Trash2, className: 'text-danger' },
+  'cron.run': { label: 'ejecutó las tareas cron', icon: Clock, className: 'text-primary' },
+  'file.visibility': { label: 'cambió la visibilidad de un archivo', icon: LockKeyhole, className: 'text-primary' },
+  'folder.visibility': { label: 'cambió la visibilidad de una carpeta', icon: LockKeyhole, className: 'text-primary' },
+  'link.create': { label: 'creó un enlace compartido', icon: Link2, className: 'text-success' },
+  'link.update': { label: 'editó un enlace compartido', icon: PencilLine, className: 'text-primary' },
+  'link.revoke': { label: 'revocó un enlace compartido', icon: Link2Off, className: 'text-danger' },
+  'link.revoke_many': { label: 'revocó varios enlaces compartidos', icon: Link2Off, className: 'text-danger' },
+  'links.policy': { label: 'cambió las políticas de enlaces', icon: Settings2, className: 'text-primary' },
+  'activity.cleared': { label: 'limpió registros de auditoría', icon: Eraser, className: 'text-danger' },
+  'settings.update': { label: 'cambió la configuración', icon: Settings2, className: 'text-primary' },
+  database_migrate_auto: { label: 'aplicó las migraciones de la base de datos', icon: DatabaseBackup, className: 'text-primary' },
 }
 
 function detailText(item: ActivityItem): string {
@@ -36,7 +57,7 @@ export function ActivityList({
   onLimitChange: (limit: number) => void 
 }) {
   if (items.length === 0) {
-    return <p className="py-8 text-center text-sm text-content-tertiary">Sin actividad todavía.</p>
+    return <p className="py-8 text-center text-sm text-content-tertiary">No hay registros en este periodo.</p>
   }
 
   return (

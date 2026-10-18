@@ -52,9 +52,18 @@ final class FileService
         $oldPath = (string) $file['path'];
         $newPath = PathHelper::join(PathHelper::parent($oldPath), $name);
 
-        $this->transaction(function () use ($id, $ownerUsername, $name, $oldPath, $newPath) {
+        $this->transaction(function () use ($id, $ownerUsername, $name, $oldPath, $newPath, $file) {
             $this->files->updateNameAndPath($id, $name, $newPath, PathHelper::extension($name));
-            $this->fs->move($ownerUsername, $oldPath, $newPath);
+            $this->fs->move($ownerUsername, $oldPath, $newPath); // sin efecto si es privado
+            if (($file['visibility'] ?? 'public') === 'private') {
+                // El binario privado se llama {id}.{ext}: si cambió la extensión, se renombra.
+                $store = new PrivateFileStore($this->fs);
+                $from = $store->path($ownerUsername, $id, $file['extension']);
+                $to = $store->path($ownerUsername, $id, PathHelper::extension($name));
+                if ($from !== $to && is_file($from) && !@rename($from, $to)) {
+                    throw new HttpException(500, 'FS_ERROR', 'No se pudo renombrar el archivo privado.');
+                }
+            }
         });
 
         return $this->files->findAnyById($id) ?? [];
@@ -83,6 +92,7 @@ final class FileService
             $this->files->updateFolderAndPath($id, $targetFolderId, $newPath);
             $this->fs->move($ownerUsername, $oldPath, $newPath);
         });
+        (new VisibilityService($this->pdo))->enforceFile($id);
 
         return $this->files->findAnyById($id) ?? [];
     }
@@ -116,7 +126,9 @@ final class FileService
                 PathHelper::extension($newName),
             );
             (new UserRepository())->addUsedBytes($ownerUserId, (int) $file['size_bytes']);
+            $this->copyPrivacy($ownerUsername, $file, $newId, PathHelper::extension($newName));
         });
+        (new VisibilityService($this->pdo))->enforceFile($newId);
 
         return $this->files->findAnyById($newId) ?? [];
     }
@@ -148,7 +160,9 @@ final class FileService
                 PathHelper::extension($newName),
             );
             (new UserRepository())->addUsedBytes($ownerUserId, (int) $file['size_bytes']);
+            $this->copyPrivacy($ownerUsername, $file, $newId, PathHelper::extension($newName));
         });
+        (new VisibilityService($this->pdo))->enforceFile($newId);
 
         return $this->files->findAnyById($newId) ?? [];
     }
@@ -183,6 +197,21 @@ final class FileService
     }
 
     // --- Helpers ---
+
+    /**
+     * Un archivo copiado de uno privado también es privado: se marca y se copia
+     * su binario (la copia física de /storage no lo encuentra, porque no está ahí).
+     *
+     * @param array<string,mixed> $source
+     */
+    private function copyPrivacy(string $ownerUsername, array $source, int $newId, ?string $newExtension): void
+    {
+        if (($source['visibility'] ?? 'public') !== 'private') {
+            return;
+        }
+        $this->pdo->prepare("UPDATE files SET visibility = 'private' WHERE id = ?")->execute([$newId]);
+        (new PrivateFileStore($this->fs))->copy($ownerUsername, (int) $source['id'], $source['extension'], $newId, $newExtension);
+    }
 
     private function require(int $id, int $userId, string $requiredPermission = 'read'): array
     {

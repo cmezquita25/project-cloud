@@ -8,6 +8,7 @@ import {
   ScrollText,
   Settings,
   Shield,
+  Link2,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -19,6 +20,8 @@ export interface NavItem {
   /** Solo visible para administradores. */
   adminOnly?: boolean
   requiresAssets?: boolean
+  /** Muestra un aviso (punto) cuando hay una actualización disponible (solo admins). */
+  updateBadge?: boolean
   /** Elementos hijos para menú desplegable. */
   subItems?: Omit<NavItem, 'subItems'>[]
 }
@@ -49,6 +52,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: 'Compartido',
     items: [
       { to: '/assets', label: 'Unidad compartida', icon: HardDrive, requiresAssets: true },
+      { to: '/links', label: 'Mis enlaces', icon: Link2 },
     ],
   },
   {
@@ -63,7 +67,8 @@ export const NAV_GROUPS: NavGroup[] = [
           { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true, adminOnly: true },
           { to: '/admin/users', label: 'Usuarios', icon: Users, adminOnly: true },
           { to: '/admin/activity', label: 'Auditoría', icon: ScrollText, adminOnly: true },
-          { to: '/admin/settings', label: 'Configuración', icon: Settings, adminOnly: true },
+          { to: '/admin/links', label: 'Enlaces', icon: Link2, adminOnly: true },
+          { to: '/admin/settings', label: 'Configuración', icon: Settings, adminOnly: true, updateBadge: true },
         ],
       },
     ],

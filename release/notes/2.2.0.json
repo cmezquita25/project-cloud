@@ -1,0 +1,21 @@
+{
+  "min_from_version": "2.1.0",
+  "requirements": {
+    "php": "8.1",
+    "extensions": ["zip", "pdo_mysql", "curl", "sodium", "mbstring"]
+  },
+  "migrations": {
+    "reversible": true
+  },
+  "changelog": [
+    { "type": "feature", "text": "Copias de seguridad automáticas: cada día, semana, 15 días o mes, a la hora que elijas." },
+    { "type": "feature", "text": "Se conservan de 1 a 3 copias: la más antigua se borra solo cuando la nueva terminó bien." },
+    { "type": "feature", "text": "Elige qué incluir en la copia (unidades, unidad compartida, papeleras, fotos de perfil) y filtra por tipo de archivo, con tamaño estimado y espacio libre." },
+    { "type": "feature", "text": "«Crear copia ahora» trabaja en segundo plano y muestra el avance." },
+    { "type": "feature", "text": "Restauración con diagnóstico previo: integridad, versión, archivos excluidos o subidos después, configuración y espacio en disco." },
+    { "type": "security", "text": "Antes de restaurar se guarda una copia del estado actual; si la base de datos falla, se recupera sola." },
+    { "type": "fix", "text": "Los archivos subidos después de la copia se apartan en cuarentena en lugar de quedar sin registro." },
+    { "type": "fix", "text": "La restauración ya no necesita espacio extra para extraer la copia completa." }
+  ],
+  "features": ["maintenance_mode", "scheduled_tasks", "ota_updater", "scheduled_backups", "restore_diagnostics"]
+}

@@ -13,14 +13,33 @@ import {
   Lock,
   Undo2,
   UserPlus,
+  LockKeyhole,
+  Globe,
+  QrCode,
 } from 'lucide-react'
 import type { MenuItem } from '@shared/ui'
 import type { DriveItem, ItemAction } from '../types'
 import type { ExplorerCapabilities } from '../adapters/types'
 
+/**
+ * ¿El usuario es el propietario? Sin datos de propietario (Recientes,
+ * Destacados, Búsqueda: solo traen elementos propios) se asume que sí; el
+ * servidor lo verifica de todos modos.
+ */
+function isOwner(item: DriveItem, currentUserId?: number): boolean {
+  const ownerId = item.owners?.[0]?.id
+  return ownerId === undefined || currentUserId === undefined || ownerId === currentUserId
+}
+
 /** Construye los ítems del menú contextual según el tipo de elemento y capacidades. */
-export function buildItemMenu(item: DriveItem, act: (a: ItemAction) => void, caps: ExplorerCapabilities): MenuItem[] {
+export function buildItemMenu(
+  item: DriveItem,
+  act: (a: ItemAction) => void,
+  caps: ExplorerCapabilities,
+  currentUserId?: number
+): MenuItem[] {
   const isFile = item.type === 'file'
+  const isPrivate = item.visibility === 'private'
   const items: MenuItem[] = []
 
   const isTrash = item.path.startsWith('.trash/')
@@ -62,11 +81,28 @@ export function buildItemMenu(item: DriveItem, act: (a: ItemAction) => void, cap
     })
   }
 
+  // Enlaces y QR: solo quien puede crearlos (los invitados nunca, aunque tengan «full»).
+  if (caps.canCreateLinks && isOwner(item, currentUserId)) {
+    items.push({ id: 'link', label: 'Enlace y QR', icon: QrCode, onSelect: () => act('link') })
+  }
+
   if (isFile) {
     if (caps.canDownload) {
       items.push({ id: 'download', label: 'Descargar', icon: Download, onSelect: () => act('download') })
-      items.push({ id: 'copyUrl', label: 'Copiar URL pública', icon: LinkIcon, onSelect: () => act('copyUrl') })
+      // Los privados no tienen URL pública (se comparten con enlaces o invitaciones).
+      if (!isPrivate) {
+        items.push({ id: 'copyUrl', label: 'Copiar URL pública', icon: LinkIcon, onSelect: () => act('copyUrl') })
+      }
     }
+  }
+
+  if (caps.canChangeVisibility && item.visibility !== undefined && isOwner(item, currentUserId)) {
+    items.push({
+      id: 'visibility',
+      label: isPrivate ? 'Hacer público' : 'Hacer privado',
+      icon: isPrivate ? Globe : LockKeyhole,
+      onSelect: () => act('visibility'),
+    })
   }
 
 

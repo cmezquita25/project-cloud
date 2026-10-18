@@ -190,7 +190,7 @@ class UserRepository
      */
     public function update(int $id, array $fields): void
     {
-        $allowed = ['email', 'display_name', 'role', 'quota_bytes', 'max_upload_bytes', 'status'];
+        $allowed = ['email', 'display_name', 'role', 'quota_bytes', 'max_upload_bytes', 'status', 'default_visibility'];
         $set = [];
         $params = [];
         foreach ($allowed as $col) {

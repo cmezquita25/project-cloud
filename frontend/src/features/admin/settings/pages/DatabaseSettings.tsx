@@ -1,8 +1,12 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Button, useLoader, useToast, IconButton } from '@shared/ui'
+import { Button, useLoader, useToast, IconButton, ProgressBar } from '@shared/ui'
 import { Menu, MenuItem } from '@shared/ui/Menu'
-import { databaseApi, BackupItem } from '../../services/databaseApi'
+import { formatBytes as formatSize } from '@shared/lib/formatBytes'
+import { databaseApi, BackupItem, type BackupJob, type RestoreJob } from '../../services/databaseApi'
+import { RestoreDialog } from '../../components/backups/RestoreDialog'
+import { RestoringScreen } from '../../components/backups/RestoringScreen'
+import { BackupScheduleCard, BACKUP_SETTINGS_KEY } from '../../components/backups/BackupScheduleCard'
 import { RefreshCw, MoreVertical, Download, RotateCcw, Trash2 } from 'lucide-react'
 
 function BackupRow({ 
@@ -52,6 +56,12 @@ function BackupRow({
     <tr className="hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.07] transition-colors">
       <td className="px-4 py-3 font-medium text-content-primary whitespace-nowrap">
         {backup.filename}
+        {backup.kind === 'pre-update' && (
+          <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">Pre-actualización</span>
+        )}
+        {backup.kind === 'pre-restore' && (
+          <span className="ml-2 rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">Antes de restaurar</span>
+        )}
       </td>
       <td className="px-4 py-3 whitespace-nowrap">
         {backup.created_at ? new Date(backup.created_at).toLocaleString() : 'Desconocida'}
@@ -144,36 +154,59 @@ export function DatabaseSettings() {
     }
   }
 
+  // Copia en curso (manual o programada): se consulta su avance cada 2 s.
+  const [job, setJob] = useState<BackupJob | null>(null)
+  const running = job?.status === 'running'
+
+  useEffect(() => {
+    databaseApi.job().then((j) => j?.status === 'running' && setJob(j)).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    if (!running) return
+    const id = window.setInterval(async () => {
+      try {
+        const j = await databaseApi.job()
+        setJob(j)
+        if (j && j.status !== 'running') {
+          setIsBackingUp(false)
+          if (j.status === 'completed') {
+            toast.success(j.removed.length ? `Copia creada. Se eliminaron ${j.removed.length} copias antiguas.` : 'Copia de seguridad creada.')
+          } else {
+            toast.error(j.error || 'La copia de seguridad falló.')
+          }
+          await loadBackups()
+          queryClient.invalidateQueries({ queryKey: BACKUP_SETTINGS_KEY })
+        }
+      } catch {
+        /* reintenta en el siguiente intervalo */
+      }
+    }, 2000)
+    return () => window.clearInterval(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [running])
+
   const handleCreateBackup = async () => {
     setIsBackingUp(true)
-    loader.show('Generando copia de seguridad. Esto puede tardar unos minutos...')
     try {
-      await databaseApi.createBackup()
-      toast.success('Backup generado con éxito.')
-      await loadBackups()
-    } catch {
-      toast.error('Error al generar el backup.')
-    } finally {
+      const started = await databaseApi.createBackup()
+      setJob(started)
+      if (started.status !== 'running') {
+        // Servidor sin PHP-FPM: la copia ya terminó al responder.
+        setIsBackingUp(false)
+        toast.success('Copia de seguridad creada.')
+        await loadBackups()
+      }
+    } catch (err) {
       setIsBackingUp(false)
-      loader.hide()
+      toast.error(err instanceof Error ? err.message : 'Error al generar la copia.')
     }
   }
 
-  const handleRestore = async (filename: string) => {
-    if (!window.confirm(`¿Estás seguro de restaurar el backup "${filename}"? Esto reemplazará toda tu base de datos y archivos de almacenamiento actuales.`)) {
-      return
-    }
-
-    loader.show('Restaurando sistema desde el backup...')
-    try {
-      await databaseApi.restoreBackup(filename)
-      toast.success('Restauración completada. Se recargará la página.')
-      setTimeout(() => window.location.reload(), 2000)
-    } catch {
-      toast.error('Error al restaurar el backup.')
-      loader.hide()
-    }
-  }
+  // Restauración: diagnóstico en el diálogo y, al confirmar, pantalla de progreso.
+  const [restoreTarget, setRestoreTarget] = useState<string | null>(null)
+  const [restoring, setRestoring] = useState<{ job: RestoreJob; token: string; bypass: string } | null>(null)
+  const handleRestore = (filename: string) => setRestoreTarget(filename)
 
   const handleDelete = async (filename: string) => {
     if (!window.confirm(`¿Estás seguro de eliminar el backup "${filename}"?`)) {
@@ -196,7 +229,7 @@ export function DatabaseSettings() {
       <div>
         <h2 className="mb-1 text-lg font-medium text-content-primary">Base de Datos</h2>
         <p className="text-sm text-content-secondary">
-          Gestiona migraciones de esquema y copias de seguridad de "Mi unidad".
+          Migraciones de la base de datos y copias de seguridad de la plataforma.
         </p>
       </div>
 
@@ -234,25 +267,44 @@ export function DatabaseSettings() {
         </div>
       </div>
 
-      {/* Card 2: Backup y Restauración */}
+      {/* Card 2: Copias automáticas */}
+      <BackupScheduleCard />
+
+      {/* Card 3: Backup y Restauración */}
       <div className="space-y-5 rounded-drive glass p-5">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div className="space-y-1 flex-1">
             <h3 className="text-base font-medium text-content-primary">Copias de Seguridad (Backups)</h3>
             <p className="text-xs text-content-secondary">
-              Respalda la base de datos y todos los archivos de los usuarios. 
-              Si tu backup es muy pesado para procesarlo aquí, puedes descargarlo/subirlo vía FTP directamente en la carpeta <code className="bg-slate-900/[0.04] dark:bg-white/[0.05] px-1 py-0.5 rounded text-content-primary">storage/backups/</code>.
+              Se crean con el contenido configurado arriba. Si una copia es muy pesada para descargarla aquí, está por FTP en{' '}
+              <code className="bg-slate-900/[0.04] dark:bg-white/[0.05] px-1 py-0.5 rounded text-content-primary">api/var/backups/</code>.
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <Button variant="secondary" onClick={() => loadBackups(true)} aria-label="Actualizar registros" title="Actualizar registros">
               <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
             </Button>
-            <Button onClick={handleCreateBackup} loading={isBackingUp}>
-              Generar Backup
+            <Button onClick={handleCreateBackup} loading={isBackingUp || running}>
+              Crear copia ahora
             </Button>
           </div>
         </div>
+
+        {running && job && (
+          <div className="space-y-2 rounded-xl border border-primary/20 bg-primary/5 p-3" role="status" aria-live="polite">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-medium text-content-primary">
+                {job.trigger === 'scheduled' ? 'Copia programada en curso' : 'Creando copia'} —{' '}
+                {job.phase === 'database' ? 'base de datos…' : job.phase === 'rotation' ? 'retirando copias antiguas…' : `${job.files.toLocaleString()} archivos`}
+              </span>
+              <span className="text-content-tertiary">
+                {formatSize(job.bytes)} de ~{formatSize(job.estimate)}
+              </span>
+            </div>
+            <ProgressBar value={job.estimate > 0 ? Math.min(99, (job.bytes / job.estimate) * 100) : undefined} />
+            <p className="text-xs text-content-tertiary">Puedes salir de esta página: la copia sigue en el servidor.</p>
+          </div>
+        )}
 
         <div className="border border-border/40 rounded-lg overflow-x-auto">
           <table className="w-full text-left text-sm text-content-secondary">
@@ -291,6 +343,15 @@ export function DatabaseSettings() {
           </table>
         </div>
       </div>
+      <RestoreDialog
+        filename={restoreTarget}
+        onClose={() => setRestoreTarget(null)}
+        onStarted={(job, token, bypass) => {
+          setRestoreTarget(null)
+          setRestoring({ job, token, bypass })
+        }}
+      />
+      {restoring && <RestoringScreen job={restoring.job} token={restoring.token} bypass={restoring.bypass} />}
     </div>
   )
 }

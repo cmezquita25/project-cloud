@@ -9,6 +9,7 @@ use ProjectCloud\Core\Jwt;
 use ProjectCloud\Core\Middleware;
 use ProjectCloud\Core\Request;
 use ProjectCloud\Repositories\UserRepository;
+use ProjectCloud\Services\SessionRevoker;
 
 /**
  * Exige un access token JWT válido en `Authorization: Bearer`.
@@ -29,6 +30,12 @@ final class AuthMiddleware implements Middleware
         $userId = isset($claims['sub']) ? (int) $claims['sub'] : 0;
         if ($userId <= 0) {
             throw HttpException::unauthorized('Token sin sujeto válido', 'TOKEN_INVALID');
+        }
+
+        // Cierre global de sesiones: los tokens de una época anterior ya no valen
+        // (los emitidos antes de existir el claim cuentan como época 0).
+        if ((int) ($claims['ep'] ?? 0) < SessionRevoker::currentEpoch()) {
+            throw HttpException::unauthorized('Tu sesión se cerró. Inicia sesión de nuevo.', 'SESSION_REVOKED');
         }
 
         // Verificación de estado activo en BD

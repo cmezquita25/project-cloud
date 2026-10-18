@@ -1,4 +1,4 @@
-import type { DriveItem, FolderContents, FolderRef } from '../types'
+import type { DriveItem, FolderContents, FolderRef, Visibility } from '../types'
 import type { SortState } from '../components/SortControl'
 
 export interface ExplorerCapabilities {
@@ -12,6 +12,10 @@ export interface ExplorerCapabilities {
   canDelete: boolean
   canShare: boolean
   canBlockActions?: boolean
+  /** Hacer privado / público (solo el propietario; lo verifica también el servidor). */
+  canChangeVisibility?: boolean
+  /** Enlaces y QR: el propietario en Mi unidad, un admin en la unidad compartida. */
+  canCreateLinks?: boolean
 }
 
 export interface IExplorerAdapter {
@@ -38,6 +42,7 @@ export interface IExplorerAdapter {
   restoreItem?: (item: DriveItem) => Promise<void>
   starItem: (item: DriveItem, starred: boolean) => Promise<void>
   duplicateItem: (item: DriveItem) => Promise<void>
+  setVisibility?: (item: DriveItem, visibility: Visibility) => Promise<{ filesChanged: number }>
   
   getDownloadUrl: (item: DriveItem) => string
 }

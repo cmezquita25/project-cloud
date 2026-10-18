@@ -14,6 +14,7 @@ declare(strict_types=1);
  */
 
 use ProjectCloud\Core\HttpException;
+use ProjectCloud\Core\MaintenanceMode;
 use ProjectCloud\Core\Request;
 use ProjectCloud\Core\Response;
 use ProjectCloud\Core\Router;
@@ -40,6 +41,21 @@ try {
 
     if (!$isConfigured && !$isInstallRoute && !$isHealthRoute) {
         Response::error('NOT_INSTALLED', 'La aplicación aún no está instalada.', 503)->send();
+        exit;
+    }
+
+    // Modo mantenimiento (actualización/restauración): 503 para todo salvo las
+    // rutas públicas mínimas y quien trae el token de paso del admin.
+    if (MaintenanceMode::isActive()
+        && !MaintenanceMode::isAllowedPath($request->path)
+        && !MaintenanceMode::canBypass($request)) {
+        $status = MaintenanceMode::publicStatus();
+        Response::error(
+            'MAINTENANCE',
+            $status['message'] ?? 'La plataforma está en mantenimiento. Inténtalo de nuevo en unos minutos.',
+            503,
+            ['reason' => $status['reason'], 'started_at' => $status['started_at']]
+        )->withHeader('Retry-After', '60')->send();
         exit;
     }
 

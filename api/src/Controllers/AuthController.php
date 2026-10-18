@@ -199,6 +199,13 @@ final class AuthController
             }
             $fields['email'] = $email;
         }
+        if (array_key_exists('default_visibility', $body)) {
+            $visibility = (string) $body['default_visibility'];
+            if (!in_array($visibility, ['public', 'private'], true)) {
+                throw HttpException::validation(['default_visibility' => ['Debe ser «public» o «private».']]);
+            }
+            $fields['default_visibility'] = $visibility;
+        }
 
         if ($fields === []) {
             throw HttpException::badRequest('Nada que actualizar.');
