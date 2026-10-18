@@ -1,0 +1,15 @@
+{
+  "min_from_version": "2.1.0",
+  "requirements": {
+    "php": "8.1",
+    "extensions": ["zip", "pdo_mysql", "curl", "sodium", "mbstring"]
+  },
+  "migrations": {
+    "reversible": true
+  },
+  "changelog": [
+    { "type": "feature", "text": "Novedades de la versión: una ventana con las funciones nuevas, que cada persona ve una vez. Se puede volver a ver desde «Novedades», al pie de la página." },
+    { "type": "fix", "text": "Los títulos e iconos ya no parpadean al cambiar de sección (Recientes, Destacados, Papelera…)." }
+  ],
+  "features": ["maintenance_mode", "scheduled_tasks", "ota_updater", "scheduled_backups", "restore_diagnostics", "private_files", "share_links", "link_panel", "folder_zip", "invite_controls", "user_theme", "shared_private_folders", "whats_new"]
+}
