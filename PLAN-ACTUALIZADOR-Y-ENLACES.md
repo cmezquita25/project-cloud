@@ -1070,7 +1070,7 @@ Alternativa sin actualizador: subir `frontend/dist` (mismo contenido) sobre `htt
 **Mantenimiento:**
 - La rama `feat/f0-cimientos` se unió a `main` (PR #1); la v2.4 se trabaja en `feat/v2.4`.
 - Copias de seguridad en `/v1/admin/backups*`; se retiran las rutas `/v1/admin/database/backups*`.
-- Scripts de depuración eliminados del repositorio. El actualizador los borra del servidor al instalar la 2.4.0 (`check_db.php` en la raíz **se podía ejecutar desde el navegador** y mostraba usuarios). El `.htaccess` ya no ejecuta ningún `.php` suelto en la raíz.
+- Scripts de depuración eliminados del repositorio. `check_db.php` en la raíz **se podía ejecutar desde el navegador** y mostraba usuarios: desde la 2.4.0 el `.htaccess` no ejecuta ningún `.php` suelto en la raíz (queda bloqueado al instalarla). El borrado físico lo hace el actualizador de la 2.4.0, así que ocurrirá en la **siguiente** actualización (la 2.3→2.4 la ejecuta el actualizador de la 2.3); se puede borrar antes a mano por FTP.
 - Administración, Configuración y Almacenamiento se cargan al entrar: la carga inicial pasa de ~1.3 MB a ~0.75 MB de JS (las gráficas, 800 KB, ya no van al abrir la app). Si tras una actualización falla la carga de una sección, la página se recarga sola una vez.
 
 **Funciones (migración `0008`, schema 8):**

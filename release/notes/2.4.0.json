@@ -15,7 +15,7 @@
     { "type": "feature", "text": "Usuarios: columna «Última conexión», con «En línea» si estuvo activo en los últimos 5 minutos." },
     { "type": "fix", "text": "Las vistas previas de enlaces (WhatsApp, Slack, Teams…) y el título de la pestaña muestran el nombre de la organización, no «Project Cloud»." },
     { "type": "fix", "text": "La app carga más rápido: las gráficas de Administración y Almacenamiento se cargan solo al entrar ahí." },
-    { "type": "security", "text": "Se retiran del servidor los scripts de depuración antiguos (check_db.php era accesible desde el navegador) y se bloquea la ejecución de cualquier .php suelto en la raíz del sitio." },
+    { "type": "security", "text": "Se bloquea la ejecución de cualquier .php suelto en la raíz del sitio (el antiguo check_db.php era accesible desde el navegador). Los scripts de depuración antiguos se borrarán del servidor en la siguiente actualización." },
     { "type": "security", "text": "La descarga de archivos privados usa una firma propia: el enlace de vista previa ya no sirve para descargar." }
   ],
   "features": ["maintenance_mode", "scheduled_tasks", "ota_updater", "scheduled_backups", "restore_diagnostics", "private_files", "share_links", "link_panel", "folder_zip", "invite_controls", "user_theme"]
