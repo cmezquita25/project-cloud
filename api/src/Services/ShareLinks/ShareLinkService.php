@@ -31,7 +31,7 @@ final class ShareLinkService
      *
      * @param array{id:int,role:string} $user
      * @param array<string,mixed> $q scope, target_type, target_id, target_path
-     * @return array{links:list<array<string,mixed>>,target:array<string,mixed>}
+     * @return array{links:list<array<string,mixed>>,target:array<string,mixed>,policy:array<string,mixed>}
      */
     public function listForTarget(array $user, array $q): array
     {
@@ -46,7 +46,7 @@ final class ShareLinkService
             }
         }
 
-        return ['links' => array_map([self::class, 'present'], $rows), 'target' => $target];
+        return ['links' => array_map([self::class, 'present'], $rows), 'target' => $target, 'policy' => LinkSettings::get()];
     }
 
     /**
@@ -57,6 +57,9 @@ final class ShareLinkService
     public function create(array $user, array $in): array
     {
         $t = ShareLinkPolicy::assertCanManageTarget($user, (string) ($in['scope'] ?? 'drive'), (string) ($in['target_type'] ?? ''), $in['target_id'] ?? null, $in['target_path'] ?? null);
+        $access = self::access($in['access'] ?? 'anyone');
+        $expiresIn = self::expiresIn($in['expires_in'] ?? null);
+        LinkSettings::assertAllowed($access, true, $expiresIn);
 
         do {
             $token = LinkKeys::token();
@@ -69,11 +72,11 @@ final class ShareLinkService
             'target_type'    => $t['target_type'],
             'target_id'      => $t['target_id'],
             'target_path'    => $t['target_path'],
-            'access'         => self::access($in['access'] ?? 'anyone'),
+            'access'         => $access,
             'label'          => self::label($in['label'] ?? null),
             'allow_download' => (bool) ($in['allow_download'] ?? true),
             'password_hash'  => isset($in['password']) && $in['password'] !== '' ? self::passwordHash($in['password']) : null,
-            'expires_in'     => self::expiresIn($in['expires_in'] ?? null),
+            'expires_in'     => $expiresIn,
         ]);
 
         return self::present((array) $this->links->find($id));
@@ -114,6 +117,7 @@ final class ShareLinkService
         if ($fields === []) {
             throw HttpException::badRequest('Nada que actualizar.');
         }
+        LinkSettings::assertAllowed($fields['access'] ?? null, array_key_exists('expires_in', $fields), $fields['expires_in'] ?? null);
 
         $this->links->update($id, $fields);
         return self::present((array) $this->links->find($id));
@@ -125,6 +129,88 @@ final class ShareLinkService
         $link = $this->findOwned($user, $id, edit: false);
         $this->links->revoke($id);
         return self::present((array) $this->links->find((int) $link['id']));
+    }
+
+    /**
+     * Panel de enlaces: los del usuario o, en modo admin, los de toda la
+     * instancia (filtrable por usuario).
+     *
+     * @param array{id:int,role:string} $user
+     * @param array<string,mixed> $q status, q, user_id, page, limit
+     * @return array<string,mixed>
+     */
+    public function panel(array $user, array $q, bool $admin): array
+    {
+        if ($admin && $user['role'] !== 'admin') {
+            throw HttpException::forbidden();
+        }
+        $limit = max(1, min(100, (int) ($q['limit'] ?? 20)));
+        $page = max(1, (int) ($q['page'] ?? 1));
+        $status = in_array($q['status'] ?? 'active', ['active', 'expiring', 'expired', 'revoked', 'all'], true) ? (string) ($q['status'] ?? 'active') : 'active';
+        $res = $this->links->panel([
+            'created_by' => $admin ? ((int) ($q['user_id'] ?? 0) ?: null) : $user['id'],
+            'status'     => $status,
+            'q'          => (string) ($q['q'] ?? ''),
+        ], $limit, ($page - 1) * $limit);
+
+        return [
+            'items'  => array_map(static fn (array $l) => self::present($l) + [
+                'target_name'    => $l['scope'] === 'org' ? basename((string) $l['target_path']) : ($l['target_name'] !== null ? (string) $l['target_name'] : null),
+                'target_state'   => (int) $l['target_missing'] === 1 ? 'deleted' : ((int) $l['target_trashed'] === 1 ? 'trashed' : 'ok'),
+                'creator_name'   => (string) $l['creator_name'],
+                'creator_username' => (string) $l['creator_username'],
+            ], $res['items']),
+            'total'  => $res['total'],
+            'counts' => $res['counts'],
+            'page'   => $page,
+            'limit'  => $limit,
+            'status' => $status,
+            'policy' => LinkSettings::get(),
+        ];
+    }
+
+    /**
+     * Revoca varios enlaces. Sin ids = todos los activos (los del usuario, o
+     * los de toda la instancia en modo admin).
+     *
+     * @param array{id:int,role:string} $user
+     * @param list<int>|null $ids
+     */
+    public function revokeMany(array $user, ?array $ids, bool $admin): int
+    {
+        if ($admin && $user['role'] !== 'admin') {
+            throw HttpException::forbidden();
+        }
+        if ($ids === null) {
+            return $this->links->revokeMany(null, $admin ? null : $user['id']);
+        }
+        // Seleccionados: cada uno con su permiso (un admin puede revocar cualquiera).
+        $allowed = [];
+        foreach (array_unique(array_map('intval', $ids)) as $id) {
+            $link = $this->links->find($id);
+            if ($link !== null && ShareLinkPolicy::canRevoke($user, $link)) {
+                $allowed[] = $id;
+            }
+        }
+        return $this->links->revokeMany($allowed, null);
+    }
+
+    /**
+     * Últimos accesos de un enlace.
+     *
+     * @param array{id:int,role:string} $user
+     * @return list<array<string,mixed>>
+     */
+    public function hits(array $user, int $id): array
+    {
+        $this->findOwned($user, $id, edit: false);
+        return array_map(static fn (array $h) => [
+            'kind'       => (string) $h['kind'],
+            'ago'        => (int) $h['ago'],
+            'member'     => $h['member'] !== null ? (string) $h['member'] : null,
+            'visitor'    => (string) $h['visitor'],
+            'user_agent' => $h['user_agent'] !== null ? (string) $h['user_agent'] : null,
+        ], $this->links->hits($id));
     }
 
     /**

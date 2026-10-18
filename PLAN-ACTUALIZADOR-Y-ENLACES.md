@@ -688,7 +688,7 @@ Servicio central: `ShareLinkPolicy::canCreate(user, target)`, junto a `SharePerm
 | **→ Release v2.2.0** | **Primera actualización OTA real** (prueba de fuego del actualizador) | — | — |
 | **5. Visibilidad privada** ✅ *implementada y probada en local (ver §14)* | Columna `visibility` · `storage/.private` · mover binarios · proteger thumbs · default de subidas en el perfil | Un archivo privado da 404 en `/storage/…` y funciona dentro de la app | M |
 | **6. Enlaces + QR** ✅ *implementada y probada en local (ver §16)* | `share_links` · `ShareLinkPolicy` · página `/s/{token}` · **vista pública de carpeta de solo lectura** (sidebar vacía, migas acotadas, subcarpetas, vista previa y descarga) · diálogo unificado · QR · caducidad · contador · en **Mi unidad y en la unidad compartida** | Carlos crea un QR; Pedro (invitado) no ve la opción; un visitante sin cuenta navega la carpeta pero no puede subir ni salir de ella; el enlace caduca a la hora indicada | L |
-| **7. Panel de enlaces** | Mis enlaces · revocar todos · panel admin · políticas · limpieza de hits | «Revocar todos» deja todos los enlaces en 410 | S |
+| **7. Panel de enlaces** ✅ *implementada y probada en local (ver §17)* | Mis enlaces · revocar todos · panel admin · políticas · limpieza de hits | «Revocar todos» deja todos los enlaces en 410 | S |
 | **→ Release v2.3.0** | Fases 5–7, distribuidas por OTA | — | — |
 
 ---
@@ -1021,4 +1021,32 @@ No hace falta subir nada por FTP a `drive`.
 
 **Probado en local:** 71 comprobaciones de API (permisos, contador, contraseña, llaves, miembros, sin descarga, caducidad y reactivación, revocar, papelera, intentos de salir con `..`, renombrar en la unidad compartida, creador suspendido) y recorrido de interfaz con Playwright (propietario, invitado, visitante, móvil oscuro, unidad compartida, QR con logo, PNG/SVG).
 
-**Pendiente para la Fase 7:** «Mis enlaces compartidos», revocar todos, panel de admin, políticas y limpieza de visitas antiguas.
+---
+
+## 17. Fase 7 — Panel de enlaces, políticas y apariencia de los QR (2026-10-17)
+
+**Apariencia de los QR (Configuración → Apariencia → «Códigos QR»):**
+- **Por defecto, QR normal sin logo.** El admin elige: *Sin logo* · *Logo de la plataforma* (el favicon) · *Imagen personalizada*.
+- **Imagen personalizada:** recomendado 256 × 256 px, cuadrada (1:1), PNG con fondo transparente; PNG, JPG, WEBP o GIF de hasta 5 MB. Si es más grande, el servidor la reduce a 256 px de lado mayor conservando proporciones y transparencia (nunca agranda las pequeñas). Se guarda como PNG en `storage/platform` y al reemplazarla se borra la anterior.
+- Vista previa en vivo; el cambio se aplica al momento en los diálogos de enlaces, sin recargar.
+- El QR sigue generándose en el navegador (nivel H); la imagen del centro se reduce a 192 px antes de incrustarla, así el SVG descargado pesa poco.
+- API: `GET/PUT /v1/admin/settings/qr`, `POST/DELETE /v1/admin/settings/qr-logo`, `GET /v1/settings/qr-logo` (pública); `qr_logo_mode` y `qr_logo_url` en `/v1/settings/public`.
+
+**«Mis enlaces» (barra lateral → Compartido → Mis enlaces, `/links`):**
+- Pestañas con conteos: *Activos · Por caducar (< 48 h) · Caducados · Revocados · Todos*; búsqueda por archivo o etiqueta.
+- Por enlace: destino (con aviso si está en la papelera o se eliminó), acceso, contraseña, sin descarga, caducidad, visitas, descargas, último acceso; copiar, ver QR, **accesos** (últimos 50, sin IP: solo un identificador corto del visitante, o el nombre del miembro) y revocar.
+- **Revocar seleccionados** y **Revocar todos** (confirmación escribiendo `REVOCAR`).
+
+**Administración → Enlaces (`/admin/links`):** lo mismo para toda la instancia, con quién lo creó, búsqueda también por usuario y «Revocar todos los de la instancia» (con `REVOCAR`).
+
+**Políticas (Configuración → Espacio de trabajo → «Enlaces compartidos»):**
+- *Permitir enlaces*: apagado, no se crean y los existentes responden «Enlaces desactivados» **sin revocarse** (al volver a encender, funcionan).
+- *Caducidad máxima* en días (0 = sin límite); con máximo, «Sin caducidad» no se permite.
+- *Permitir «Sin caducidad»* y *Permitir «Cualquiera con el enlace»* (si no, solo miembros).
+- Se aplican al crear y editar; el formulario solo ofrece lo permitido y muestra la política. Los enlaces existentes no cambian.
+
+**Limpieza:** nueva tarea cron diaria «Limpieza de visitas de enlaces»: borra el detalle de visitas de más de 90 días; los contadores se conservan.
+
+**API nueva:** `GET /v1/links/mine`, `POST /v1/links/revoke`, `GET /v1/links/{id}/hits`, `GET /v1/admin/links`, `POST /v1/admin/links/revoke`, `GET/PUT /v1/admin/links/policy`. Sin migración: las políticas viven en `settings`.
+
+**Probado en local:** 48 comprobaciones de API (panel, búsqueda, permisos, accesos sin IP, revocar seleccionados/todos/instancia, políticas al crear y editar, desactivar y reactivar, limpieza por cron, subida y ajuste de la imagen del QR) más las 71 de la Fase 6, y recorrido de interfaz con Playwright.

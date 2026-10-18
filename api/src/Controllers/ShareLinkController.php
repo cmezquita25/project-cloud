@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace ProjectCloud\Controllers;
 
+use ProjectCloud\Core\HttpException;
 use ProjectCloud\Core\Request;
 use ProjectCloud\Core\Response;
 use ProjectCloud\Services\ActivityLogger;
+use ProjectCloud\Services\ShareLinks\LinkSettings;
 use ProjectCloud\Services\ShareLinks\PublicLinkService;
 use ProjectCloud\Services\ShareLinks\ShareLinkService;
 
@@ -61,6 +63,78 @@ final class ShareLinkController
         $link = (new ShareLinkService())->revoke($this->actor($request), (int) $request->param('id'));
         ActivityLogger::log($request, 'link.revoke', $link['target_type'], $link['target_id'], ['link_id' => $link['id']]);
         return Response::success($link);
+    }
+
+    /** GET /links/mine?status=&q=&page= — «Mis enlaces compartidos». */
+    public function mine(Request $request): Response
+    {
+        return Response::success((new ShareLinkService())->panel($this->actor($request), $this->panelQuery($request), false));
+    }
+
+    /** GET /admin/links?status=&q=&user_id=&page= — todos los enlaces de la instancia. */
+    public function adminIndex(Request $request): Response
+    {
+        return Response::success((new ShareLinkService())->panel($this->actor($request), $this->panelQuery($request), true));
+    }
+
+    /** POST /links/revoke { ids } | { all: true, confirm: "REVOCAR" } — los míos. */
+    public function revokeMine(Request $request): Response
+    {
+        return $this->bulkRevoke($request, false);
+    }
+
+    /** POST /admin/links/revoke { ids } | { all: true, confirm: "REVOCAR" } — de toda la instancia. */
+    public function adminRevoke(Request $request): Response
+    {
+        return $this->bulkRevoke($request, true);
+    }
+
+    /** GET /links/{id}/hits — últimos accesos. */
+    public function hits(Request $request): Response
+    {
+        return Response::success(['hits' => (new ShareLinkService())->hits($this->actor($request), (int) $request->param('id'))]);
+    }
+
+    /** GET /admin/links/policy */
+    public function policy(Request $request): Response
+    {
+        return Response::success(LinkSettings::get());
+    }
+
+    /** PUT /admin/links/policy { enabled, max_expiry_days, allow_never, allow_anyone } */
+    public function savePolicy(Request $request): Response
+    {
+        $policy = LinkSettings::save($request->json());
+        ActivityLogger::log($request, 'links.policy', 'config', null, $policy);
+        return Response::success($policy);
+    }
+
+    private function bulkRevoke(Request $request, bool $admin): Response
+    {
+        $body = $request->json();
+        $all = (bool) ($body['all'] ?? false);
+        if ($all && ($body['confirm'] ?? '') !== 'REVOCAR') {
+            throw new HttpException(422, 'CONFIRM_REQUIRED', 'Escribe REVOCAR para confirmar.');
+        }
+        $ids = $all ? null : array_values(array_filter(array_map('intval', (array) ($body['ids'] ?? []))));
+        if (!$all && $ids === []) {
+            throw new HttpException(400, 'BAD_REQUEST', 'No seleccionaste enlaces.');
+        }
+        $count = (new ShareLinkService())->revokeMany($this->actor($request), $ids, $admin);
+        ActivityLogger::log($request, 'link.revoke_many', 'link', null, ['count' => $count, 'all' => $all, 'instance' => $admin && $all]);
+        return Response::success(['revoked' => $count]);
+    }
+
+    /** @return array<string,mixed> */
+    private function panelQuery(Request $request): array
+    {
+        return [
+            'status'  => $request->input('status', 'active'),
+            'q'       => $request->input('q', ''),
+            'user_id' => $request->input('user_id'),
+            'page'    => $request->input('page', 1),
+            'limit'   => $request->input('limit', 20),
+        ];
     }
 
     // --- Público ---

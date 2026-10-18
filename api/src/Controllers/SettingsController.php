@@ -37,6 +37,8 @@ final class SettingsController
         $config['theme_preset'] = $storedPreset === 'classic'
             ? 'nebula'
             : (in_array($storedPreset, ['nebula', 'supernova', 'techmaleon'], true) ? $storedPreset : 'blizzard');
+        // Logo al centro de los QR de los enlaces (none | platform | custom).
+        $config += QrSettingsController::publicConfig($settings);
         $config['ga4_measurement_id'] = $settings->get('ga4_measurement_id');
         $config['ga4_enabled'] = (bool) $settings->getInt('ga4_enabled', 0);
         // Versión del backend: si no coincide con la del frontend en caché, el

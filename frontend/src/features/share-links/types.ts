@@ -52,5 +52,43 @@ export interface LinkInput {
   password?: string | null
 }
 
+/** Políticas de la organización (Configuración → Espacio de trabajo). */
+export interface LinkPolicy {
+  enabled: boolean
+  /** Caducidad máxima en días; 0 = sin límite. */
+  max_expiry_days: number
+  allow_never: boolean
+  allow_anyone: boolean
+}
+
+export type PanelStatus = 'active' | 'expiring' | 'expired' | 'revoked' | 'all'
+
+/** Enlace en los paneles «Mis enlaces» y de administración. */
+export interface PanelLink extends ShareLink {
+  target_name: string | null
+  /** ok · trashed (en la papelera) · deleted (borrado definitivamente). */
+  target_state: 'ok' | 'trashed' | 'deleted'
+  creator_name: string
+  creator_username: string
+}
+
+export interface LinksPage {
+  items: PanelLink[]
+  total: number
+  counts: Record<PanelStatus, number>
+  page: number
+  limit: number
+  status: PanelStatus
+  policy: LinkPolicy
+}
+
+export interface LinkHit {
+  kind: 'view' | 'download'
+  ago: number
+  member: string | null
+  visitor: string
+  user_agent: string | null
+}
+
 /** URL absoluta de un enlace, para copiar y para el QR. */
 export const linkUrl = (link: Pick<ShareLink, 'path'>): string => window.location.origin + link.path

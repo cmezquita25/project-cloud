@@ -6,6 +6,7 @@ import { useAssetsAccess } from '@features/assets/hooks/useAssetsAccess'
 import { assetsApi } from '@features/assets/services/assetsApi'
 import { useToast } from '@shared/ui'
 import { useQueryClient } from '@tanstack/react-query'
+import { LinkPolicyCard } from '@features/share-links/components/LinkPolicyCard'
 
 /** Espacio de trabajo: control de la unidad compartida "assets" y permisos. */
 export function WorkspaceSettings() {
@@ -73,7 +74,7 @@ export function WorkspaceSettings() {
       <div>
         <h2 className="mb-1 text-lg font-medium text-content-primary">Espacio de trabajo</h2>
         <p className="text-sm text-content-secondary">
-          Configuración de la unidad compartida, su nombre/alias público y quiénes pueden acceder a ella.
+          Configuración de la unidad compartida, su nombre/alias público y quiénes pueden acceder a ella, y las reglas de los enlaces compartidos.
         </p>
       </div>
 
@@ -152,6 +153,8 @@ export function WorkspaceSettings() {
           </Button>
         </div>
       )}
+
+      <LinkPolicyCard />
 
       {access?.active && <AssetsPermissionsDialog open={permOpen} onClose={() => setPermOpen(false)} />}
     </div>

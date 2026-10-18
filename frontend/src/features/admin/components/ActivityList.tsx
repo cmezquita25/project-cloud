@@ -29,6 +29,8 @@ const ACTIONS: Record<string, { label: string; icon: LucideIcon; className: stri
   'link.create': { label: 'creó un enlace compartido', icon: Link2, className: 'text-success' },
   'link.update': { label: 'editó un enlace compartido', icon: PencilLine, className: 'text-primary' },
   'link.revoke': { label: 'revocó un enlace compartido', icon: Link2Off, className: 'text-danger' },
+  'link.revoke_many': { label: 'revocó varios enlaces compartidos', icon: Link2Off, className: 'text-danger' },
+  'links.policy': { label: 'cambió las políticas de enlaces', icon: Settings2, className: 'text-primary' },
   'activity.cleared': { label: 'limpió registros de auditoría', icon: Eraser, className: 'text-danger' },
   'settings.update': { label: 'cambió la configuración', icon: Settings2, className: 'text-primary' },
   database_migrate_auto: { label: 'aplicó las migraciones de la base de datos', icon: DatabaseBackup, className: 'text-primary' },

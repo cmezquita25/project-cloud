@@ -34,6 +34,7 @@ use ProjectCloud\Controllers\UpdateController;
 use ProjectCloud\Controllers\BackupController;
 use ProjectCloud\Controllers\RestoreController;
 use ProjectCloud\Controllers\ShareLinkController;
+use ProjectCloud\Controllers\QrSettingsController;
 use ProjectCloud\Middleware\AuthMiddleware;
 use ProjectCloud\Middleware\AdminOnly;
 use ProjectCloud\Middleware\RateLimit;
@@ -51,6 +52,7 @@ return static function (Router $router): void {
     // --- Fase 9: Configuraciones públicas ---
     $router->get('/v1/settings/public', [SettingsController::class, 'publicConfig']);
     $router->get('/v1/settings/logo/{type}', [SettingsController::class, 'serveLogo']);
+    $router->get('/v1/settings/qr-logo', [QrSettingsController::class, 'serve']);
 
     // Avatares de usuario (públicos, como los logos).
     $router->get('/v1/auth/avatar/{id}', [AuthController::class, 'serveAvatar']);
@@ -142,6 +144,9 @@ return static function (Router $router): void {
 
     // --- Enlaces compartidos y QR (los crea el propietario; en la unidad compartida, un admin) ---
     $router->get('/v1/links',          [ShareLinkController::class, 'index'], $auth);
+    $router->get('/v1/links/mine',     [ShareLinkController::class, 'mine'], $auth);
+    $router->post('/v1/links/revoke',  [ShareLinkController::class, 'revokeMine'], $auth);
+    $router->get('/v1/links/{id}/hits', [ShareLinkController::class, 'hits'], $auth);
     $router->post('/v1/links',         [ShareLinkController::class, 'create'], $auth);
     $router->patch('/v1/links/{id}',   [ShareLinkController::class, 'update'], $auth);
     $router->delete('/v1/links/{id}',  [ShareLinkController::class, 'revoke'], $auth);
@@ -164,12 +169,20 @@ return static function (Router $router): void {
     $router->get('/v1/admin/server-info',         [AdminController::class, 'serverInfo'], $admin);
     $router->patch('/v1/admin/settings',          [AdminController::class, 'updateSettings'], $admin);
     $router->post('/v1/admin/settings/logo',      [AdminController::class, 'uploadLogo'], $admin);
+    $router->get('/v1/admin/settings/qr',         [QrSettingsController::class, 'show'], $admin);
+    $router->put('/v1/admin/settings/qr',         [QrSettingsController::class, 'update'], $admin);
+    $router->post('/v1/admin/settings/qr-logo',   [QrSettingsController::class, 'upload'], $admin);
+    $router->delete('/v1/admin/settings/qr-logo', [QrSettingsController::class, 'delete'], $admin);
     $router->get('/v1/admin/assets/permissions',  [AssetsController::class, 'permissions'], $admin);
     $router->put('/v1/admin/assets/permissions',  [AssetsController::class, 'setPermissions'], $admin);
     $router->put('/v1/admin/assets/block-actions',[AssetsController::class, 'setBlockedActions'], $admin);
     $router->post('/v1/admin/assets/activate',    [AssetsController::class, 'activate'], $admin);
     $router->put('/v1/admin/assets/folder-name',  [AssetsController::class, 'setFolderName'], $admin);
     $router->get('/v1/admin/migrate-assets',      [AdminController::class, 'migrateAssets'], $admin);
+    $router->get('/v1/admin/links',               [ShareLinkController::class, 'adminIndex'], $admin);
+    $router->post('/v1/admin/links/revoke',       [ShareLinkController::class, 'adminRevoke'], $admin);
+    $router->get('/v1/admin/links/policy',        [ShareLinkController::class, 'policy'], $admin);
+    $router->put('/v1/admin/links/policy',        [ShareLinkController::class, 'savePolicy'], $admin);
     $router->get('/v1/admin/activity',            [AdminController::class, 'activity'], $admin);
     $router->delete('/v1/admin/activity',         [AdminController::class, 'clearActivity'], $admin);
     $router->get('/v1/admin/users',               [AdminController::class, 'users'], $admin);

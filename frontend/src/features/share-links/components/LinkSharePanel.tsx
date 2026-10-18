@@ -23,7 +23,7 @@ import { Button, Spinner, useToast } from '@shared/ui'
 import { cn } from '@shared/lib/cn'
 import { formatDateTime } from '@shared/lib/formatDate'
 import { linksApi } from '../services/linksApi'
-import { linkUrl, type LinkInput, type LinkTarget, type LinkTargetInfo, type ShareLink } from '../types'
+import { linkUrl, type LinkInput, type LinkPolicy, type LinkTarget, type LinkTargetInfo, type ShareLink } from '../types'
 import { LinkForm } from './LinkForm'
 import { QrCode } from './QrCode'
 
@@ -60,6 +60,7 @@ export function LinkSharePanel({ target, publicUrl, onMakePrivate }: LinkSharePa
   const toast = useToast()
   const [links, setLinks] = useState<ShareLink[] | null>(null)
   const [info, setInfo] = useState<LinkTargetInfo | null>(null)
+  const [policy, setPolicy] = useState<LinkPolicy | undefined>(undefined)
   const [creating, setCreating] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [makingPrivate, setMakingPrivate] = useState(false)
@@ -70,7 +71,8 @@ export function LinkSharePanel({ target, publicUrl, onMakePrivate }: LinkSharePa
       const res = await linksApi.list(target)
       setLinks(res.links)
       setInfo(res.target)
-      if (res.links.length === 0) setCreating(true)
+      setPolicy(res.policy)
+      if (res.links.length === 0 && res.policy.enabled) setCreating(true)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'No se pudieron cargar los enlaces.')
       setLinks([])
@@ -187,12 +189,17 @@ export function LinkSharePanel({ target, publicUrl, onMakePrivate }: LinkSharePa
         </div>
       )}
 
-      {creating ? (
+      {policy && !policy.enabled ? (
+        <div className="flex items-start gap-2.5 rounded-xl border border-border bg-slate-900/[0.03] p-3 text-xs text-content-secondary dark:bg-white/[0.04]">
+          <Info size={16} className="mt-0.5 shrink-0 text-content-tertiary" />
+          <span>La organización desactivó los enlaces compartidos: no se pueden crear y los existentes no abren por ahora.</span>
+        </div>
+      ) : creating ? (
         <div className="rounded-xl glass-lite p-3">
           <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-content-primary">
             <Link2 size={16} className="text-primary" /> Nuevo enlace
           </p>
-          <LinkForm submitting={submitting} onSubmit={create} onCancel={links.length > 0 ? () => setCreating(false) : undefined} />
+          <LinkForm policy={policy} submitting={submitting} onSubmit={create} onCancel={links.length > 0 ? () => setCreating(false) : undefined} />
         </div>
       ) : (
         <Button variant="secondary" size="sm" leftIcon={Plus} onClick={() => setCreating(true)}>
@@ -206,7 +213,7 @@ export function LinkSharePanel({ target, publicUrl, onMakePrivate }: LinkSharePa
             Enlaces de {target.target_type === 'file' ? 'este archivo' : 'esta carpeta'} ({links.length})
           </h4>
           {links.map((link) => (
-            <LinkCard key={link.id} link={link} name={target.name} onCopy={() => copy(link)} onChange={replace} />
+            <LinkCard key={link.id} link={link} name={target.name} policy={policy} onCopy={() => copy(link)} onChange={replace} />
           ))}
         </div>
       )}
@@ -217,11 +224,12 @@ export function LinkSharePanel({ target, publicUrl, onMakePrivate }: LinkSharePa
 interface LinkCardProps {
   link: ShareLink
   name: string
+  policy?: LinkPolicy
   onCopy: () => void
   onChange: (link: ShareLink) => void
 }
 
-function LinkCard({ link, name, onCopy, onChange }: LinkCardProps) {
+function LinkCard({ link, name, policy, onCopy, onChange }: LinkCardProps) {
   const toast = useToast()
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -327,7 +335,7 @@ function LinkCard({ link, name, onCopy, onChange }: LinkCardProps) {
       {editing && (
         <div className="mt-3 border-t border-slate-900/[0.06] pt-3 dark:border-white/[0.06]">
           {expired && <p className="mb-2 text-xs text-content-secondary">Elige una nueva caducidad: el enlace (y su QR) vuelven a funcionar con la misma dirección.</p>}
-          <LinkForm link={link} submitting={saving} onSubmit={save} onCancel={() => setEditing(false)} />
+          <LinkForm link={link} policy={policy} submitting={saving} onSubmit={save} onCancel={() => setEditing(false)} />
         </div>
       )}
     </div>

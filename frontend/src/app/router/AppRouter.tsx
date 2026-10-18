@@ -29,6 +29,7 @@ import { LoginPage } from '@features/auth/LoginPage'
 import { ForgotPasswordPage } from '@features/auth/ForgotPasswordPage'
 import { ResetPasswordPage } from '@features/auth/ResetPasswordPage'
 import { PublicLinkPage } from '@features/public-link/PublicLinkPage'
+import { MyLinksPage } from '@features/share-links/pages/MyLinksPage'
 
 /**
  * Rutas de la aplicación.
@@ -82,6 +83,7 @@ const router = createBrowserRouter([
               { path: 'quota', element: <StoragePage /> },
               { path: 'profile', element: <ProfilePage /> },
               { path: 'notifications', element: <NotificationsPage /> },
+              { path: 'links', element: <MyLinksPage /> },
               { path: 'assets/*', element: <AssetsPage /> },
               // Solo administradores. Dashboard, Usuarios y Auditoría comparten UNA
               // ruta padre: AdminPage queda montada al cambiar de sección (antes se
@@ -96,6 +98,7 @@ const router = createBrowserRouter([
                       { index: true, element: null },
                       { path: 'users', element: null },
                       { path: 'activity', element: null },
+                      { path: 'links', element: null },
                     ],
                   },
                   // Configuración con pestañas verticales (layout propio + subrutas).

@@ -1,4 +1,5 @@
 import { LogoUploader } from '../../components/LogoUploader'
+import { QrAppearanceCard } from '../../components/QrAppearanceCard'
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Check } from 'lucide-react'
 import { Button, ProgressBar, useLoader, useToast } from '@shared/ui'
@@ -295,6 +296,8 @@ export function AppearanceSettings() {
           </Button>
         </div>
       </div>
+
+      <QrAppearanceCard />
 
       <div className="space-y-4">
         <LogoUploader

@@ -13,6 +13,18 @@ import type {
   UpdateUserPayload,
 } from '../types'
 
+/** Qué va al centro de los QR de los enlaces compartidos. */
+export type QrLogoMode = 'none' | 'platform' | 'custom'
+export interface QrSettings {
+  mode: QrLogoMode
+  has_custom: boolean
+  has_platform: boolean
+  max_px: number
+  /** Lo que se usa de verdad (si falta la imagen, queda en «none»). */
+  qr_logo_mode: QrLogoMode
+  qr_logo_url: string | null
+}
+
 /** Cliente del panel de administración (endpoints /admin/*). */
 export const adminApi = {
   stats: () => api.get<AdminStats>('/admin/stats'),
@@ -57,6 +69,16 @@ export const adminApi = {
     formData.append('file', file)
     return api.post<{ ok: true; filename: string }>('/admin/settings/logo', formData)
   },
+
+  // --- Apariencia de los QR ---
+  getQrSettings: () => api.get<QrSettings>('/admin/settings/qr'),
+  setQrMode: (mode: QrLogoMode) => api.put<QrSettings>('/admin/settings/qr', { mode }),
+  uploadQrLogo(file: File) {
+    const formData = new FormData()
+    formData.append('file', file)
+    return api.post<QrSettings & { resized: boolean; original: { width: number; height: number } }>('/admin/settings/qr-logo', formData)
+  },
+  deleteQrLogo: () => api.delete<QrSettings>('/admin/settings/qr-logo'),
 
   // --- Correo saliente (SMTP) ---
   getSmtp: () => api.get<SmtpSettings>('/admin/smtp'),

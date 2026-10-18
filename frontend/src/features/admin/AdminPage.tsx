@@ -25,8 +25,9 @@ import { useAssetsAccess } from '@features/assets/hooks/useAssetsAccess'
 import type { AdminUser } from './types'
 import { CronHealthAlert } from './components/CronHealthAlert'
 import { UpdateAvailableBanner } from './components/UpdateAvailableBanner'
+import { LinksPanel } from '@features/share-links/components/LinksPanel'
 
-type Tab = 'overview' | 'users' | 'activity'
+type Tab = 'overview' | 'users' | 'activity' | 'links'
 
 function StatCard({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
   return (
@@ -46,6 +47,7 @@ function StatCard({ icon: Icon, label, value }: { icon: LucideIcon; label: strin
 function tabFromPath(pathname: string): Tab {
   if (pathname.startsWith('/admin/users')) return 'users'
   if (pathname.startsWith('/admin/activity')) return 'activity'
+  if (pathname.startsWith('/admin/links')) return 'links'
   return 'overview'
 }
 
@@ -53,12 +55,14 @@ const TAB_TITLE: Record<Tab, string> = {
   overview: 'Panel de administración',
   users: 'Usuarios',
   activity: 'Registros de auditoría',
+  links: 'Enlaces compartidos',
 }
 
 const TAB_DESCRIPTION: Record<Tab, string> = {
   overview: 'Resumen del almacenamiento, los usuarios y el estado de la plataforma.',
   users: 'Gestiona los accesos, roles y el almacenamiento de los miembros de tu organización.',
   activity: 'Quién hizo qué y cuándo en la plataforma.',
+  links: 'Todos los enlaces y QR de la organización: quién los creó, cuántas veces se abrieron y revócalos si hace falta.',
 }
 
 export function AdminPage() {
@@ -173,7 +177,7 @@ export function AdminPage() {
 
   // Solo bloquea la sección visible: cambiar de pestaña no debe tapar la página con un spinner.
   const loading =
-    tab === 'overview' ? statsLoading || serverInfoLoading : tab === 'users' ? usersLoading : activityLoading
+    tab === 'overview' ? statsLoading || serverInfoLoading : tab === 'users' ? usersLoading : tab === 'activity' ? activityLoading : false
 
   const [formOpen, setFormOpen] = useState(false)
   const [editUser, setEditUser] = useState<AdminUser | null>(null)
@@ -514,6 +518,10 @@ export function AdminPage() {
               order={userOrder}
               onSortChange={handleSortChange}
             />
+          </div>
+        ) : tab === 'links' ? (
+          <div className="pb-12">
+            <LinksPanel mode="admin" />
           </div>
         ) : (
           <>

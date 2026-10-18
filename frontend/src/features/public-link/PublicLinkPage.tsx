@@ -245,6 +245,7 @@ const ERRORS: Record<string, { icon: typeof Clock; title: string; tone: 'danger'
   LINK_REVOKED: { icon: Link2Off, title: 'Este enlace fue desactivado', tone: 'danger' },
   LINK_UNAVAILABLE: { icon: AlertTriangle, title: 'Ya no está disponible', tone: 'warning' },
   LINK_NOT_FOUND: { icon: Link2Off, title: 'Este enlace no existe', tone: 'danger' },
+  LINKS_DISABLED: { icon: Link2Off, title: 'Enlaces desactivados', tone: 'warning' },
 }
 
 function ErrorState({ code, message }: { code: string; message: string }) {

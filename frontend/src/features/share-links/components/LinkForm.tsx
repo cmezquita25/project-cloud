@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Button, Checkbox, Input, Select } from '@shared/ui'
-import type { LinkAccess, LinkInput, ShareLink } from '../types'
+import type { LinkAccess, LinkInput, LinkPolicy, ShareLink } from '../types'
 
 /** Opciones de caducidad (segundos). */
 const EXPIRY_OPTIONS = [
@@ -26,18 +26,33 @@ const toLocalInput = (d: Date) => {
 interface LinkFormProps {
   /** Si se pasa, el formulario edita ese enlace (si no, crea uno nuevo). */
   link?: ShareLink
+  /** Políticas de la organización: limitan acceso y caducidad. */
+  policy?: LinkPolicy
   submitting?: boolean
   onSubmit: (input: LinkInput) => void
   onCancel?: () => void
 }
 
 /** Formulario de un enlace: acceso, caducidad, etiqueta, contraseña y descarga. */
-export function LinkForm({ link, submitting = false, onSubmit, onCancel }: LinkFormProps) {
+export function LinkForm({ link, policy, submitting = false, onSubmit, onCancel }: LinkFormProps) {
   const editing = Boolean(link)
-  const [access, setAccess] = useState<LinkAccess>(link?.access ?? 'anyone')
+  const maxSeconds = policy && policy.max_expiry_days > 0 ? policy.max_expiry_days * 86400 : null
+  const allowNever = policy?.allow_never ?? true
+  const allowAnyone = policy?.allow_anyone ?? true
+  // Caducidades permitidas por la política (nunca más que el máximo).
+  const allowedExpiry = EXPIRY_OPTIONS.filter((o) =>
+    o.value === 'never' ? allowNever : o.value === 'custom' ? true : maxSeconds === null || Number(o.value) <= maxSeconds
+  )
+  const defaultExpiry = allowedExpiry.some((o) => o.value === '604800')
+    ? '604800'
+    : ([...allowedExpiry].reverse().find((o) => /^\d+$/.test(o.value))?.value ?? 'custom')
+
+  const [access, setAccess] = useState<LinkAccess>(link?.access ?? (allowAnyone ? 'anyone' : 'members'))
   // Al editar se parte de «sin cambios» para no tocar la caducidad por accidente.
-  const [expiry, setExpiry] = useState<string>(editing ? 'keep' : '604800')
-  const [custom, setCustom] = useState(() => toLocalInput(new Date(Date.now() + 7 * 86400_000)))
+  const [expiry, setExpiry] = useState<string>(editing ? 'keep' : defaultExpiry)
+  const [custom, setCustom] = useState(() =>
+    toLocalInput(new Date(Date.now() + Math.min(7 * 86400, maxSeconds ?? Infinity) * 1000))
+  )
   const [label, setLabel] = useState(link?.label ?? '')
   const [usePassword, setUsePassword] = useState(link?.has_password ?? false)
   const [password, setPassword] = useState('')
@@ -45,8 +60,9 @@ export function LinkForm({ link, submitting = false, onSubmit, onCancel }: LinkF
   const [error, setError] = useState<string | null>(null)
 
   const expiryOptions = editing
-    ? [{ value: 'keep', label: link!.status === 'expired' ? 'Sin cambios (caducado)' : 'Sin cambios' }, ...EXPIRY_OPTIONS]
-    : EXPIRY_OPTIONS
+    ? [{ value: 'keep', label: link!.status === 'expired' ? 'Sin cambios (caducado)' : 'Sin cambios' }, ...allowedExpiry]
+    : allowedExpiry
+  const accessOptions = allowAnyone || link?.access === 'anyone' ? ACCESS_OPTIONS : ACCESS_OPTIONS.filter((o) => o.value === 'members')
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
@@ -58,6 +74,10 @@ export function LinkForm({ link, submitting = false, onSubmit, onCancel }: LinkF
       const seconds = Math.round((new Date(custom).getTime() - Date.now()) / 1000)
       if (!Number.isFinite(seconds) || seconds < 60) {
         setError('La fecha de caducidad debe ser futura.')
+        return
+      }
+      if (maxSeconds !== null && seconds > maxSeconds) {
+        setError(`La organización permite como máximo ${policy!.max_expiry_days} días.`)
         return
       }
       input.expires_in = seconds
@@ -83,7 +103,7 @@ export function LinkForm({ link, submitting = false, onSubmit, onCancel }: LinkF
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="block space-y-1">
           <span className="text-xs font-medium text-content-secondary">Acceso</span>
-          <Select options={ACCESS_OPTIONS} value={access} onChange={(v) => setAccess(v as LinkAccess)} />
+          <Select options={accessOptions} value={access} onChange={(v) => setAccess(v as LinkAccess)} />
         </label>
         <label className="block space-y-1">
           <span className="text-xs font-medium text-content-secondary">Caduca</span>
@@ -96,6 +116,7 @@ export function LinkForm({ link, submitting = false, onSubmit, onCancel }: LinkF
           label="Fecha y hora de caducidad"
           value={custom}
           min={toLocalInput(new Date(Date.now() + 60_000))}
+          max={maxSeconds !== null ? toLocalInput(new Date(Date.now() + maxSeconds * 1000)) : undefined}
           onChange={(e) => setCustom(e.target.value)}
         />
       )}
@@ -125,6 +146,15 @@ export function LinkForm({ link, submitting = false, onSubmit, onCancel }: LinkF
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
+      )}
+      {(maxSeconds !== null || !allowAnyone) && (
+        <p className="text-xs text-content-tertiary">
+          Política de la organización:{' '}
+          {[maxSeconds !== null && `caducidad máxima de ${policy!.max_expiry_days} días`, !allowAnyone && 'solo enlaces para miembros']
+            .filter(Boolean)
+            .join(' · ')}
+          .
+        </p>
       )}
       {error && <p className="text-sm text-danger">{error}</p>}
       <div className="flex justify-end gap-2">

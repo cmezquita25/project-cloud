@@ -168,6 +168,10 @@ final class PublicLinkService
         if ((int) $link['is_expired'] === 1) {
             throw new HttpException(410, 'LINK_EXPIRED', 'Pasó la fecha de caducidad que puso quien lo compartió.');
         }
+        // Apagados por política: no se revocan, solo dejan de abrir mientras tanto.
+        if (!LinkSettings::get()['enabled']) {
+            throw new HttpException(403, 'LINKS_DISABLED', 'La organización desactivó temporalmente los enlaces compartidos.');
+        }
 
         $users = new UserRepository();
         $creator = $users->findById((int) $link['created_by']);

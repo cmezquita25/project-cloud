@@ -21,7 +21,7 @@ export function QrCode({ value, name }: QrCodeProps) {
 
   useEffect(() => {
     let alive = true
-    loadLogo(Boolean(settings?.logo_favicon))
+    loadLogo(settings?.qr_logo_url)
       .then(async (l) => {
         const out = await qrSvg(value, l)
         if (alive) {
@@ -33,7 +33,7 @@ export function QrCode({ value, name }: QrCodeProps) {
     return () => {
       alive = false
     }
-  }, [value, settings?.logo_favicon])
+  }, [value, settings?.qr_logo_url])
 
   // Esc cierra la pantalla completa (sin cerrar también el diálogo de debajo).
   useEffect(() => {

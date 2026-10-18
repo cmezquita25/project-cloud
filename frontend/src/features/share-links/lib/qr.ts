@@ -1,20 +1,21 @@
 import QRCode from 'qrcode'
 
 /**
- * QR generado en el navegador (sin servicios externos). Corrección de errores
- * nivel H: aguanta el logo de la organización tapando el centro (~20 %).
+ * QR generado en el navegador (sin servicios externos). Por defecto es un QR
+ * normal; si el admin lo configura (Apariencia → Códigos QR), lleva al centro
+ * el logo de la plataforma o una imagen propia. Corrección de errores nivel H:
+ * aguanta tapar el centro (~20 %).
  */
 const OPTIONS = { errorCorrectionLevel: 'H' as const, margin: 2, color: { dark: '#0f172aff', light: '#ffffffff' } }
 
 /**
- * Logo (favicon de la organización) como data URL PNG reducido a 192 px, o
- * null si no hay. Reducido para que el SVG descargado no cargue con el
- * archivo original (un favicon puede pesar megas).
+ * Imagen del centro como data URL PNG reducida a 192 px (que el SVG descargado
+ * no cargue con un archivo de megas), o null si no hay o no se puede leer.
  */
-export async function loadLogo(enabled: boolean): Promise<string | null> {
-  if (!enabled) return null
+export async function loadLogo(url: string | null | undefined): Promise<string | null> {
+  if (!url) return null
   try {
-    const res = await fetch('/api/v1/settings/logo/favicon')
+    const res = await fetch(url)
     if (!res.ok) return null
     const bitmap = await createImageBitmap(await res.blob())
     const scale = Math.min(1, 192 / Math.max(bitmap.width, bitmap.height))
@@ -27,7 +28,7 @@ export async function loadLogo(enabled: boolean): Promise<string | null> {
     bitmap.close()
     return canvas.toDataURL('image/png')
   } catch {
-    return null // sin logo (o un SVG que el navegador no rasteriza): QR sin logo
+    return null // imagen ilegible (p. ej. un SVG o ICO que el navegador no rasteriza): QR sin logo
   }
 }
 

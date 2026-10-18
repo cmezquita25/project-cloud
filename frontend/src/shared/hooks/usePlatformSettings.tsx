@@ -16,6 +16,9 @@ interface PlatformSettings {
   btn_text_color?: string | null
   /** Estilo base de color. Los colores personalizados de arriba van encima. */
   theme_preset?: string | null
+  /** Logo al centro de los QR de los enlaces (lo decide el admin en Apariencia). */
+  qr_logo_mode?: 'none' | 'platform' | 'custom'
+  qr_logo_url?: string | null
   ga4_measurement_id?: string | null
   ga4_enabled?: boolean
   /** Versión instalada en el servidor. */
@@ -97,6 +100,14 @@ export function applyThemePreset(preset: ThemePreset | null | undefined) {
   } catch {
     // Almacenamiento bloqueado: el preset igual se aplica en esta carga.
   }
+}
+
+const SETTINGS_PATCH_EVENT = 'pc:platform-settings-patch'
+
+/** Actualiza la configuración pública en memoria sin recargar. */
+// eslint-disable-next-line react-refresh/only-export-components
+export function patchPlatformSettings(patch: Partial<PlatformSettings>): void {
+  window.dispatchEvent(new CustomEvent(SETTINGS_PATCH_EVENT, { detail: patch }))
 }
 
 const PlatformSettingsContext = createContext<PlatformSettings | null>(null)
@@ -206,6 +217,17 @@ export function PlatformSettingsProvider({ children }: { children: ReactNode }) 
       .catch(console.error)
 
     return () => { active = false }
+  }, [])
+
+  // Cambios hechos desde Configuración que no requieren recargar la página
+  // (p. ej. el logo de los QR): se fusionan en la configuración en memoria.
+  useEffect(() => {
+    const onPatch = (e: Event) => {
+      const patch = (e as CustomEvent<Partial<PlatformSettings>>).detail
+      setSettings((prev) => (prev ? { ...prev, ...patch } : prev))
+    }
+    window.addEventListener(SETTINGS_PATCH_EVENT, onPatch)
+    return () => window.removeEventListener(SETTINGS_PATCH_EVENT, onPatch)
   }, [])
 
   return (
