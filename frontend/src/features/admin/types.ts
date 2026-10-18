@@ -10,6 +10,8 @@ export interface AdminUser {
   max_upload_bytes: number
   avatar_url?: string | null
   created_at: string | null
+  /** Segundos desde su última actividad; null = nunca entró. */
+  last_seen_ago?: number | null
 }
 
 export interface UsersPage {

@@ -97,6 +97,7 @@ DirectoryIndex index.html
     #     Todo /api/* pasa por index.php (protege src/ y config/). index.php
     #     lee la ruta real desde REQUEST_URI.
     RewriteRule ^api/index\.php$ - [L]
+    RewriteRule ^api/spa\.php$ - [L]
     RewriteRule ^api/ api/index.php [L,QSA]
 
     # 6b-bis. Ningún .php suelto en la raíz se ejecuta: la plataforma solo
@@ -117,8 +118,11 @@ DirectoryIndex index.html
     RewriteCond %{REQUEST_FILENAME} -f
     RewriteRule ^ - [L]
 
-    # 6e. SPA fallback: cualquier otra ruta -> index.html (React Router).
-    RewriteRule ^ index.html [L]
+    # 6e. SPA fallback: cualquier otra ruta -> la app (React Router). Pasa por
+    #     api/spa.php, que pone el nombre de la organización en el título y en
+    #     las vistas previas de enlaces (WhatsApp, Slack…); si falla, entrega
+    #     index.html tal cual.
+    RewriteRule ^ api/spa.php [L]
 </IfModule>
 
 # --- 7. PROTECCIÓN DE ARCHIVOS SENSIBLES -----------------------------------

@@ -7,7 +7,7 @@ import { formatBytes, usagePercent } from '@shared/lib/formatBytes'
 import { Pagination } from '@shared/ui/Pagination'
 import type { AdminUser } from '../types'
 
-export type UserSortField = 'id' | 'username' | 'display_name' | 'role' | 'status' | 'max_upload_bytes' | 'used_bytes' | 'created_at'
+export type UserSortField = 'id' | 'username' | 'display_name' | 'role' | 'status' | 'max_upload_bytes' | 'used_bytes' | 'created_at' | 'last_seen_at'
 export type UserSortOrder = 'asc' | 'desc'
 
 interface UsersTableProps {
@@ -83,6 +83,33 @@ function formatDate(date: string | null): string {
   return new Date(date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
+/** Menos de 5 min desde la última actividad = «En línea» (la app consulta cada 30 s mientras está abierta). */
+const ONLINE_SECONDS = 5 * 60
+
+/** «En línea» (punto verde) o «Hace 12 min», «Hace 3 h», «Ayer», fecha (punto gris). */
+function LastSeen({ ago }: { ago?: number | null }) {
+  let label: string
+  const online = ago !== null && ago !== undefined && ago < ONLINE_SECONDS
+  if (ago === null || ago === undefined) label = 'Nunca'
+  else if (online) label = 'En línea'
+  else if (ago < 3600) label = `Hace ${Math.floor(ago / 60)} min`
+  else {
+    const seen = new Date(Date.now() - ago * 1000)
+    const today = new Date()
+    const yesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1)
+    const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString()
+    if (sameDay(seen, today)) label = `Hace ${Math.floor(ago / 3600)} h`
+    else if (sameDay(seen, yesterday)) label = 'Ayer'
+    else label = formatDate(seen.toISOString())
+  }
+  return (
+    <span className={cn('inline-flex items-center gap-1.5 text-xs', online ? 'font-medium text-success' : 'text-content-secondary')}>
+      <span className={cn('h-2 w-2 shrink-0 rounded-full', online ? 'bg-success shadow-[0_0_0_3px_rgb(var(--color-success)/0.2)]' : 'bg-slate-400 dark:bg-slate-500')} aria-hidden />
+      {label}
+    </span>
+  )
+}
+
 /** Tabla de usuarios (cards en móvil). */
 export function UsersTable(props: UsersTableProps) {
   const { users, currentUserId, sort, order, onSortChange } = props
@@ -94,6 +121,7 @@ export function UsersTable(props: UsersTableProps) {
     { field: 'status', label: 'Estado' },
     { field: 'max_upload_bytes', label: 'Subida máx.' },
     { field: 'used_bytes', label: 'Almacenamiento' },
+    { field: 'last_seen_at', label: 'Última conexión' },
     { field: 'created_at', label: 'Fecha de creación' },
   ]
 
@@ -150,6 +178,9 @@ export function UsersTable(props: UsersTableProps) {
                     </p>
                   </div>
                 </td>
+                <td className="py-2 pr-3 whitespace-nowrap">
+                  <LastSeen ago={u.last_seen_ago} />
+                </td>
                 <td className="py-2 text-xs text-content-secondary whitespace-nowrap">
                   {formatDate(u.created_at)}
                 </td>
@@ -192,6 +223,7 @@ export function UsersTable(props: UsersTableProps) {
               </span>
             </div>
             <div className="mt-2 flex items-center justify-between">
+              <LastSeen ago={u.last_seen_ago} />
               <span className="text-xs text-content-tertiary">{formatDate(u.created_at)}</span>
             </div>
             <div className="mt-2">

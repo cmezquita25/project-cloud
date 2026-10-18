@@ -30,7 +30,8 @@ export function Topbar({ onMenuClick }: TopbarProps) {
   const [searchParams] = useSearchParams()
   const [term, setTerm] = useState('')
 
-  const orgName = settings?.organization_name || 'Project Cloud'
+  // Mientras llega la configuración no se muestra nada (antes salía «Project Cloud» un instante).
+  const orgName = settings ? settings.organization_name || 'Project Cloud' : ''
 
   // Mantiene el campo sincronizado con la URL (?q=) al entrar/volver a /search.
   useEffect(() => {

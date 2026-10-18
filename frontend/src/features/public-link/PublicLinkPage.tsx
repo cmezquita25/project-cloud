@@ -116,7 +116,8 @@ function PublicLayout({ title, isFolder, children }: { title: string | null; isF
   const isMobile = useIsMobile()
   const { status } = useAuth()
   const location = useLocation()
-  const orgName = settings?.organization_name || 'Project Cloud'
+  // Mientras llega la configuración no se muestra nada (antes salía «Project Cloud» un instante).
+  const orgName = settings ? settings.organization_name || 'Project Cloud' : ''
 
   useEffect(() => {
     if (title) document.title = `${title} - ${orgName}`

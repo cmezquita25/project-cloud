@@ -25,6 +25,8 @@ CREATE TABLE IF NOT EXISTS `users` (
     `used_bytes`       BIGINT UNSIGNED NOT NULL DEFAULT 0,           -- uso agregado (cache)
     `status`           ENUM('active','suspended') NOT NULL DEFAULT 'active',
     `default_visibility` ENUM('public','private') NOT NULL DEFAULT 'public', -- subidas nuevas
+    `theme_preset`       VARCHAR(20) NULL DEFAULT NULL,
+    `last_seen_at`       DATETIME NULL DEFAULT NULL,
     `created_at`       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at`       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
@@ -134,7 +136,7 @@ INSERT INTO `settings` (`key`, `value`) VALUES
     ('default_quota_bytes', '5368709120'),
     ('assets_quota_bytes', '1073741824'),
     ('support_email', ''),
-    ('schema_version', '7')
+    ('schema_version', '8')
 ON DUPLICATE KEY UPDATE `key` = `key`;
 
 -- --------------------------------------------------------------------------
@@ -203,6 +205,8 @@ CREATE TABLE IF NOT EXISTS `shared_access` (
     `target_type`      ENUM('unit', 'folder', 'file') NOT NULL,
     `target_id`        BIGINT UNSIGNED NULL DEFAULT NULL,
     `permission_level` ENUM('read', 'full') NOT NULL DEFAULT 'read',
+    `can_share`        TINYINT(1) NOT NULL DEFAULT 0,
+    `block_download`   TINYINT(1) NOT NULL DEFAULT 0,
     `created_at`       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at`       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
@@ -250,6 +254,7 @@ CREATE TABLE IF NOT EXISTS `share_links` (
     `allow_download`   TINYINT(1) NOT NULL DEFAULT 1,
     `password_hash`    VARCHAR(255) NULL DEFAULT NULL,
     `expires_at`       DATETIME NULL DEFAULT NULL,
+    `max_views`        INT UNSIGNED NULL DEFAULT NULL,
     `view_count`       INT UNSIGNED NOT NULL DEFAULT 0,
     `download_count`   INT UNSIGNED NOT NULL DEFAULT 0,
     `last_accessed_at` DATETIME NULL DEFAULT NULL,

@@ -10,6 +10,8 @@ export interface User {
   avatar_url: string | null
   /** Visibilidad de las subidas nuevas (las de carpetas privadas siempre son privadas). */
   default_visibility?: 'public' | 'private'
+  /** Estilo de color propio; null = el de la plataforma. */
+  theme_preset?: 'blizzard' | 'nebula' | 'supernova' | 'techmaleon' | null
   created_at: string | null
 }
 

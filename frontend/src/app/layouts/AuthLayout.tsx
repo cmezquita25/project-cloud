@@ -18,7 +18,8 @@ export function AuthLayout() {
     isFirstMount.current = false
   }, [])
 
-  const orgName = settings?.organization_name || 'Project Cloud'
+  // Mientras llega la configuración no se muestra nada (antes salía «Project Cloud» un instante).
+  const orgName = settings ? settings.organization_name || 'Project Cloud' : ''
   const slogan = settings?.organization_slogan?.trim() || null
   const hasLogo = !!(settings && (settings.logo_white || settings.logo_dark))
 

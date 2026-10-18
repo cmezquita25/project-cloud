@@ -38,7 +38,8 @@ export function MaintenanceScreen({ status }: { status: MaintenanceStatus }) {
 
   const copy = status.reason === 'update' || status.reason === 'restore' ? COPY[status.reason] : COPY.manual
   const Icon = copy.icon
-  const orgName = settings?.organization_name || 'Project Cloud'
+  // Mientras llega la configuración no se muestra nada (antes salía «Project Cloud» un instante).
+  const orgName = settings ? settings.organization_name || 'Project Cloud' : ''
   const hasLogo = !!(settings && (settings.logo_white || settings.logo_dark))
   const logoVariant = theme === 'light' && settings?.logo_dark ? 'dark' : 'white'
 

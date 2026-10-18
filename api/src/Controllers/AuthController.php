@@ -206,6 +206,14 @@ final class AuthController
             }
             $fields['default_visibility'] = $visibility;
         }
+        // Estilo de color propio (solo para este usuario); null = el de la plataforma.
+        if (array_key_exists('theme_preset', $body)) {
+            $preset = $body['theme_preset'];
+            if ($preset !== null && !in_array($preset, ['blizzard', 'nebula', 'supernova', 'techmaleon'], true)) {
+                throw new HttpException(422, 'VALIDATION_ERROR', 'Estilo de color no válido.');
+            }
+            $fields['theme_preset'] = $preset;
+        }
 
         if ($fields === []) {
             throw HttpException::badRequest('Nada que actualizar.');

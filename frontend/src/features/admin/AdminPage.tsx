@@ -160,7 +160,9 @@ export function AdminPage() {
 
   const { data: usersData, isLoading: usersLoading } = useQuery({
     queryKey: ['admin', 'users', userPage, userLimit, userFilters],
-    queryFn: () => adminApi.users(userPage, userLimit, userFilters)
+    queryFn: () => adminApi.users(userPage, userLimit, userFilters),
+    // «Última conexión» se refresca sola cada minuto mientras se ve la pestaña.
+    refetchInterval: tab === 'users' ? 60_000 : false,
   })
   const users = usersData?.items ?? []
   const userTotal = usersData?.total ?? 0

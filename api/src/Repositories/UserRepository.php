@@ -91,6 +91,7 @@ class UserRepository
             'max_upload_bytes' => 'max_upload_bytes',
             'used_bytes'       => 'used_bytes',
             'created_at'       => 'created_at',
+            'last_seen_at'     => 'last_seen_at',
         ];
 
         $sortCol = $sortWhitelist[$filters['sort'] ?? 'id'] ?? 'id';
@@ -135,7 +136,8 @@ class UserRepository
         $total = (int) $countStmt->fetchColumn();
 
         // --- SELECT ---
-        $sql  = "SELECT u.*, COALESCE(f.real_used, 0) AS used_bytes 
+        $sql  = "SELECT u.*, COALESCE(f.real_used, 0) AS used_bytes,
+                        TIMESTAMPDIFF(SECOND, u.last_seen_at, NOW()) AS last_seen_ago 
                  FROM users u 
                  LEFT JOIN (
                      SELECT user_id, SUM(size_bytes) AS real_used 
@@ -156,6 +158,18 @@ class UserRepository
         $stmt->execute();
 
         return ['items' => $stmt->fetchAll(), 'total' => $total];
+    }
+
+    /**
+     * Marca actividad del usuario (columna «Última conexión»). Escribe como
+     * mucho una vez por minuto, aunque haya muchas peticiones.
+     */
+    public function touchLastSeen(int $id): void
+    {
+        $this->pdo->prepare(
+            'UPDATE users SET last_seen_at = NOW(), updated_at = updated_at
+              WHERE id = ? AND (last_seen_at IS NULL OR last_seen_at < DATE_SUB(NOW(), INTERVAL 60 SECOND))'
+        )->execute([$id]);
     }
 
     public function existsByUsernameOrEmail(string $username, string $email, int $excludeId = 0): bool
@@ -190,7 +204,7 @@ class UserRepository
      */
     public function update(int $id, array $fields): void
     {
-        $allowed = ['email', 'display_name', 'role', 'quota_bytes', 'max_upload_bytes', 'status', 'default_visibility'];
+        $allowed = ['email', 'display_name', 'role', 'quota_bytes', 'max_upload_bytes', 'status', 'default_visibility', 'theme_preset'];
         $set = [];
         $params = [];
         foreach ($allowed as $col) {

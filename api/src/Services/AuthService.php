@@ -44,6 +44,12 @@ final class AuthService
             throw new HttpException(403, 'ACCOUNT_SUSPENDED', 'Tu cuenta está suspendida.');
         }
 
+        try {
+            $this->users->touchLastSeen((int) $user['id']);
+        } catch (\Throwable) {
+            // la conexión se registra en la siguiente petición
+        }
+
         return $this->issueTokens($user, null, $userAgent, $ip);
     }
 
@@ -159,6 +165,7 @@ final class AuthService
             'max_upload_bytes' => (int) $user['max_upload_bytes'],
             'avatar_url'       => AvatarService::urlFor((int) $user['id']),
             'default_visibility' => (string) ($user['default_visibility'] ?? 'public'),
+            'theme_preset'     => isset($user['theme_preset']) && $user['theme_preset'] !== '' ? (string) $user['theme_preset'] : null,
             'created_at'       => $user['created_at'] ?? null,
         ];
     }

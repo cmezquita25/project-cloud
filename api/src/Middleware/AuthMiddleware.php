@@ -44,6 +44,12 @@ final class AuthMiddleware implements Middleware
             throw HttpException::unauthorized('Tu cuenta ha sido suspendida. Ponte en contacto con el administrador.', 'ACCOUNT_SUSPENDED');
         }
 
+        try {
+            (new UserRepository())->touchLastSeen($userId);
+        } catch (\Throwable) {
+            // Nunca bloquea la petición (p. ej. durante una actualización, antes de migrar).
+        }
+
         $request->setUser([
             'id'           => $userId,
             'role'         => (string) ($user['role'] ?? 'user'),

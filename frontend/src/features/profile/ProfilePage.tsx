@@ -1,4 +1,5 @@
 import { UploadPrivacyCard } from './components/UploadPrivacyCard'
+import { ThemePreferenceCard } from './components/ThemePreferenceCard'
 import { useRef, useState, type FormEvent } from 'react'
 import { Save, KeyRound, ShieldCheck, User as UserIcon, Camera, Trash2 } from 'lucide-react'
 import { Avatar, Button, Dialog, Input, Spinner, useToast } from '@shared/ui'
@@ -270,6 +271,7 @@ export function ProfilePage() {
             </div>
           </form>
         </div>
+        <ThemePreferenceCard />
         <UploadPrivacyCard />
       </div>
 

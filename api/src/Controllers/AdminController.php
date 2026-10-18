@@ -814,6 +814,8 @@ final class AdminController
             'max_upload_bytes' => (int) ($u['max_upload_bytes'] ?? 0),
             'avatar_url'       => AvatarService::urlFor((int) ($u['id'] ?? 0)),
             'created_at'       => $u['created_at'] ?? null,
+            // Segundos desde la última actividad (calculado por la BD); null = nunca entró.
+            'last_seen_ago'    => isset($u['last_seen_ago']) ? (int) $u['last_seen_ago'] : null,
         ];
     }
 

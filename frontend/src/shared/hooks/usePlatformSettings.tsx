@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { api } from '../api'
 import { APP_VERSION } from '../config/version'
+import { useAuth } from '@features/auth/AuthProvider'
 
 interface PlatformSettings {
   logo_favicon: boolean
@@ -112,8 +113,93 @@ export function patchPlatformSettings(patch: Partial<PlatformSettings>): void {
 
 const PlatformSettingsContext = createContext<PlatformSettings | null>(null)
 
+/** Última configuración pública conocida: se pinta desde el primer instante (nombre, logos). */
+const SETTINGS_CACHE_KEY = 'pc-platform-settings'
+
+function readCachedSettings(): PlatformSettings | null {
+  try {
+    const raw = localStorage.getItem(SETTINGS_CACHE_KEY)
+    return raw ? (JSON.parse(raw) as PlatformSettings) : null
+  } catch {
+    return null
+  }
+}
+
+function writeCachedSettings(data: PlatformSettings): void {
+  try {
+    localStorage.setItem(SETTINGS_CACHE_KEY, JSON.stringify(data))
+  } catch {
+    /* sin almacenamiento: se usará lo que llegue de la API */
+  }
+}
+
+const hexToRgb = (hexStr: string) => {
+  const hex = hexStr.replace('#', '')
+  if (hex.length === 6) {
+    const r = parseInt(hex.substring(0, 2), 16)
+    const g = parseInt(hex.substring(2, 4), 16)
+    const b = parseInt(hex.substring(4, 6), 16)
+    return `${r} ${g} ${b}`
+  }
+  return null
+}
+
+/**
+ * Aplica el estilo de color. Si el usuario eligió uno propio (Mi perfil), se usa
+ * ese tal cual, sin los colores personalizados del admin; si no, el de la
+ * plataforma con sus colores personalizados encima.
+ */
+function applyAppearance(data: PlatformSettings, userPreset: string | null | undefined): void {
+  const own = userPreset ? normalizeThemePreset(userPreset) : null
+  applyThemePreset(own ?? normalizeThemePreset(data.theme_preset))
+  const root = document.documentElement
+  const custom = own ? null : data
+
+  /*
+    Color primario personalizado, con variante propia para modo oscuro.
+
+    Va en una hoja de estilos con dos reglas (no inline en <html>, que ganaría
+    también a `.dark`): el color tal cual en claro y una versión aclarada en
+    oscuro. La especificidad (`html:root:root`, `html.dark:root:root`) supera a
+    la de los presets (`:root[data-theme-preset]`), así la personalización
+    sigue mandando.
+  */
+  root.style.removeProperty('--color-primary')
+  let customStyle = document.getElementById('pc-custom-primary') as HTMLStyleElement | null
+  const rgb = custom?.primary_color ? hexToRgb(custom.primary_color) : null
+  if (rgb) {
+    // Aclarado para oscuro: mezcla con blanco al 40 %.
+    const light = rgb
+      .split(' ')
+      .map((c) => Math.round(Number(c) + (255 - Number(c)) * 0.4))
+      .join(' ')
+    if (!customStyle) {
+      customStyle = document.createElement('style')
+      customStyle.id = 'pc-custom-primary'
+      document.head.appendChild(customStyle)
+    }
+    customStyle.textContent =
+      `html:root:root{--color-primary:${rgb};--color-check:${rgb}}` +
+      `html.dark:root:root{--color-primary:${light}}`
+  } else {
+    // Sin color personalizado: vuelven los valores del preset (index.css).
+    customStyle?.remove()
+  }
+
+  const setVar = (name: string, hex: string | null | undefined) => {
+    const value = hex ? hexToRgb(hex) : null
+    if (value) root.style.setProperty(name, value)
+    else root.style.removeProperty(name)
+  }
+  setVar('--color-gradient-start', custom?.btn_gradient_start)
+  setVar('--color-gradient-end', custom?.btn_gradient_end)
+  setVar('--color-btn-text', custom?.btn_text_color)
+}
+
 export function PlatformSettingsProvider({ children }: { children: ReactNode }) {
-  const [settings, setSettings] = useState<PlatformSettings | null>(null)
+  const [settings, setSettings] = useState<PlatformSettings | null>(readCachedSettings)
+  const { user } = useAuth()
+  const userPreset = user?.theme_preset ?? null
 
   useEffect(() => {
     let active = true
@@ -122,16 +208,11 @@ export function PlatformSettingsProvider({ children }: { children: ReactNode }) 
         if (!active) return
         if (reloadIfVersionChanged(data.app_version)) return
         setSettings(data)
-        applyThemePreset(normalizeThemePreset(data.theme_preset))
-
-        // Título del navegador: "<Organización> - Drive" (o el nombre por defecto).
-        document.title = data.organization_name
-          ? `${data.organization_name} - Drive`
-          : 'Project Cloud'
+        writeCachedSettings(data)
 
         if (data.logo_favicon) {
           const url = '/api/v1/settings/logo/favicon?t=' + Date.now()
-          
+
           let iconLink = document.querySelector("link[rel='icon']") as HTMLLinkElement
           if (!iconLink) {
             iconLink = document.createElement('link')
@@ -149,75 +230,22 @@ export function PlatformSettingsProvider({ children }: { children: ReactNode }) 
           }
           appleLink.href = url
         }
-
-        const hexToRgb = (hexStr: string) => {
-          const hex = hexStr.replace('#', '')
-          if (hex.length === 6) {
-            const r = parseInt(hex.substring(0, 2), 16)
-            const g = parseInt(hex.substring(2, 4), 16)
-            const b = parseInt(hex.substring(4, 6), 16)
-            return `${r} ${g} ${b}`
-          }
-          return null
-        }
-
-        /*
-          Color primario personalizado, con variante propia para modo oscuro.
-
-          Antes se escribía inline en <html>, y un estilo inline gana también
-          a `.dark`: en oscuro quedaba el mismo azul medio que en claro, con
-          poco contraste sobre el vidrio oscuro (textos, iconos, badges,
-          activos). Ahora va en una hoja de estilos con dos reglas: el color
-          tal cual en claro y una versión aclarada en oscuro. La especificidad
-          (`html:root:root`, `html.dark:root:root`) supera a la de los presets
-          (`:root[data-theme-preset]`), así la personalización sigue mandando.
-        */
-        document.documentElement.style.removeProperty('--color-primary')
-        let customStyle = document.getElementById('pc-custom-primary') as HTMLStyleElement | null
-        const rgb = data.primary_color ? hexToRgb(data.primary_color) : null
-        if (rgb) {
-          // Aclarado para oscuro: mezcla con blanco al 40 %.
-          const light = rgb
-            .split(' ')
-            .map((c) => Math.round(Number(c) + (255 - Number(c)) * 0.4))
-            .join(' ')
-          if (!customStyle) {
-            customStyle = document.createElement('style')
-            customStyle.id = 'pc-custom-primary'
-            document.head.appendChild(customStyle)
-          }
-          customStyle.textContent =
-            `html:root:root{--color-primary:${rgb};--color-check:${rgb}}` +
-            `html.dark:root:root{--color-primary:${light}}`
-        } else {
-          // Sin color personalizado: vuelven los valores del preset (index.css).
-          customStyle?.remove()
-        }
-
-        if (data.btn_gradient_start) {
-          const rgb = hexToRgb(data.btn_gradient_start)
-          if (rgb) document.documentElement.style.setProperty('--color-gradient-start', rgb)
-        } else {
-          document.documentElement.style.removeProperty('--color-gradient-start')
-        }
-        
-        if (data.btn_gradient_end) {
-          const rgb = hexToRgb(data.btn_gradient_end)
-          if (rgb) document.documentElement.style.setProperty('--color-gradient-end', rgb)
-        } else {
-          document.documentElement.style.removeProperty('--color-gradient-end')
-        }
-        if (data.btn_text_color) {
-          const rgb = hexToRgb(data.btn_text_color)
-          if (rgb) document.documentElement.style.setProperty('--color-btn-text', rgb)
-        } else {
-          document.documentElement.style.removeProperty('--color-btn-text')
-        }
       })
       .catch(console.error)
 
     return () => { active = false }
   }, [])
+
+  // Estilo de color: el del usuario (si eligió uno) o el de la plataforma.
+  useEffect(() => {
+    if (settings) applyAppearance(settings, userPreset)
+  }, [settings, userPreset])
+
+  // Título del navegador: "<Organización> - Drive" (o el nombre por defecto).
+  // La página de un enlace compartido pone el suyo encima.
+  useEffect(() => {
+    if (settings) document.title = settings.organization_name ? `${settings.organization_name} - Drive` : 'Drive'
+  }, [settings?.organization_name])
 
   // Cambios hechos desde Configuración que no requieren recargar la página
   // (p. ej. el logo de los QR): se fusionan en la configuración en memoria.
