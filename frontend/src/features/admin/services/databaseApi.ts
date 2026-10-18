@@ -106,7 +106,16 @@ export interface BackupSettingsPayload {
   next_run: string | null
   last_scheduled_run: string | null
   estimate: BackupEstimate
+  /** Libre dentro de la capacidad asignada a la plataforma (no el disco físico del servidor). */
   disk_free: number | null
+  capacity: {
+    free: number | null
+    capacity: number
+    used: number
+    backups: number
+    disk_free: number | null
+    source: 'capacity' | 'disk'
+  }
   job: BackupJob | null
 }
 

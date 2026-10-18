@@ -11,6 +11,7 @@ use ProjectCloud\Core\Database;
 use ProjectCloud\Core\Paths;
 use ProjectCloud\Services\AssetsService;
 use ProjectCloud\Services\DatabaseManagerService;
+use ProjectCloud\Services\StorageCapacity;
 use ZipArchive;
 
 /**
@@ -197,12 +198,15 @@ final class RestoreAnalyzer
             }
 
             // ── Espacio ──────────────────────────────────────────────────────
-            $free = @disk_free_space(rtrim((string) Config::get('storage.path', ''), '/\\') ?: Paths::apiRoot());
-            $needed = (int) ($restoreBytes * 1.1);
-            if ($free !== false && $free < $needed) {
-                $add('disk', 'error', 'Espacio en disco', 'Se necesitan ~' . self::human($needed) . ' y quedan ' . self::human((int) $free) . ' libres.');
+            // Con la capacidad asignada (no el disco físico). Los archivos actuales se
+            // reemplazan, así que solo cuenta lo que la copia trae de más.
+            $capacity = StorageCapacity::status();
+            $needed = (int) (max(0, $restoreBytes - $capacity['used']) * 1.1);
+            $free = $capacity['free'];
+            if ($free !== null && $free < $needed) {
+                $add('disk', 'error', 'Espacio disponible', 'La restauración necesita ~' . self::human($needed) . ' más y quedan ' . self::human($free) . ' libres de la capacidad asignada.');
             } else {
-                $add('disk', 'ok', 'Espacio en disco', $free === false ? 'No se pudo medir' : self::human((int) $free) . ' libres (se necesitan ~' . self::human($needed) . ')');
+                $add('disk', 'ok', 'Espacio disponible', $free === null ? 'No se pudo medir' : self::human($free) . ' libres de la capacidad asignada' . ($needed > 0 ? ' (se necesitan ~' . self::human($needed) . ')' : ''));
             }
 
             return $this->result($filename, $path, $manifest, $checks, $orphans['count'], $restoreBytes);

@@ -218,7 +218,11 @@ export function BackupScheduleCard() {
             {draft.max_copies > 1 && ` Con ${draft.max_copies} copias, hasta ${formatBytes(peak)} mientras se crea la siguiente.`}
           </p>
           <p className={lowSpace ? 'font-medium text-red-500' : 'text-content-tertiary'}>
-            {shown.disk_free !== null ? `${formatBytes(shown.disk_free)} libres en el servidor` : 'Espacio libre desconocido'}
+            {shown.disk_free === null
+              ? 'Espacio libre desconocido'
+              : data.capacity.source === 'capacity'
+                ? `${formatBytes(shown.disk_free)} libres de los ${formatBytes(data.capacity.capacity)} asignados a la plataforma (las copias actuales ocupan ${formatBytes(data.capacity.backups)})`
+                : `${formatBytes(shown.disk_free)} libres en el disco del servidor`}
             {lowSpace && ': no alcanza para una copia nueva.'}
           </p>
         </div>

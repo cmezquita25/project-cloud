@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace ProjectCloud\Controllers;
 
-use ProjectCloud\Core\Paths;
+use ProjectCloud\Services\StorageCapacity;
 use ProjectCloud\Core\Request;
 use ProjectCloud\Core\Response;
 use ProjectCloud\Services\ActivityLogger;
@@ -84,13 +84,14 @@ final class BackupController
             'last_scheduled_run' => $last !== null ? gmdate('c', $last) : null,
             'estimate'           => $settings->estimate(),
             'disk_free'          => self::diskFree(),
+            'capacity'           => StorageCapacity::status(),
             'job'                => (new BackupRunner())->job(),
         ];
     }
 
+    /** Libre dentro de la capacidad asignada a la plataforma (no el disco físico del servidor). */
     private static function diskFree(): ?int
     {
-        $free = @disk_free_space(Paths::var('backups'));
-        return $free === false ? null : (int) $free;
+        return StorageCapacity::free();
     }
 }

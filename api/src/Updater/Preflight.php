@@ -7,6 +7,7 @@ namespace ProjectCloud\Updater;
 use ProjectCloud\Core\AppVersion;
 use ProjectCloud\Core\Paths;
 use ProjectCloud\Services\AssetsService;
+use ProjectCloud\Services\StorageCapacity;
 
 /**
  * Requisitos para instalar una versión. Se muestran al admin antes de
@@ -57,9 +58,9 @@ final class Preflight
 
         $size = (int) ($manifest['package']['size_bytes'] ?? 0);
         $needed = $size * 4 + self::DISK_MARGIN; // paquete + archivos extraídos + respaldo
-        $free = @disk_free_space($apiRoot);
-        $checks[] = self::check('disk', 'Espacio libre en disco', $free === false || $free >= $needed, true,
-            $free === false ? 'No se pudo medir (se continuará)' : self::human((int) $free) . ' libres, se necesitan ~' . self::human($needed));
+        $free = StorageCapacity::free(); // capacidad asignada a la plataforma, no el disco físico
+        $checks[] = self::check('disk', 'Espacio disponible', $free === null || $free >= $needed, true,
+            $free === null ? 'No se pudo medir (se continuará)' : self::human($free) . ' libres de la capacidad asignada, se necesitan ~' . self::human($needed));
 
         $sharedFolder = basename((new AssetsService())->rootPath());
         $collides = in_array(strtolower($sharedFolder), self::PACKAGE_PUBLIC_DIRS, true);

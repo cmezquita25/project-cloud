@@ -10,6 +10,7 @@ use ProjectCloud\Core\HttpException;
 use ProjectCloud\Core\Paths;
 use ProjectCloud\Repositories\NotificationRepository;
 use ProjectCloud\Services\DatabaseManagerService;
+use ProjectCloud\Services\StorageCapacity;
 
 /**
  * Crea copias en segundo plano (manuales y programadas) y aplica la rotación.
@@ -94,11 +95,11 @@ final class BackupRunner
 
         $config = $this->settings->get();
         $estimate = $this->settings->estimate($config);
-        $free = @disk_free_space($this->dir);
-        if ($free !== false && $free < $estimate['total'] * self::DISK_MARGIN) {
+        $free = StorageCapacity::free(); // capacidad asignada, no el disco físico
+        if ($free !== null && $free < $estimate['total'] * self::DISK_MARGIN) {
             $this->release();
             throw new HttpException(507, 'BACKUP_NO_SPACE', sprintf(
-                'No hay espacio suficiente: la copia ocupará ~%s y quedan %s libres. Reduce el contenido de la copia o el número de copias a conservar.',
+                'No hay espacio suficiente: la copia ocupará ~%s y quedan %s libres de la capacidad asignada a la plataforma. Reduce el contenido de la copia, el número de copias a conservar o aumenta la capacidad en Límites del Servidor.',
                 self::human((int) ($estimate['total'] * self::DISK_MARGIN)),
                 self::human((int) $free)
             ));
