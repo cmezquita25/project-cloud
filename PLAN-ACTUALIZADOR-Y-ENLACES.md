@@ -689,7 +689,7 @@ Servicio central: `ShareLinkPolicy::canCreate(user, target)`, junto a `SharePerm
 | **5. Visibilidad privada** ✅ *implementada y probada en local (ver §14)* | Columna `visibility` · `storage/.private` · mover binarios · proteger thumbs · default de subidas en el perfil | Un archivo privado da 404 en `/storage/…` y funciona dentro de la app | M |
 | **6. Enlaces + QR** ✅ *implementada y probada en local (ver §16)* | `share_links` · `ShareLinkPolicy` · página `/s/{token}` · **vista pública de carpeta de solo lectura** (sidebar vacía, migas acotadas, subcarpetas, vista previa y descarga) · diálogo unificado · QR · caducidad · contador · en **Mi unidad y en la unidad compartida** | Carlos crea un QR; Pedro (invitado) no ve la opción; un visitante sin cuenta navega la carpeta pero no puede subir ni salir de ella; el enlace caduca a la hora indicada | L |
 | **7. Panel de enlaces** ✅ *implementada y probada en local (ver §17)* | Mis enlaces · revocar todos · panel admin · políticas · limpieza de hits | «Revocar todos» deja todos los enlaces en 410 | S |
-| **→ Release v2.3.0** | Fases 5–7, distribuidas por OTA | — | — |
+| **→ Release v2.3.0** ✅ *paquete generado y verificado (ver §18)* | Fases 5–7, distribuidas por OTA | — | — |
 
 ---
 
@@ -1050,3 +1050,15 @@ No hace falta subir nada por FTP a `drive`.
 **API nueva:** `GET /v1/links/mine`, `POST /v1/links/revoke`, `GET /v1/links/{id}/hits`, `GET /v1/admin/links`, `POST /v1/admin/links/revoke`, `GET/PUT /v1/admin/links/policy`. Sin migración: las políticas viven en `settings`.
 
 **Probado en local:** 48 comprobaciones de API (panel, búsqueda, permisos, accesos sin IP, revocar seleccionados/todos/instancia, políticas al crear y editar, desactivar y reactivar, limpieza por cron, subida y ajuste de la imagen del QR) más las 71 de la Fase 6, y recorrido de interfaz con Playwright.
+
+---
+
+## 18. Publicación v2.3.0 (fases 5, 6 y 7)
+
+Paquete en `release/out/`: `manifest.json` y `releases/project-cloud-2.3.0.zip` (0.80 MB, 143 archivos, firma verificada). Schema 7: migraciones `0005`–`0007`, reversibles (solo añaden).
+
+1. En `techmaleon.com.mx/project-cloud/`: sube `releases/project-cloud-2.3.0.zip` y, **al final**, reemplaza `manifest.json`.
+2. En `drive`: **Configuración → Actualizaciones → Buscar actualizaciones** → «Actualizar ahora» → «Crear copia del sistema y continuar».
+3. Al terminar: el pie de página dice **v2.3.0**; aparecen «Mis enlaces» en la barra lateral, «Enlace y QR» en el menú de tus archivos y Administración → Enlaces.
+
+Alternativa sin actualizador: subir `frontend/dist` (mismo contenido) sobre `httpdocs` y aplicar las migraciones desde Base de datos.
