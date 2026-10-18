@@ -14,6 +14,8 @@ interface FileGridViewProps {
   onAction: (item: DriveItem, action: ItemAction) => void
   interactions?: ItemInteractions
   capabilities?: ExplorerCapabilities
+  /** Vista pública de un enlace: sin menú de acciones. */
+  readOnly?: boolean
 }
 
 const itemKey = (i: DriveItem) => `${i.type}-${i.id}`
@@ -32,11 +34,12 @@ export function FileGridView({
   onAction,
   interactions,
   capabilities,
+  readOnly = false,
 }: FileGridViewProps) {
   const folders = items.filter((i): i is FolderItem => i.type === 'folder')
   const files = items.filter((i): i is FileItem => i.type === 'file')
 
-  const common = { selected, onOpen, onAction, interactions, capabilities }
+  const common = { selected, onOpen, onAction, interactions, capabilities, readOnly }
 
   return (
     <div className="space-y-6">
@@ -72,6 +75,7 @@ interface CardProps<T extends DriveItem> {
   onAction: (item: DriveItem, action: ItemAction) => void
   interactions?: ItemInteractions
   capabilities?: ExplorerCapabilities
+  readOnly?: boolean
 }
 
 /** Props DOM comunes de interacción (clic con modificadores, menú contextual, arrastre). */
@@ -87,7 +91,7 @@ function itemHandlers(item: DriveItem, onOpen: (i: DriveItem) => void, interacti
 }
 
 /** Ficha rectangular de carpeta (fila superior, además destino de soltado). */
-function FolderChip({ item, selected, onOpen, onAction, interactions, capabilities }: CardProps<FolderItem>) {
+function FolderChip({ item, selected, onOpen, onAction, interactions, capabilities, readOnly }: CardProps<FolderItem>) {
   const { icon: Icon, className } = getFileIcon(item.name, true)
   const key = itemKey(item)
   const isSelected = selected.has(key)
@@ -123,16 +127,16 @@ function FolderChip({ item, selected, onOpen, onAction, interactions, capabiliti
       {item.is_starred && <Star size={14} className="shrink-0 fill-warning text-warning" />}
       {item.visibility === 'private' && <LockKeyhole size={14} className="shrink-0 text-content-tertiary" aria-label="Privado" />}
       {item.blocked_actions && item.blocked_actions.length > 0 && <Lock size={14} className="shrink-0 text-danger" />}
-      <div className="flex shrink-0 items-center justify-end p-1 opacity-0 group-hover:opacity-100 group-focus:opacity-100 group-focus-within:opacity-100" onClick={(e) => e.stopPropagation()}>
+      {!readOnly && <div className="flex shrink-0 items-center justify-end p-1 opacity-0 group-hover:opacity-100 group-focus:opacity-100 group-focus-within:opacity-100" onClick={(e) => e.stopPropagation()}>
         <ItemActionsMenu item={item} onAction={onAction} capabilities={capabilities} />
-      </div>
+      </div>}
       </div>
     </div>
   )
 }
 
 /** Tarjeta cuadrada de archivo con previsualización (cuadrícula inferior). */
-function FileCard({ item, selected, onOpen, onAction, interactions, capabilities }: CardProps<FileItem>) {
+function FileCard({ item, selected, onOpen, onAction, interactions, capabilities, readOnly }: CardProps<FileItem>) {
   const { icon: Icon, className } = getFileIcon(item.name, false)
   const isSelected = selected.has(itemKey(item))
 
@@ -176,9 +180,9 @@ function FileCard({ item, selected, onOpen, onAction, interactions, capabilities
         {item.is_starred && <Star size={13} className="shrink-0 fill-warning text-warning" />}
       {item.visibility === 'private' && <LockKeyhole size={13} className="shrink-0 text-content-tertiary" aria-label="Privado" />}
         {item.blocked_actions && item.blocked_actions.length > 0 && <Lock size={13} className="shrink-0 text-danger" />}
-        <div className="absolute right-1 top-1 opacity-0 group-hover:opacity-100 group-focus:opacity-100 group-focus-within:opacity-100" onClick={(e) => e.stopPropagation()}>
+        {!readOnly && <div className="absolute right-1 top-1 opacity-0 group-hover:opacity-100 group-focus:opacity-100 group-focus-within:opacity-100" onClick={(e) => e.stopPropagation()}>
           <ItemActionsMenu item={item} onAction={onAction} capabilities={capabilities} />
-        </div>
+        </div>}
       </div>
       </div>
     </div>

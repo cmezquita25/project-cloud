@@ -28,6 +28,7 @@ import { AssetsPage } from '@features/assets/AssetsPage'
 import { LoginPage } from '@features/auth/LoginPage'
 import { ForgotPasswordPage } from '@features/auth/ForgotPasswordPage'
 import { ResetPasswordPage } from '@features/auth/ResetPasswordPage'
+import { PublicLinkPage } from '@features/public-link/PublicLinkPage'
 
 /**
  * Rutas de la aplicación.
@@ -60,6 +61,9 @@ const router = createBrowserRouter([
           { path: '/reset-password', element: <ResetPasswordPage /> },
         ],
       },
+
+      // Enlace compartido: sin sesión y de solo lectura (con o sin sesión abierta).
+      { path: '/s/:token', element: <PublicLinkPage /> },
 
       // App autenticada.
       {

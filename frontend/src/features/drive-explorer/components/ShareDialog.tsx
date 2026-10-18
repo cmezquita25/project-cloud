@@ -1,9 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { UserPlus, Trash2, Shield, Users, Info } from 'lucide-react'
+import { UserPlus, Trash2, Shield, Users, Info, Link2 } from 'lucide-react'
 import { Dialog, Button, Input, Select, Avatar, Spinner, useToast } from '@shared/ui'
 import { api } from '@shared/api'
 import type { Collaborator } from '../types'
+import { cn } from '@shared/lib/cn'
+import { LinkSharePanel } from '@features/share-links/components/LinkSharePanel'
+import type { LinkTarget } from '@features/share-links/types'
 
 interface ShareDialogProps {
   open: boolean
@@ -12,7 +15,17 @@ interface ShareDialogProps {
   targetId: number | string | null
   targetName: string
   onShareSuccess?: () => void
+  /** Pestaña «Personas» (invitaciones). En la unidad compartida no existe. */
+  showPeople?: boolean
+  /** Destino de enlaces: si se pasa, aparece la pestaña «Enlace y QR». */
+  linkTarget?: LinkTarget | null
+  initialTab?: 'people' | 'link'
+  /** URL directa del archivo (si es público), para copiarla o sacar su QR. */
+  publicUrl?: string | null
+  onMakePrivate?: () => Promise<void>
 }
+
+type Tab = 'people' | 'link'
 
 interface UserSuggestion {
   id: number
@@ -29,7 +42,13 @@ export function ShareDialog({
   targetId,
   targetName,
   onShareSuccess,
+  showPeople = true,
+  linkTarget = null,
+  initialTab = 'people',
+  publicUrl,
+  onMakePrivate,
 }: ShareDialogProps) {
+  const [tab, setTab] = useState<Tab>(showPeople && (initialTab === 'people' || !linkTarget) ? 'people' : 'link')
   const toast = useToast()
   const queryClient = useQueryClient()
   const [email, setEmail] = useState('')
@@ -61,7 +80,7 @@ export function ShareDialog({
   }
 
   useEffect(() => {
-    if (open) {
+    if (open && showPeople) {
       setEmail('')
       setPermissionLevel('read')
       setSuggestions([])
@@ -173,8 +192,36 @@ export function ShareDialog({
   ]
 
   return (
-    <Dialog open={open} onClose={onClose} title={`Compartir acceso — ${targetName}`} size="2xl">
-      <div className="space-y-6 pt-1">
+    <Dialog open={open} onClose={onClose} title={linkTarget ? `Compartir — ${targetName}` : `Compartir acceso — ${targetName}`} size="2xl">
+      <div className="space-y-5 pt-1">
+        {showPeople && linkTarget && (
+          <div role="tablist" className="flex gap-1 rounded-xl bg-slate-900/[0.04] p-1 dark:bg-white/[0.05]">
+            {([
+              { id: 'people', label: 'Personas', icon: Users },
+              { id: 'link', label: 'Enlace y QR', icon: Link2 },
+            ] as const).map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                role="tab"
+                aria-selected={tab === t.id}
+                onClick={() => setTab(t.id)}
+                className={cn(
+                  'flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                  tab === t.id ? 'bg-surface text-content-primary shadow-elevation-1 dark:bg-white/[0.1]' : 'text-content-secondary hover:text-content-primary'
+                )}
+              >
+                <t.icon size={16} />
+                {t.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {tab === 'link' && linkTarget ? (
+          <LinkSharePanel target={linkTarget} publicUrl={publicUrl} onMakePrivate={onMakePrivate} />
+        ) : (
+        <div className="space-y-6">
         {/* Banner informativo de la organización */}
         <div className="flex items-start gap-2.5 rounded-xl border border-info/30 bg-info-subtle/40 p-3.5 text-xs text-content-secondary">
           <Info size={16} className="mt-0.5 shrink-0 text-info" />
@@ -326,6 +373,9 @@ export function ShareDialog({
             </div>
           )}
         </div>
+
+        </div>
+        )}
 
         <div className="flex justify-end pt-2">
           <Button variant="secondary" onClick={onClose} className="px-5">

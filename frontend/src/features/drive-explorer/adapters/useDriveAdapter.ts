@@ -18,6 +18,7 @@ export function useDriveAdapter(): IExplorerAdapter {
       canDelete: true,
       canShare: true,
       canChangeVisibility: true,
+      canCreateLinks: true,
     },
 
     loadContents: async (folderId, sort, signal, offset, limit, _q, type, date, ownerId) => {

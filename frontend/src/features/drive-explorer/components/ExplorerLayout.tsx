@@ -49,6 +49,7 @@ import { useMarqueeSelection } from '../hooks/useMarqueeSelection'
 import { dragState, isInternalDrag, PC_DND_MIME } from '../services/dragState'
 import { PublicUrlsModal } from './PublicUrlsModal'
 import { Link as LinkIcon } from 'lucide-react'
+import type { LinkTarget } from '@features/share-links/types'
 import type { DriveItem, FolderItem, FolderRef, ItemAction, ItemInteractions, ViewMode } from '../types'
 
 const key = (i: DriveItem) => `${i.type}-${i.id}`
@@ -59,7 +60,7 @@ type DialogState =
   | { kind: 'move'; mode: 'move' | 'copy'; items: DriveItem[] }
   | { kind: 'delete'; items: DriveItem[] }
   | { kind: 'block'; item: DriveItem }
-  | { kind: 'share'; item: DriveItem }
+  | { kind: 'share'; item: DriveItem; tab: 'people' | 'link' }
   | { kind: 'shareUnit' }
   | { kind: 'visibility'; item: DriveItem }
   | null
@@ -380,7 +381,9 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
       case 'open':
         return openItem(item)
       case 'share':
-        return setDialog({ kind: 'share', item })
+        return setDialog({ kind: 'share', item, tab: 'people' })
+      case 'link':
+        return setDialog({ kind: 'share', item, tab: 'link' })
       case 'details':
         return setShowDetails(true)
       case 'download':
@@ -417,6 +420,16 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
       case 'block':
         return setDialog({ kind: 'block', item })
     }
+  }
+
+  /** Destino de enlaces del elemento, solo si el usuario puede crearlos. */
+  function linkTargetOf(item: DriveItem): LinkTarget | null {
+    const ownerId = item.owners?.[0]?.id
+    const owner = ownerId === undefined || user?.id === undefined || ownerId === user.id
+    if (!adapter.capabilities.canCreateLinks || !owner) return null
+    return adapter.mode === 'assets'
+      ? { scope: 'org', target_type: item.type, target_path: String(item.id), name: item.name }
+      : { scope: 'drive', target_type: item.type, target_id: Number(item.id), name: item.name }
   }
 
   // --- Handlers de diálogos ---
@@ -786,6 +799,24 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
           targetId={dialog.item.id}
           targetName={dialog.item.name}
           onShareSuccess={() => reload()}
+          initialTab={dialog.tab}
+          showPeople={adapter.mode === 'drive' && adapter.capabilities.canShare}
+          linkTarget={linkTargetOf(dialog.item)}
+          publicUrl={publicUrlOf(dialog.item)}
+          onMakePrivate={
+            adapter.setVisibility
+              ? async () => {
+                  const item = dialog.item
+                  try {
+                    await adapter.setVisibility!(item, 'private')
+                    toast.success(item.type === 'file' ? 'El archivo ahora es privado' : 'La carpeta ahora es privada')
+                    reload()
+                  } catch (e) {
+                    toast.error(e instanceof Error ? e.message : 'No se pudo hacer privado')
+                  }
+                }
+              : undefined
+          }
         />
       )}
       {dialog?.kind === 'shareUnit' && (

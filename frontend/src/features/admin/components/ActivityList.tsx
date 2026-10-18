@@ -1,4 +1,4 @@
-import { LogIn, UploadCloud, Trash2, UserPlus, UserCog, UserX, KeyRound, Activity, DatabaseBackup, History, Settings2, ShieldAlert, ShieldCheck, DownloadCloud, Undo2, Clock, LockKeyhole, Eraser } from 'lucide-react'
+import { LogIn, UploadCloud, Trash2, UserPlus, UserCog, UserX, KeyRound, Activity, DatabaseBackup, History, Settings2, ShieldAlert, ShieldCheck, DownloadCloud, Undo2, Clock, LockKeyhole, Eraser, Link2, Link2Off, PencilLine } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@shared/lib/cn'
 import { formatRelative } from '@shared/lib/formatDate'
@@ -26,6 +26,9 @@ const ACTIONS: Record<string, { label: string; icon: LucideIcon; className: stri
   'cron.run': { label: 'ejecutó las tareas cron', icon: Clock, className: 'text-primary' },
   'file.visibility': { label: 'cambió la visibilidad de un archivo', icon: LockKeyhole, className: 'text-primary' },
   'folder.visibility': { label: 'cambió la visibilidad de una carpeta', icon: LockKeyhole, className: 'text-primary' },
+  'link.create': { label: 'creó un enlace compartido', icon: Link2, className: 'text-success' },
+  'link.update': { label: 'editó un enlace compartido', icon: PencilLine, className: 'text-primary' },
+  'link.revoke': { label: 'revocó un enlace compartido', icon: Link2Off, className: 'text-danger' },
   'activity.cleared': { label: 'limpió registros de auditoría', icon: Eraser, className: 'text-danger' },
   'settings.update': { label: 'cambió la configuración', icon: Settings2, className: 'text-primary' },
   database_migrate_auto: { label: 'aplicó las migraciones de la base de datos', icon: DatabaseBackup, className: 'text-primary' },

@@ -59,6 +59,7 @@ export function useAssetsAdapter(): IExplorerAdapter {
       canDelete: canWrite,
       canShare: false,
       canBlockActions: access?.is_admin ?? false,
+      canCreateLinks: access?.is_admin ?? false,
     },
 
     loadContents: async (folderId, sort, signal, offset, limit, q, type, date) => {
@@ -125,5 +126,5 @@ export function useAssetsAdapter(): IExplorerAdapter {
       if (item.type === 'file') return item.url
       return ''
     }
-  }), [canWrite, access?.folder_name])
+  }), [canWrite, access?.folder_name, access?.is_admin])
 }

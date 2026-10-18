@@ -174,6 +174,12 @@ final class AssetsService
      *
      * @return array{path:string,breadcrumbs:list<array{name:string,path:string}>,folders:list<array<string,mixed>>,files:list<array<string,mixed>>}
      */
+    /** Ruta absoluta (validada contra traversal) de un elemento, exista o no. */
+    public function resolve(string $relative): string
+    {
+        return $this->safe($relative);
+    }
+
     /** Ruta absoluta (validada contra traversal) de un archivo de assets. */
     public function absoluteFile(string $relative): string
     {
@@ -746,6 +752,8 @@ final class AssetsService
             $stmt = $this->pdo->prepare("UPDATE assets_metadata SET path = CONCAT(?, SUBSTRING(path, ?)) WHERE path LIKE ?");
             $stmt->execute([$destRel, strlen($src) + 1, $src . '/%']);
         }
+        // Los enlaces compartidos guardan la ruta: siguen al elemento.
+        (new \ProjectCloud\Repositories\ShareLinkRepository($this->pdo))->rewriteOrgPath($src, $destRel);
 
         return ['type' => is_dir($destAbs) ? 'folder' : 'file', 'name' => $name, 'path' => $destRel];
     }
@@ -793,6 +801,8 @@ final class AssetsService
             $stmt = $this->pdo->prepare("UPDATE assets_metadata SET path = CONCAT(?, SUBSTRING(path, ?)) WHERE path LIKE ?");
             $stmt->execute([$destRel, strlen($src) + 1, $src . '/%']);
         }
+        // Los enlaces compartidos guardan la ruta: siguen al elemento.
+        (new \ProjectCloud\Repositories\ShareLinkRepository($this->pdo))->rewriteOrgPath($src, $destRel);
 
         return ['type' => is_dir($destAbs) ? 'folder' : 'file', 'name' => $newName, 'path' => $destRel];
     }

@@ -14,6 +14,8 @@ export interface ExplorerCapabilities {
   canBlockActions?: boolean
   /** Hacer privado / público (solo el propietario; lo verifica también el servidor). */
   canChangeVisibility?: boolean
+  /** Enlaces y QR: el propietario en Mi unidad, un admin en la unidad compartida. */
+  canCreateLinks?: boolean
 }
 
 export interface IExplorerAdapter {

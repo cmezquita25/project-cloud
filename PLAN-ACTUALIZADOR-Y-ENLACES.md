@@ -687,7 +687,7 @@ Servicio central: `ShareLinkPolicy::canCreate(user, target)`, junto a `SharePerm
 | **4. Restauración con diagnóstico** ✅ *implementada y probada en local (ver §12)* | `backup.json` · analizador · restauración con runner y mantenimiento · cuarentena de huérfanos | El informe detecta los faltantes por filtro y las copias más nuevas que la plataforma | M |
 | **→ Release v2.2.0** | **Primera actualización OTA real** (prueba de fuego del actualizador) | — | — |
 | **5. Visibilidad privada** ✅ *implementada y probada en local (ver §14)* | Columna `visibility` · `storage/.private` · mover binarios · proteger thumbs · default de subidas en el perfil | Un archivo privado da 404 en `/storage/…` y funciona dentro de la app | M |
-| **6. Enlaces + QR** | `share_links` · `ShareLinkPolicy` · página `/s/{token}` · **vista pública de carpeta de solo lectura** (sidebar vacía, migas acotadas, subcarpetas, vista previa y descarga) · diálogo unificado · QR · caducidad · contador · en **Mi unidad y en la unidad compartida** | Carlos crea un QR; Pedro (invitado) no ve la opción; un visitante sin cuenta navega la carpeta pero no puede subir ni salir de ella; el enlace caduca a la hora indicada | L |
+| **6. Enlaces + QR** ✅ *implementada y probada en local (ver §16)* | `share_links` · `ShareLinkPolicy` · página `/s/{token}` · **vista pública de carpeta de solo lectura** (sidebar vacía, migas acotadas, subcarpetas, vista previa y descarga) · diálogo unificado · QR · caducidad · contador · en **Mi unidad y en la unidad compartida** | Carlos crea un QR; Pedro (invitado) no ve la opción; un visitante sin cuenta navega la carpeta pero no puede subir ni salir de ella; el enlace caduca a la hora indicada | L |
 | **7. Panel de enlaces** | Mis enlaces · revocar todos · panel admin · políticas · limpieza de hits | «Revocar todos» deja todos los enlaces en 410 | S |
 | **→ Release v2.3.0** | Fases 5–7, distribuidas por OTA | — | — |
 
@@ -985,3 +985,40 @@ No hace falta subir nada por FTP a `drive`.
   - **Techmaleon** (verde `#00c853` → azul `#1e40af`).
   - Mismo sistema que Blizzard y Nebula, sin parpadeo al recargar.
 - **Corrección de raíz:** el instalador sembraba `primary_color = #3b82f6`, que se aplicaba como color personalizado encima de cualquier tema (enlaces, casillas y foco siempre azules). La migración `0006` lo borra solo si sigue siendo ese valor exacto; las instalaciones nuevas ya no lo siembran. Schema 6.
+
+---
+
+## 16. Fase 6 — Enlaces compartidos y QR (2026-10-17)
+
+**Qué hay:**
+- **Migración `0007`** (schema 7): tablas `share_links` y `share_link_hits` (§5.2).
+- **Quién crea:** el propietario en Mi unidad; un admin en la unidad compartida. Los invitados no, aunque tengan «full». Un admin no crea enlaces en la unidad de otro usuario, pero sí puede **revocarlos** (no editarlos).
+- **Menú «Enlace y QR»** y diálogo «Compartir» con pestañas *Personas* / *Enlace y QR*. En la unidad compartida solo existe la pestaña de enlace.
+- **Por enlace:** acceso (*Cualquiera* / *Solo miembros*), caducidad (1 h · 24 h · 7 días · 30 días · fecha · sin caducidad), etiqueta, contraseña, permitir descarga. Varios enlaces por elemento.
+- **Editar:** extender, hacer permanente o **reactivar** un caducado con el mismo token (el QR impreso sigue sirviendo). Revocar → 410.
+- **QR** generado en el navegador (librería `qrcode`, nivel H) con el favicon de la organización al centro; pantalla completa, PNG y SVG; «Compartir» nativo en móvil. También QR de la URL pública directa.
+- **Contador:** visitas al abrir y descargas; una por IP cada 30 min; IP guardada con HMAC, nunca en claro; registra qué miembro abrió (enlaces de miembros).
+- **Avisos:** si un enlace con contraseña o de miembros apunta a algo público, ofrece «Hacer privado»; si una carpeta contiene privados, dice cuántos se verán.
+- **Página pública `/s/{token}`:** sin sesión y de solo lectura.
+  - Archivo: vista previa, «Abrir» y «Descargar» (si se permite).
+  - Carpeta: explorador acotado (migas que empiezan en la carpeta compartida, subcarpetas, cuadrícula/lista, orden, vista previa), sin casillas ni menús. Barra lateral vacía, tema e «Iniciar sesión».
+  - Estados: contraseña, solo miembros, caducado, revocado, no disponible, no existe.
+- **Unidad compartida:** el enlace guarda la ruta; mover o renombrar actualiza los enlaces.
+
+**Seguridad:**
+- Token de 22 caracteres base62 (~131 bits). La URL no revela nombre, carpeta ni usuario; las respuestas tampoco traen rutas ni dueño.
+- Toda subcarpeta o archivo pedido por el visitante se comprueba **dentro** del destino: por id subiendo por los padres (Mi unidad) o por ruta sin `..` ni carpetas ocultas (unidad compartida). Fuera → 404.
+- Solo rutas GET (más el desbloqueo); ninguna de escritura. Rate limit en todas.
+- Contraseña con `password_hash`. Tras superarla (o iniciar sesión, en «solo miembros») se entrega una **llave de paso** HMAC de ~12 h que va en las URL del contenido (`<img>`/`<video>` no mandan cabeceras). Cambiar la contraseña o el acceso invalida las llaves.
+- `X-Robots-Tag: noindex` y `Referrer-Policy: no-referrer`. Sin descarga permitida tampoco se sirven los tipos que solo pueden ir como descarga (HTML, SVG…).
+- Archivo en la papelera o dueño/creador suspendido → «no disponible»; al restaurar, vuelve a funcionar.
+
+**Cambios respecto a §5.6:**
+- Subcarpeta en la URL como `/s/{token}?f={id|ruta}` (las rutas de la unidad compartida llevan `/`).
+- Un solo endpoint de contenido y uno de miniatura: `/v1/public/links/{token}/content?f=` y `/thumb?f=`.
+- La caducidad viaja como `expires_in` (segundos) y se calcula en SQL con `NOW()`: PHP y MySQL pueden tener zonas horarias distintas en el hosting.
+- Los diálogos largos ahora se desplazan dentro de la ventana (aplica a todos los `Dialog`).
+
+**Probado en local:** 71 comprobaciones de API (permisos, contador, contraseña, llaves, miembros, sin descarga, caducidad y reactivación, revocar, papelera, intentos de salir con `..`, renombrar en la unidad compartida, creador suspendido) y recorrido de interfaz con Playwright (propietario, invitado, visitante, móvil oscuro, unidad compartida, QR con logo, PNG/SVG).
+
+**Pendiente para la Fase 7:** «Mis enlaces compartidos», revocar todos, panel de admin, políticas y limpieza de visitas antiguas.

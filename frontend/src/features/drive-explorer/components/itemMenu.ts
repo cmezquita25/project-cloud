@@ -15,6 +15,7 @@ import {
   UserPlus,
   LockKeyhole,
   Globe,
+  QrCode,
 } from 'lucide-react'
 import type { MenuItem } from '@shared/ui'
 import type { DriveItem, ItemAction } from '../types'
@@ -78,6 +79,11 @@ export function buildItemMenu(
       icon: UserPlus,
       onSelect: () => act('share'),
     })
+  }
+
+  // Enlaces y QR: solo quien puede crearlos (los invitados nunca, aunque tengan «full»).
+  if (caps.canCreateLinks && isOwner(item, currentUserId)) {
+    items.push({ id: 'link', label: 'Enlace y QR', icon: QrCode, onSelect: () => act('link') })
   }
 
   if (isFile) {

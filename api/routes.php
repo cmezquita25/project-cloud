@@ -33,6 +33,7 @@ use ProjectCloud\Controllers\SystemController;
 use ProjectCloud\Controllers\UpdateController;
 use ProjectCloud\Controllers\BackupController;
 use ProjectCloud\Controllers\RestoreController;
+use ProjectCloud\Controllers\ShareLinkController;
 use ProjectCloud\Middleware\AuthMiddleware;
 use ProjectCloud\Middleware\AdminOnly;
 use ProjectCloud\Middleware\RateLimit;
@@ -59,6 +60,13 @@ return static function (Router $router): void {
     // Archivos privados: con enlace firmado temporal (no requieren sesión).
     $router->get('/v1/files/{id}/content', [FileController::class, 'content']);
     $router->get('/v1/assets/thumb', [AssetsController::class, 'thumb']);
+
+    // --- Enlaces compartidos: lado del visitante (sin sesión, solo lectura) ---
+    $router->get('/v1/public/links/{token}',          [ShareLinkController::class, 'open'], [new RateLimit('link_open', 60, 60)]);
+    $router->post('/v1/public/links/{token}/unlock',  [ShareLinkController::class, 'unlock'], [new RateLimit('link_unlock', 10, 300)]);
+    $router->get('/v1/public/links/{token}/items',    [ShareLinkController::class, 'items'], [new RateLimit('link_items', 120, 60)]);
+    $router->get('/v1/public/links/{token}/content',  [ShareLinkController::class, 'content'], [new RateLimit('link_content', 300, 60)]);
+    $router->get('/v1/public/links/{token}/thumb',    [ShareLinkController::class, 'thumb'], [new RateLimit('link_thumb', 600, 60)]);
 
     // --- Fase 2: Instalador ---
     $router->get('/v1/install/status',    [InstallController::class, 'status']);
@@ -131,6 +139,12 @@ return static function (Router $router): void {
     $router->get('/v1/shares/my-shares',        [ShareController::class, 'listMyShares'], $auth);
     $router->patch('/v1/shares/{id}',          [ShareController::class, 'update'], $auth);
     $router->delete('/v1/shares/{id}',         [ShareController::class, 'delete'], $auth);
+
+    // --- Enlaces compartidos y QR (los crea el propietario; en la unidad compartida, un admin) ---
+    $router->get('/v1/links',          [ShareLinkController::class, 'index'], $auth);
+    $router->post('/v1/links',         [ShareLinkController::class, 'create'], $auth);
+    $router->patch('/v1/links/{id}',   [ShareLinkController::class, 'update'], $auth);
+    $router->delete('/v1/links/{id}',  [ShareLinkController::class, 'revoke'], $auth);
 
 
     // --- Fase 7: Papelera ---

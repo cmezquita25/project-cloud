@@ -21,6 +21,8 @@ interface FileListViewProps {
   /** Muestra la columna "Ubicación" (Recientes/Destacados/Búsqueda). */
   showLocation?: boolean
   capabilities?: ExplorerCapabilities
+  /** Vista pública de un enlace: sin casillas, propietario ni menú de acciones. */
+  readOnly?: boolean
 }
 
 const itemKey = (i: DriveItem) => `${i.type}-${i.id}`
@@ -36,22 +38,23 @@ export function FileListView({
   ownerName,
   showLocation = false,
   capabilities,
+  readOnly = false,
 }: FileListViewProps) {
   return (
     <div className="glass-lite overflow-hidden rounded-drive">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-slate-900/[0.08] text-left text-xs font-medium text-content-tertiary dark:border-white/[0.08]">
-            <th className="w-12 py-3 pl-4 pr-2" />
-            <th className="w-full px-4 py-3 font-medium">Nombre</th>
+            {!readOnly && <th className="w-12 py-3 pl-4 pr-2" />}
+            <th className={cn('w-full py-3 pr-4 font-medium', readOnly ? 'pl-5' : 'pl-4')}>Nombre</th>
             <th className="hidden w-32 whitespace-nowrap px-4 py-3 font-medium md:table-cell">Tipo</th>
             {showLocation && (
               <th className="hidden w-44 whitespace-nowrap px-4 py-3 font-medium lg:table-cell">Ubicación</th>
             )}
-            <th className="hidden w-48 whitespace-nowrap px-4 py-3 font-medium lg:table-cell">Propietario</th>
+            {!readOnly && <th className="hidden w-48 whitespace-nowrap px-4 py-3 font-medium lg:table-cell">Propietario</th>}
             <th className="hidden w-40 whitespace-nowrap px-4 py-3 font-medium sm:table-cell">Modificado</th>
             <th className="hidden w-28 whitespace-nowrap px-4 py-3 font-medium md:table-cell">Tamaño</th>
-            <th className="w-12 py-3 pl-2 pr-4" />
+            {!readOnly && <th className="w-12 py-3 pl-2 pr-4" />}
           </tr>
         </thead>
         <motion.tbody
@@ -99,7 +102,7 @@ export function FileListView({
                       : 'hover:bg-slate-900/[0.04] dark:hover:bg-white/[0.05]'
                 )}
               >
-                <td className="py-3 pl-4 pr-2">
+                {!readOnly && <td className="py-3 pl-4 pr-2">
                   <span className={cn('block', isSelected ? '' : 'opacity-0 group-hover:opacity-100')}>
                     <Checkbox
                       checked={isSelected}
@@ -107,8 +110,8 @@ export function FileListView({
                       onClick={(e) => e.stopPropagation()}
                     />
                   </span>
-                </td>
-                <td className="w-full max-w-0 px-4 py-3">
+                </td>}
+                <td className={cn('w-full max-w-0 py-3 pr-4', readOnly ? 'pl-5' : 'pl-4')}>
                   <div className="flex min-w-0 items-center gap-3">
                     <Icon size={20} className={cn('shrink-0', className)} />
                     <span className="truncate font-medium text-content-primary" title={item.name}>{item.name}</span>
@@ -133,22 +136,22 @@ export function FileListView({
                     </span>
                   </td>
                 )}
-                <td className="hidden px-4 py-3 text-content-secondary lg:table-cell">
+                {!readOnly && <td className="hidden px-4 py-3 text-content-secondary lg:table-cell">
                   {hasOwnersArray ? (
                     <AvatarGroup owners={item.owners} max={3} />
                   ) : (
                     <span className="block max-w-[200px] truncate" title={fallbackOwnerStr}>{fallbackOwnerStr}</span>
                   )}
-                </td>
+                </td>}
                 <td className="hidden whitespace-nowrap px-4 py-3 text-content-secondary sm:table-cell">
                   {item.updated_at ? formatRelative(item.updated_at) : '—'}
                 </td>
                 <td className="hidden whitespace-nowrap px-4 py-3 text-content-secondary md:table-cell">
                   {item.type === 'file' ? formatBytes(item.size_bytes) : '—'}
                 </td>
-                <td className="py-3 pl-2 pr-4 text-right">
+                {!readOnly && <td className="py-3 pl-2 pr-4 text-right">
                   <ItemActionsMenu item={item} onAction={onAction} capabilities={capabilities} />
-                </td>
+                </td>}
               </tr>
             )
           })}

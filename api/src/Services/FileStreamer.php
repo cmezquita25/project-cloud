@@ -19,6 +19,12 @@ final class FileStreamer
 {
     private const ACTIVE_TYPES = '#^(text/html|application/xhtml\+xml|image/svg\+xml|text/xml|application/xml|text/javascript|application/javascript)#i';
 
+    /** ¿El navegador podría ejecutarlo como página? (se sirve siempre como descarga) */
+    public static function isActiveType(string $mime): bool
+    {
+        return preg_match(self::ACTIVE_TYPES, $mime) === 1;
+    }
+
     public static function send(string $path, string $name, ?string $mime, bool $download = false): void
     {
         if (!is_file($path)) {

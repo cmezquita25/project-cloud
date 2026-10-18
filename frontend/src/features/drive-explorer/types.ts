@@ -56,6 +56,8 @@ export interface FileItem {
   url: string
   /** URL directa de /storage; null si el archivo es privado. */
   public_url?: string | null
+  /** Descarga (enlaces públicos). null = el enlace no permite descargar; sin definir = `url`. */
+  download_url?: string | null
   visibility?: Visibility
   thumbnail_url?: string
   /** Nombre de la carpeta padre (Recientes/Destacados/Búsqueda). null = raíz. */
@@ -103,6 +105,7 @@ export type ItemAction =
   | 'restore'
   | 'block'
   | 'visibility'
+  | 'link'
 
 
 export type ViewMode = 'list' | 'grid'
