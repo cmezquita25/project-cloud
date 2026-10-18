@@ -1122,3 +1122,17 @@ Propuesta: cambiar esos dos por `Cloud` de Lucide y quitar la fuente de `index.h
 
 **Probado en local:** 31 comprobaciones nuevas (privacidad y nombres reservados) más la regresión completa (71 + 48 + 62) y recorrido de interfaz con Playwright.
 
+---
+
+## 21. v2.6.0 — Novedades y sin parpadeos (2026-10-18, sin publicar)
+
+**Modal de novedades** (`frontend/src/features/whats-new/`):
+- `releases/vX.Y.ts`: el contenido de cada versión (diapositivas: insignia, título, texto, nota, botón opcional y su visual). `releases/index.ts` las registra; se muestran una vez por **versión menor** (las de parche reutilizan las de su menor y no repiten el modal).
+- `components/visuals/`: reproducciones vivas de la plataforma, no capturas (vista previa de temas que solo cambia dentro del cuadro, QR real con línea de escaneo, tarjeta de enlace que se configura sola, «Guardar como» animado, mosaico de mejoras). `MockWindow` es el marco común.
+- `components/WhatsNewDialog.tsx`: ventana genérica (2 columnas desde 1024 px; apilada en tablet y móvil), flechas, teclado, deslizar y puntos de progreso.
+- `WhatsNewProvider.tsx` + `lib/seenStore.ts`: se abre solo dentro de la app con sesión. La primera vez solo se cierra con sus botones: «Recordármelo después» (vuelve en la próxima visita) o «No volver a mostrar» / «¡Entendido!» (localStorage, por usuario). «Novedades», en el pie de página, lo vuelve a reproducir sin cambiar lo decidido (ahí sí se cierra con X, Esc o clic fuera).
+- «Personalizar apariencia» abre Mi perfil en la tarjeta Apariencia (`/profile#apariencia`, con resaltado).
+- Revisado a 390, 640, 820, 1024 y 1440 px: ningún texto ni botón se parte ni desborda.
+
+**Sin parpadeo entre secciones:** se quitaron el fundido de entrada del layout y los propios de Recientes, Destacados y Papelera (título e iconos se veían más tenues un instante), y el de las listas al montarse. El cambio lista ↔ cuadrícula conserva su animación.
+

@@ -8,6 +8,7 @@ import { Topbar } from './components/Topbar'
 import { Sidebar } from './components/Sidebar'
 import { Footer } from './components/Footer'
 import { HeaderSearchProvider } from './HeaderSearchContext'
+import { WhatsNewProvider } from '@features/whats-new/WhatsNewProvider'
 
 import { GoogleAnalyticsTracker } from '@shared/components/GoogleAnalyticsTracker'
 
@@ -43,6 +44,7 @@ export function AppLayout() {
 
   return (
     <HeaderSearchProvider>
+      <WhatsNewProvider>
       <GoogleAnalyticsTracker />
       <div className="flex h-full flex-col overflow-hidden">
       {/* Fondo de marca (estático en la app). Hermano del contenido, no envoltorio. */}
@@ -82,7 +84,6 @@ export function AppLayout() {
               salta ~12px al cambiar de página ni cuando una carpeta termina
               de cargar y desborda. */}
           <main className="min-w-0 flex-1 flex flex-col overflow-y-auto [scrollbar-gutter:stable]">
-            {/* Recibe la animación de entrada (sin `fill`: no deja transform). */}
             <div className="mx-auto h-full w-full max-w-[1600px] px-4 py-4 sm:px-6 flex flex-col max-sm:h-auto max-sm:min-h-full max-sm:shrink-0">
               <Outlet />
             </div>
@@ -103,6 +104,7 @@ export function AppLayout() {
       {/* Tarjeta de progreso de subidas (global) */}
       <UploadDock />
     </div>
+      </WhatsNewProvider>
     </HeaderSearchProvider>
   )
 }

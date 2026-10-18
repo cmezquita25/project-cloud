@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Check, MonitorCog } from 'lucide-react'
 import { Spinner, useToast } from '@shared/ui'
 import { cn } from '@shared/lib/cn'
@@ -25,6 +25,20 @@ export function ThemePreferenceCard() {
   const settings = usePlatformSettings()
   const toast = useToast()
   const [saving, setSaving] = useState<string | null>(null)
+  const cardRef = useRef<HTMLDivElement>(null)
+  const [highlight, setHighlight] = useState(false)
+
+  // Llegando desde «Personalizar apariencia» (novedades): lleva la vista hasta aquí y la resalta.
+  useEffect(() => {
+    if (window.location.hash !== '#apariencia') return
+    const t = window.setTimeout(() => {
+      cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      setHighlight(true)
+      window.setTimeout(() => setHighlight(false), 2200)
+    }, 250)
+    return () => window.clearTimeout(t)
+  }, [])
+
   if (!user) return null
 
   const current = user.theme_preset ?? null
@@ -78,7 +92,14 @@ export function ThemePreferenceCard() {
   const systemSwatch = PRESETS.find((p) => p.id === system) ?? PRESETS[0]!
 
   return (
-    <div className="lg:col-span-12 rounded-drive glass p-6 transition-all hover:border-border-strong">
+    <div
+      id="apariencia"
+      ref={cardRef}
+      className={cn(
+        'lg:col-span-12 scroll-mt-24 rounded-drive glass p-6 transition-all duration-700 hover:border-border-strong',
+        highlight && 'ring-2 ring-primary/60 shadow-[0_0_0_6px_rgb(var(--color-primary)/0.12)]'
+      )}
+    >
       <h3 className="text-base font-medium text-content-primary">Apariencia</h3>
       <p className="mt-1 text-sm text-content-secondary">
         Elige el estilo de color de tu interfaz. Solo cambia para ti; el resto de la organización sigue viendo el de la plataforma.

@@ -3,6 +3,7 @@ import { usePlatformSettings } from '@shared/hooks/usePlatformSettings'
 import { ReportBugDialog } from '@features/support/components/ReportBugDialog'
 import { useState } from 'react'
 import { motion } from 'framer-motion'
+import { useWhatsNew } from '@features/whats-new/WhatsNewProvider'
 
 const LEGAL_LINKS = ['Legal', 'Privacidad', 'Docs']
 
@@ -26,9 +27,15 @@ export function Footer({ variant = 'bar' }: FooterProps) {
   const owner = settings?.organization_name?.trim() || APP_NAME
   const year = new Date().getFullYear()
   const [reportOpen, setReportOpen] = useState(false)
+  const whatsNew = useWhatsNew()
 
   const links = (
     <>
+      {whatsNew.available && (
+        <button onClick={whatsNew.replay} className="transition-colors hover:text-content-secondary focus-visible:outline-focus">
+          Novedades
+        </button>
+      )}
       {LEGAL_LINKS.map((label) => (
         <span key={label} className="cursor-default transition-colors hover:text-content-secondary">
           {label}
