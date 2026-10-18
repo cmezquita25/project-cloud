@@ -416,9 +416,22 @@ final class ShareController
         $shareId = (int) $request->param('id');
 
         $input = $request->json();
-        $permissionLevel = (string) ($input['permission_level'] ?? 'read');
-        if (!in_array($permissionLevel, ['read', 'full'], true)) {
-            throw HttpException::badRequest('Nivel de permiso no válido.');
+        $changes = [];
+        if (array_key_exists('permission_level', $input)) {
+            $permissionLevel = (string) $input['permission_level'];
+            if (!in_array($permissionLevel, ['read', 'full'], true)) {
+                throw HttpException::badRequest('Nivel de permiso no válido.');
+            }
+            $changes['permission_level'] = $permissionLevel;
+        }
+        // Por invitación: crear enlaces y QR de lo compartido, y bloquear la descarga.
+        foreach (['can_share', 'block_download'] as $flag) {
+            if (array_key_exists($flag, $input)) {
+                $changes[$flag] = $input[$flag] ? 1 : 0;
+            }
+        }
+        if ($changes === []) {
+            throw HttpException::badRequest('Nada que actualizar.');
         }
 
         $stmt = $this->pdo->prepare("SELECT id, owner_id FROM shared_access WHERE id = :id");
@@ -432,12 +445,11 @@ final class ShareController
             throw HttpException::forbidden('Solo el propietario puede modificar los permisos.');
         }
 
-        $stmtUp = $this->pdo->prepare("UPDATE shared_access SET permission_level = :permission_level WHERE id = :id");
-        $stmtUp->execute(['permission_level' => $permissionLevel, 'id' => $shareId]);
+        $sets = implode(', ', array_map(static fn (string $col) => "`{$col}` = :{$col}", array_keys($changes)));
+        $stmtUp = $this->pdo->prepare("UPDATE shared_access SET {$sets} WHERE id = :id");
+        $stmtUp->execute($changes + ['id' => $shareId]);
 
-        ActivityLogger::log($request, 'share_update', 'shared_access', $shareId, [
-            'permission_level' => $permissionLevel,
-        ]);
+        ActivityLogger::log($request, 'share_update', 'shared_access', $shareId, $changes);
 
         return Response::success(['ok' => true]);
     }

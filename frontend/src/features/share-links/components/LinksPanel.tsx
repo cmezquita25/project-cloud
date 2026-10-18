@@ -270,6 +270,7 @@ function LinkRow({ link: l, admin, selected, onToggle, onCopy, onQr, onHits, onR
             {l.has_password && <Badge icon={KeyRound}>Contraseña</Badge>}
             {!l.allow_download && <Badge icon={Download}>Sin descarga</Badge>}
             {l.scope === 'org' && <Badge>Unidad compartida</Badge>}
+            {l.limit_reached && <Badge tone="danger">Límite de visitas</Badge>}
             {l.target_state === 'trashed' && <Badge tone="warning">En la papelera</Badge>}
             {l.target_state === 'deleted' && <Badge tone="danger">Eliminado</Badge>}
             {admin && <span className="text-xs text-content-tertiary">por {l.creator_name}</span>}
@@ -279,7 +280,7 @@ function LinkRow({ link: l, admin, selected, onToggle, onCopy, onQr, onHits, onR
       </div>
 
       <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 pl-8 text-xs text-content-tertiary sm:pl-0">
-        <span className="inline-flex items-center gap-1" title="Visitas"><Eye size={13} /> {l.view_count.toLocaleString('es')}</span>
+        <span className="inline-flex items-center gap-1" title="Visitas"><Eye size={13} /> {l.view_count.toLocaleString('es')}{l.max_views !== null ? ` / ${l.max_views.toLocaleString('es')}` : ''}</span>
         <span className="inline-flex items-center gap-1" title="Descargas"><DownloadCloud size={13} /> {l.download_count.toLocaleString('es')}</span>
         <span className="w-32">{l.accessed_ago === null ? 'Sin abrir' : `Abierto ${relative(-l.accessed_ago)}`}</span>
       </div>

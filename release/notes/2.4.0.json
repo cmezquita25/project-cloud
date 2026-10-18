@@ -1,0 +1,22 @@
+{
+  "min_from_version": "2.1.0",
+  "requirements": {
+    "php": "8.1",
+    "extensions": ["zip", "pdo_mysql", "curl", "sodium", "mbstring"]
+  },
+  "migrations": {
+    "reversible": true
+  },
+  "changelog": [
+    { "type": "feature", "text": "Descargar una carpeta completa en ZIP desde su enlace compartido (si el enlace permite descargar)." },
+    { "type": "feature", "text": "Por invitación: «Puede compartir enlaces» (el invitado crea enlaces y QR de lo que le compartiste) y «Bloquear descarga» (ve, pero sin descargar, copiar ni duplicar)." },
+    { "type": "feature", "text": "Límite de visitas por enlace (por defecto, sin límite). Al alcanzarlo, deja de abrir para visitantes nuevos; subir el límite lo reactiva." },
+    { "type": "feature", "text": "Mi perfil → Apariencia: cada usuario elige su propio estilo de color o usa el de la plataforma." },
+    { "type": "feature", "text": "Usuarios: columna «Última conexión», con «En línea» si estuvo activo en los últimos 5 minutos." },
+    { "type": "fix", "text": "Las vistas previas de enlaces (WhatsApp, Slack, Teams…) y el título de la pestaña muestran el nombre de la organización, no «Project Cloud»." },
+    { "type": "fix", "text": "La app carga más rápido: las gráficas de Administración y Almacenamiento se cargan solo al entrar ahí." },
+    { "type": "security", "text": "Se retiran del servidor los scripts de depuración antiguos (check_db.php era accesible desde el navegador) y se bloquea la ejecución de cualquier .php suelto en la raíz del sitio." },
+    { "type": "security", "text": "La descarga de archivos privados usa una firma propia: el enlace de vista previa ya no sirve para descargar." }
+  ],
+  "features": ["maintenance_mode", "scheduled_tasks", "ota_updater", "scheduled_backups", "restore_diagnostics", "private_files", "share_links", "link_panel", "folder_zip", "invite_controls", "user_theme"]
+}

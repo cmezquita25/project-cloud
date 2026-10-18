@@ -16,6 +16,16 @@ export interface Collaborator {
   avatar_url: string | null
   role: 'owner' | 'invited'
   permission_level: 'read' | 'full'
+  /** El invitado puede crear enlaces y QR de lo compartido. */
+  can_share?: boolean
+  /** El invitado ve, pero no descarga ni copia. */
+  block_download?: boolean
+}
+
+/** Lo que puede hacer quien mira (propietario: todo; invitado: según su invitación). */
+export interface MyRights {
+  share: boolean
+  download: boolean
 }
 
 export interface FolderItem {
@@ -37,6 +47,7 @@ export interface FolderItem {
   blocked_actions?: string[]
   /** private: todo su contenido es privado (sin URL pública). */
   visibility?: Visibility
+  my_rights?: MyRights
 }
 
 /** public: URL directa de /storage · private: solo con sesión o enlace firmado. */
@@ -59,6 +70,7 @@ export interface FileItem {
   /** Descarga (enlaces públicos). null = el enlace no permite descargar; sin definir = `url`. */
   download_url?: string | null
   visibility?: Visibility
+  my_rights?: MyRights
   thumbnail_url?: string
   /** Nombre de la carpeta padre (Recientes/Destacados/Búsqueda). null = raíz. */
   location?: string | null

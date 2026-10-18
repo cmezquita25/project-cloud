@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { UserPlus, Trash2, Shield, Users, Info, Link2 } from 'lucide-react'
-import { Dialog, Button, Input, Select, Avatar, Spinner, useToast } from '@shared/ui'
+import { Dialog, Button, Input, Select, Avatar, Spinner, Checkbox, useToast } from '@shared/ui'
 import { api } from '@shared/api'
 import type { Collaborator } from '../types'
 import { cn } from '@shared/lib/cn'
+import { useAuth } from '@features/auth/AuthProvider'
 import { LinkSharePanel } from '@features/share-links/components/LinkSharePanel'
 import type { LinkTarget } from '@features/share-links/types'
 
@@ -23,6 +24,7 @@ interface ShareDialogProps {
   /** URL directa del archivo (si es público), para copiarla o sacar su QR. */
   publicUrl?: string | null
   onMakePrivate?: () => Promise<void>
+  downloadLocked?: boolean
 }
 
 type Tab = 'people' | 'link'
@@ -47,10 +49,12 @@ export function ShareDialog({
   initialTab = 'people',
   publicUrl,
   onMakePrivate,
+  downloadLocked,
 }: ShareDialogProps) {
   const [tab, setTab] = useState<Tab>(showPeople && (initialTab === 'people' || !linkTarget) ? 'people' : 'link')
   const toast = useToast()
   const queryClient = useQueryClient()
+  const { user, isAdmin } = useAuth()
   const [email, setEmail] = useState('')
   const [permissionLevel, setPermissionLevel] = useState<'read' | 'full'>('read')
   const [collaborators, setCollaborators] = useState<Collaborator[]>([])
@@ -172,6 +176,22 @@ export function ShareDialog({
     }
   }
 
+  /** Interruptores por invitación: crear enlaces y QR, bloquear la descarga. */
+  const handleToggle = async (shareId: number, field: 'can_share' | 'block_download', value: boolean) => {
+    try {
+      await api.patch(`/shares/${shareId}`, { [field]: value })
+      setCollaborators((prev) => prev.map((c) => (c.share_id === shareId ? { ...c, [field]: value } : c)))
+      toast.success(
+        field === 'can_share'
+          ? value ? 'Ahora puede crear enlaces y QR' : 'Ya no puede crear enlaces (los que creó dejan de abrir)'
+          : value ? 'Descarga bloqueada para esta persona' : 'Puede volver a descargar'
+      )
+      queryClient.invalidateQueries({ queryKey: ['explorer'] })
+    } catch (err: any) {
+      toast.error(err.message || 'No se pudo guardar el cambio.')
+    }
+  }
+
   const handleRemoveShare = async (shareId: number, name: string) => {
     try {
       await api.delete(`/shares/${shareId}`)
@@ -185,6 +205,9 @@ export function ShareDialog({
       toast.error(err.message || 'No se pudo revocar el acceso.')
     }
   }
+
+  // Los interruptores por invitación solo los cambia el propietario (o un admin).
+  const canManageInvites = isAdmin || collaborators.some((c) => c.role === 'owner' && c.id === user?.id)
 
   const permissionOptions = [
     { value: 'read', label: 'Solo lectura' },
@@ -219,7 +242,7 @@ export function ShareDialog({
         )}
 
         {tab === 'link' && linkTarget ? (
-          <LinkSharePanel target={linkTarget} publicUrl={publicUrl} onMakePrivate={onMakePrivate} />
+          <LinkSharePanel target={linkTarget} publicUrl={publicUrl} onMakePrivate={onMakePrivate} downloadLocked={downloadLocked} />
         ) : (
         <div className="space-y-6">
         {/* Banner informativo de la organización */}
@@ -333,6 +356,18 @@ export function ShareDialog({
                         {c.display_name}
                       </p>
                       <p className="text-xs text-content-tertiary truncate">{c.email}</p>
+                      {c.role !== 'owner' && c.share_id && canManageInvites && (
+                        <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
+                          <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs text-content-secondary" title="Puede crear enlaces y QR de lo que le compartiste">
+                            <Checkbox checked={Boolean(c.can_share)} onChange={(e) => handleToggle(c.share_id!, 'can_share', e.target.checked)} />
+                            Puede compartir enlaces
+                          </label>
+                          <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs text-content-secondary" title="Ve los archivos, pero sin botón de descarga ni copia">
+                            <Checkbox checked={Boolean(c.block_download)} onChange={(e) => handleToggle(c.share_id!, 'block_download', e.target.checked)} />
+                            Bloquear descarga
+                          </label>
+                        </div>
+                      )}
                     </div>
                   </div>
 

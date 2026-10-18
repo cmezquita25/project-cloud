@@ -426,7 +426,8 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
   function linkTargetOf(item: DriveItem): LinkTarget | null {
     const ownerId = item.owners?.[0]?.id
     const owner = ownerId === undefined || user?.id === undefined || ownerId === user.id
-    if (!adapter.capabilities.canCreateLinks || !owner) return null
+    // El propietario, o un invitado al que le permitió compartir enlaces.
+    if (!adapter.capabilities.canCreateLinks || !(owner || item.my_rights?.share === true)) return null
     return adapter.mode === 'assets'
       ? { scope: 'org', target_type: item.type, target_path: String(item.id), name: item.name }
       : { scope: 'drive', target_type: item.type, target_id: Number(item.id), name: item.name }
@@ -519,7 +520,7 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
                 {selected.size} seleccionado(s)
               </span>
               <div className="flex items-center gap-1">
-                {selectedItems.length > 0 && selectedItems.every((i) => i.type === 'file') && adapter.capabilities.canDownload && (
+                {selectedItems.length > 0 && selectedItems.every((i) => i.type === 'file' && i.my_rights?.download !== false) && adapter.capabilities.canDownload && (
                   <IconButton icon={Download} label="Descargar" size="sm" onClick={() => selectedItems.forEach(download)} />
                 )}
                 {adapter.capabilities.canMove && (
@@ -803,8 +804,9 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
           showPeople={adapter.mode === 'drive' && adapter.capabilities.canShare}
           linkTarget={linkTargetOf(dialog.item)}
           publicUrl={publicUrlOf(dialog.item)}
+          downloadLocked={dialog.item.my_rights?.download === false}
           onMakePrivate={
-            adapter.setVisibility
+            adapter.setVisibility && (dialog.item.owners?.[0]?.id ?? user?.id) === user?.id
               ? async () => {
                   const item = dialog.item
                   try {

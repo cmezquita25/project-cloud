@@ -49,6 +49,7 @@ final class FileController
     /** POST /files/{id}/duplicate — duplica en la misma carpeta. */
     public function duplicate(Request $request): Response
     {
+        self::assertCanCopy((int) $request->userId(), 'file', (int) $request->param('id'));
         $username = (string) $request->user()['username'];
         $file = $this->service()->duplicate((int) $request->userId(), $username, (int) $request->param('id'));
         return Response::created($this->filePublic($file, $username));
@@ -57,6 +58,7 @@ final class FileController
     /** POST /files/{id}/copy — copia a otra carpeta. */
     public function copy(Request $request): Response
     {
+        self::assertCanCopy((int) $request->userId(), 'file', (int) $request->param('id'));
         $username = (string) $request->user()['username'];
         $file = $this->service()->copy(
             (int) $request->userId(),
@@ -99,7 +101,8 @@ final class FileController
         $owner = (new UserRepository())->findById((int) $file['user_id']);
         $ownerUsername = (string) ($owner['username'] ?? '');
 
-        $links = \ProjectCloud\Services\FileLinks::for($file, $ownerUsername);
+        $rights = $permService->rights($userId, 'file', $fileId);
+        $links = \ProjectCloud\Services\FileLinks::for($file, $ownerUsername, (bool) ($rights['download'] ?? true));
         return Response::success([
             'url'        => $links['url'],         // privado: enlace firmado temporal
             'public_url' => $links['public_url'],  // privado: null (no tiene URL directa)
@@ -125,7 +128,9 @@ final class FileController
     public function content(Request $request): void
     {
         $id = (int) $request->param('id');
-        if (!\ProjectCloud\Core\SignedUrl::verify($id, 'content', $request->input('exp'), $request->input('sig'))) {
+        // La descarga tiene su propia firma (solo la reciben quienes pueden descargar).
+        $download = (bool) $request->input('download');
+        if (!\ProjectCloud\Core\SignedUrl::verify($id, $download ? 'download' : 'content', $request->input('exp'), $request->input('sig'))) {
             throw HttpException::forbidden('El enlace caducó o no es válido.', 'LINK_EXPIRED');
         }
         $file = (new FileRepository())->findAnyById($id);
@@ -134,7 +139,7 @@ final class FileController
             throw HttpException::notFound('Archivo no encontrado');
         }
         $path = (new \ProjectCloud\Services\PrivateFileStore())->physicalPath((string) $owner['username'], $file);
-        \ProjectCloud\Services\FileStreamer::send($path, (string) $file['name'], $file['mime_type'], (bool) $request->input('download'));
+        \ProjectCloud\Services\FileStreamer::send($path, (string) $file['name'], $file['mime_type'], $download);
     }
 
 
@@ -161,6 +166,18 @@ final class FileController
     }
 
     // --- Helpers ---
+
+    /**
+     * Copiar o duplicar es descargar por otra vía: no se permite a un invitado
+     * con la descarga bloqueada por su invitación.
+     */
+    public static function assertCanCopy(int $userId, string $type, int $id): void
+    {
+        $rights = (new \ProjectCloud\Services\SharePermissionService())->rights($userId, $type, $id);
+        if ($rights !== null && !$rights['download']) {
+            throw HttpException::forbidden('El propietario no permite descargar ni copiar este elemento.', 'DOWNLOAD_BLOCKED');
+        }
+    }
 
     private function service(): FileService
     {

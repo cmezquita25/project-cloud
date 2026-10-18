@@ -1062,3 +1062,42 @@ Paquete en `release/out/`: `manifest.json` y `releases/project-cloud-2.3.0.zip` 
 3. Al terminar: el pie de página dice **v2.3.0**; aparecen «Mis enlaces» en la barra lateral, «Enlace y QR» en el menú de tus archivos y Administración → Enlaces.
 
 Alternativa sin actualizador: subir `frontend/dist` (mismo contenido) sobre `httpdocs` y aplicar las migraciones desde Base de datos.
+
+---
+
+## 19. v2.4.0 — Mantenimiento y mejoras tras el plan (2026-10-18)
+
+**Mantenimiento:**
+- La rama `feat/f0-cimientos` se unió a `main` (PR #1); la v2.4 se trabaja en `feat/v2.4`.
+- Copias de seguridad en `/v1/admin/backups*`; se retiran las rutas `/v1/admin/database/backups*`.
+- Scripts de depuración eliminados del repositorio. El actualizador los borra del servidor al instalar la 2.4.0 (`check_db.php` en la raíz **se podía ejecutar desde el navegador** y mostraba usuarios). El `.htaccess` ya no ejecuta ningún `.php` suelto en la raíz.
+- Administración, Configuración y Almacenamiento se cargan al entrar: la carga inicial pasa de ~1.3 MB a ~0.75 MB de JS (las gráficas, 800 KB, ya no van al abrir la app). Si tras una actualización falla la carga de una sección, la página se recarga sola una vez.
+
+**Funciones (migración `0008`, schema 8):**
+- **ZIP de carpeta** desde un enlace (`/v1/public/links/{t}/zip?folder=`): se arma mientras se descarga, sin archivos temporales; sin comprimir (fotos y vídeos ya lo están), con tamaño exacto anunciado; hasta 4 GB / 65 000 elementos; sin carpetas ocultas; cuenta como descarga.
+- **Por invitación** (`shared_access.can_share`, `block_download`), en el diálogo «Personas», solo para el propietario o un admin:
+  - *Puede compartir enlaces*: el invitado crea enlaces y QR de lo compartido. Si se le quita, sus enlaces dejan de abrir (y vuelven al devolvérselo).
+  - *Bloquear descarga*: sin botón de descarga, URL directa, copiar ni duplicar (el servidor también lo impide). La descarga de privados ahora tiene firma propia. Sus enlaces nunca permiten descargar. Como se acordó, no evita capturas ni la URL directa de un archivo público que ya conozca.
+- **Límite de visitas** por enlace (`share_links.max_views`, por defecto sin límite). Con límite, el contenido exige haber abierto el enlace (llave), así cada visita pasa por el contador.
+- **Tema personal** (`users.theme_preset`) en Mi perfil → Apariencia: estilo propio o «De la plataforma». Se guarda en la cuenta y en el navegador (`localStorage`, no se borra con la limpieza de sesiones). Con estilo propio no se aplican los colores personalizados del admin.
+- **Última conexión** (`users.last_seen_at`, se escribe como mucho una vez por minuto): «En línea» con punto verde si hubo actividad en los últimos 5 min (la app consulta notificaciones cada 30 s mientras está abierta); si no, «Hace X min», «Hace X h», «Ayer» o la fecha, con punto gris; «Nunca» si no entró. La tabla se refresca cada minuto.
+- **Nombre de la organización en vistas previas:** las rutas de la app pasan por `api/spa.php`, que pone el título y las etiquetas `og:` con el nombre de la organización (en un enlace abierto, también el nombre del archivo o carpeta y la miniatura si es imagen; en uno protegido, solo «Enlace protegido»). La configuración pública se guarda en el navegador para no mostrar «Project Cloud» ni un instante.
+
+**Probado en local:** 62 comprobaciones nuevas, más las 71 de la Fase 6 y las 48 de la Fase 7 (regresión), y recorrido de interfaz con Playwright.
+
+### 19.1 Propuesta — privacidad en la unidad compartida (sin implementar)
+
+Hoy todo lo de la unidad compartida es público a propósito: sus URL directas se usan en sitios y documentos. Volverlo privado de golpe rompería esos usos, y no hay forma de saber cuáles existen (Apache sirve esas URL sin pasar por PHP).
+
+Propuesta, **opt-in y por carpeta**:
+1. Todo sigue público por defecto; nada existente cambia.
+2. Un admin puede marcar una carpeta concreta como **privada** (pensado para carpetas nuevas como «Contratos» o «RR. HH.»). Antes de confirmar, el diálogo dice cuántos archivos tienen URL directa que dejará de funcionar.
+3. Lo privado se mueve a una carpeta bloqueada (`{unidad}/.private/…`) y se sirve por PHP con enlace firmado, igual que en Mi unidad. Los enlaces compartidos siguen funcionando.
+4. Es reversible: volver a pública restaura las mismas URL.
+
+### 19.2 Propuesta — iconos: dejar Google Material Symbols (sin implementar)
+
+La app ya usa **Lucide** en ~90 archivos. Google Material Symbols solo aparece en **dos** lugares (el icono de nube de Mi perfil y del indicador de almacenamiento), pero `index.html` carga **toda** la fuente de iconos de Google en cada visita: una petición externa y una descarga grande para dos iconos.
+
+Propuesta: cambiar esos dos por `Cloud` de Lucide y quitar la fuente de `index.html`. Es un cambio pequeño y sin riesgo; menos peso y una dependencia externa menos. (Opcional: servir también Poppins desde el propio sitio en vez de Google Fonts.)
+

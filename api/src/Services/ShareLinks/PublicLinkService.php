@@ -14,7 +14,9 @@ use ProjectCloud\Repositories\UserRepository;
 use ProjectCloud\Services\AssetsService;
 use ProjectCloud\Services\FileStreamer;
 use ProjectCloud\Services\PrivateFileStore;
+use ProjectCloud\Services\SharePermissionService;
 use ProjectCloud\Services\ThumbnailService;
+use ProjectCloud\Services\ZipStreamer;
 
 /**
  * Lo que ve quien abre un enlace /s/{token}: solo lectura, sin sesión (salvo
@@ -46,10 +48,17 @@ final class PublicLinkService
     public function open(string $token, Request $request): array
     {
         $ctx = $this->load($token);
-        $user = $this->gate($ctx, $request);
+        $user = $this->gate($ctx, $request, opening: true);
+        $link = $ctx['link'];
+
+        // Límite de visitas: quien ya abrió (tiene llave) sigue entrando; nadie nuevo.
+        if ($link['max_views'] !== null
+            && (int) $link['view_count'] >= (int) $link['max_views']
+            && !LinkKeys::verifyKey($link, $request->input('k'))) {
+            throw new HttpException(410, 'LINK_LIMIT', 'Este enlace alcanzó el número de visitas que permitió quien lo compartió.');
+        }
         $key = $this->keyFor($ctx, $request, $user);
 
-        $link = $ctx['link'];
         $this->links->recordHit((int) $link['id'], 'view', LinkKeys::ipHash($request->ip()), $user['id'] ?? null, $request->userAgent());
 
         $data = [
@@ -136,6 +145,109 @@ final class PublicLinkService
         FileStreamer::send($file['abs'], $file['name'], $mime, $download);
     }
 
+    /**
+     * GET /public/links/{token}/zip?folder= — la carpeta compartida (o una
+     * subcarpeta suya) en un ZIP. Solo si el enlace permite descargar; cuenta
+     * como una descarga.
+     */
+    public function zip(string $token, Request $request): void
+    {
+        $ctx = $this->load($token);
+        if ($ctx['link']['target_type'] !== 'folder') {
+            throw HttpException::notFound('Este enlace no es de una carpeta.');
+        }
+        $user = $this->gate($ctx, $request);
+        if (!(bool) $ctx['link']['allow_download']) {
+            throw new HttpException(403, 'LINK_NO_DOWNLOAD', 'Este enlace no permite descargar archivos.');
+        }
+        $ref = trim((string) $request->input('folder', ''));
+        [$name, $entries] = $ctx['link']['scope'] === 'org'
+            ? $this->orgZipEntries($ctx, $ref)
+            : $this->driveZipEntries($ctx, $ref);
+
+        $this->links->recordHit((int) $ctx['link']['id'], 'download', LinkKeys::ipHash($request->ip()), $user['id'] ?? null, $request->userAgent());
+        ZipStreamer::send($name . '.zip', $entries);
+    }
+
+    /** @return array{0:string,1:list<array{name:string,abs:?string,size:int,mtime:int}>} */
+    private function driveZipEntries(array $ctx, string $ref): array
+    {
+        $root = $ctx['row'];
+        $ownerId = (int) $root['user_id'];
+        $folderId = $ref === '' ? (int) $root['id'] : (int) $ref;
+        if ($folderId !== (int) $root['id'] && !$this->isWithinDrive($ownerId, (int) $root['id'], $folderId)) {
+            throw HttpException::notFound('Carpeta no encontrada.');
+        }
+        $folders = new FolderRepository();
+        $files = new FileRepository();
+        $store = new PrivateFileStore();
+        $username = (string) $ctx['owner']['username'];
+        $start = $folders->find($folderId, $ownerId);
+        if ($start === null) {
+            throw HttpException::notFound('Carpeta no encontrada.');
+        }
+
+        $entries = [];
+        $walk = function (int $id, string $prefix) use (&$walk, &$entries, $folders, $files, $store, $username, $ownerId): void {
+            $entries[] = ['name' => $prefix, 'abs' => null, 'size' => 0, 'mtime' => time()];
+            foreach ($files->inFolder($ownerId, $id) as $f) {
+                $abs = $store->physicalPath($username, $f);
+                if (is_file($abs)) {
+                    $entries[] = ['name' => $prefix . self::zipName((string) $f['name']), 'abs' => $abs, 'size' => (int) filesize($abs), 'mtime' => (int) filemtime($abs)];
+                }
+                if (count($entries) > ZipStreamer::MAX_ENTRIES) {
+                    return;
+                }
+            }
+            foreach ($folders->children($ownerId, $id) as $sub) {
+                $walk((int) $sub['id'], $prefix . self::zipName((string) $sub['name']) . '/');
+            }
+        };
+        $walk($folderId, self::zipName((string) $start['name']) . '/');
+        return [(string) $start['name'], $entries];
+    }
+
+    /** @return array{0:string,1:list<array{name:string,abs:?string,size:int,mtime:int}>} */
+    private function orgZipEntries(array $ctx, string $ref): array
+    {
+        $sub = $this->orgRelative($ref);
+        $rel = ltrim($ctx['root'] . '/' . $sub, '/');
+        $absRoot = (new AssetsService())->resolve($rel);
+        if (!is_dir($absRoot)) {
+            throw HttpException::notFound('Carpeta no encontrada.');
+        }
+        $name = basename($rel);
+        $prefix = self::zipName($name) . '/';
+        $entries = [['name' => $prefix, 'abs' => null, 'size' => 0, 'mtime' => (int) filemtime($absRoot)]];
+        $it = new \RecursiveIteratorIterator(
+            new \RecursiveCallbackFilterIterator(
+                new \RecursiveDirectoryIterator($absRoot, \FilesystemIterator::SKIP_DOTS),
+                // Nada oculto (.trash, .private…), ni enlaces simbólicos que saquen de la carpeta.
+                static fn (\SplFileInfo $f) => $f->getFilename()[0] !== '.' && !$f->isLink()
+            ),
+            \RecursiveIteratorIterator::SELF_FIRST
+        );
+        foreach ($it as $f) {
+            /** @var \SplFileInfo $f */
+            $inner = str_replace(DIRECTORY_SEPARATOR, '/', substr($f->getPathname(), strlen($absRoot) + 1));
+            $zipPath = $prefix . implode('/', array_map([self::class, 'zipName'], explode('/', $inner)));
+            $entries[] = $f->isDir()
+                ? ['name' => $zipPath . '/', 'abs' => null, 'size' => 0, 'mtime' => (int) $f->getMTime()]
+                : ['name' => $zipPath, 'abs' => $f->getPathname(), 'size' => (int) $f->getSize(), 'mtime' => (int) $f->getMTime()];
+            if (count($entries) > ZipStreamer::MAX_ENTRIES) {
+                break;
+            }
+        }
+        return [$name, $entries];
+    }
+
+    /** Nombre seguro dentro del ZIP (sin separadores ni «..»). */
+    private static function zipName(string $name): string
+    {
+        $clean = trim(str_replace(['/', chr(92), chr(0)], '_', $name));
+        return $clean === '' || $clean === '.' || $clean === '..' ? '_' : $clean;
+    }
+
     /** GET /public/links/{token}/thumb?f=&s= — miniatura de una imagen. */
     public function thumb(string $token, Request $request): void
     {
@@ -201,6 +313,17 @@ final class PublicLinkService
         if ($row === null || $owner === null || ($owner['status'] ?? 'active') !== 'active') {
             throw self::unavailable();
         }
+        // Enlace creado por un invitado: vale mientras conserve «Puede compartir
+        // enlaces», y si su invitación bloquea la descarga, el enlace tampoco la permite.
+        if ((int) $link['created_by'] !== (int) $row['user_id']) {
+            $rights = (new SharePermissionService())->rights((int) $link['created_by'], (string) $link['target_type'], (int) $row['id']);
+            if ($rights === null || !$rights['share']) {
+                throw self::unavailable();
+            }
+            if (!$rights['download']) {
+                $link['allow_download'] = 0;
+            }
+        }
         return ['link' => $link, 'name' => (string) $row['name'], 'owner' => $owner, 'row' => $row, 'root' => null];
     }
 
@@ -211,12 +334,17 @@ final class PublicLinkService
      *
      * @return ?array<string,mixed> el usuario con sesión, si la hay
      */
-    private function gate(array $ctx, Request $request): ?array
+    private function gate(array $ctx, Request $request, bool $opening = false): ?array
     {
         $link = $ctx['link'];
         $user = $this->optionalUser($request);
         if (LinkKeys::verifyKey($link, $request->input('k'))) {
             return $user;
+        }
+        // Con límite de visitas, el contenido solo se sirve a quien abrió el
+        // enlace (y recibió la llave): así cada visita pasa por el contador.
+        if ($link['max_views'] !== null && !$opening && $link['password_hash'] === null && ($link['access'] === 'anyone' || $user !== null)) {
+            throw new HttpException(403, 'LINK_KEY_REQUIRED', 'Abre el enlace de nuevo para ver este contenido.');
         }
         $needsPassword = $link['password_hash'] !== null;
         $members = $link['access'] === 'members';
@@ -237,7 +365,7 @@ final class PublicLinkService
     private function keyFor(array $ctx, Request $request, ?array $user): ?string
     {
         $link = $ctx['link'];
-        if ($link['password_hash'] === null && $link['access'] === 'anyone') {
+        if ($link['password_hash'] === null && $link['access'] === 'anyone' && $link['max_views'] === null) {
             return null;
         }
         $current = $request->input('k');

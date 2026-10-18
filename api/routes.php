@@ -68,6 +68,7 @@ return static function (Router $router): void {
     $router->post('/v1/public/links/{token}/unlock',  [ShareLinkController::class, 'unlock'], [new RateLimit('link_unlock', 10, 300)]);
     $router->get('/v1/public/links/{token}/items',    [ShareLinkController::class, 'items'], [new RateLimit('link_items', 120, 60)]);
     $router->get('/v1/public/links/{token}/content',  [ShareLinkController::class, 'content'], [new RateLimit('link_content', 300, 60)]);
+    $router->get('/v1/public/links/{token}/zip',      [ShareLinkController::class, 'zip'], [new RateLimit('link_zip', 10, 60)]);
     $router->get('/v1/public/links/{token}/thumb',    [ShareLinkController::class, 'thumb'], [new RateLimit('link_thumb', 600, 60)]);
 
     // --- Fase 2: Instalador ---

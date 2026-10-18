@@ -164,6 +164,13 @@ final class ShareLinkController
         (new PublicLinkService())->content((string) $request->param('token'), $request);
     }
 
+    /** GET /public/links/{token}/zip?folder= — la carpeta en un ZIP. */
+    public function zip(Request $request): void
+    {
+        $this->publicHeaders();
+        (new PublicLinkService())->zip((string) $request->param('token'), $request);
+    }
+
     /** GET /public/links/{token}/thumb?f= */
     public function thumb(Request $request): void
     {

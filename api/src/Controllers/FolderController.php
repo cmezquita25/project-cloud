@@ -22,10 +22,14 @@ use ProjectCloud\Services\FolderService;
  */
 final class FolderController
 {
+    /** Usuario que mira: define qué puede hacer con cada elemento (my_rights). */
+    private ?int $viewerId = null;
+
     /** GET /folders/{id}/children — contenido de una carpeta + migas de pan. */
     public function children(Request $request): Response
     {
         $userId = (int) $request->userId();
+        $this->viewerId = $userId;
         $folderId = $this->resolveId($request->param('id'));
         $permService = new \ProjectCloud\Services\SharePermissionService();
 
@@ -194,6 +198,7 @@ final class FolderController
     /** POST /folders/{id}/copy — copia recursiva a otra carpeta. */
     public function copy(Request $request): Response
     {
+        FileController::assertCanCopy((int) $request->userId(), 'folder', (int) $request->param('id'));
         $folder = $this->service()->copy(
             (int) $request->userId(),
             (string) $request->user()['username'],
@@ -281,6 +286,7 @@ final class FolderController
             'path'          => (string) $f['path'],
             'is_starred'    => (bool) $f['is_starred'],
             'visibility'    => (string) ($f['visibility'] ?? 'public'),
+            'my_rights'     => $this->viewerRights('folder', $f, $permService),
             'owner'         => $owners[0]['display_name'] ?? null,
             'created_by'    => $createdBy,
             'created_at'    => $f['created_at'] ?? null,
@@ -300,6 +306,22 @@ final class FolderController
         $result = (new \ProjectCloud\Services\VisibilityService())->setFolder((int) $request->userId(), (int) $request->param('id'), $visibility);
         \ProjectCloud\Services\ActivityLogger::log($request, 'folder.visibility', 'folder', (int) $result['folder']['id'], ['visibility' => $visibility, 'files' => $result['files']]);
         return Response::success(['folder' => $this->folderPublic($result['folder']), 'files_changed' => $result['files']]);
+    }
+
+    /**
+     * Qué puede hacer quien mira: el propietario todo; un invitado, lo que le
+     * den sus invitaciones (crear enlaces, descargar).
+     *
+     * @param array<string,mixed> $row
+     * @return array{share:bool,download:bool}
+     */
+    private function viewerRights(string $type, array $row, \ProjectCloud\Services\SharePermissionService $permService): array
+    {
+        if ($this->viewerId === null || $this->viewerId === (int) $row['user_id']) {
+            return ['share' => true, 'download' => true];
+        }
+        $rights = $permService->rights($this->viewerId, $type, (int) $row['id']);
+        return ['share' => (bool) ($rights['share'] ?? false), 'download' => (bool) ($rights['download'] ?? true)];
     }
 
     /** @param array<string,mixed> $f */
@@ -374,7 +396,8 @@ final class FolderController
             'is_starred'    => (bool) $f['is_starred'],
             'owner'         => $owners[0]['display_name'] ?? null,
             'created_by'    => $createdBy,
-            ...\ProjectCloud\Services\FileLinks::for($f, $ownerUsername),
+            ...\ProjectCloud\Services\FileLinks::for($f, $ownerUsername, ($rights = $this->viewerRights('file', $f, $permService))['download']),
+            'my_rights'     => $rights,
             'created_at'    => $f['created_at'] ?? null,
             'updated_at'    => $f['updated_at'] ?? null,
             'owners'        => $owners,

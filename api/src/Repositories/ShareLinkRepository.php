@@ -72,8 +72,8 @@ class ShareLinkRepository
     {
         $stmt = $this->pdo->prepare(
             'INSERT INTO share_links
-                (token, created_by, scope, target_type, target_id, target_path, access, label, allow_download, password_hash, expires_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, IF(? IS NULL, NULL, DATE_ADD(NOW(), INTERVAL ? SECOND)))'
+                (token, created_by, scope, target_type, target_id, target_path, access, label, allow_download, password_hash, max_views, expires_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, IF(? IS NULL, NULL, DATE_ADD(NOW(), INTERVAL ? SECOND)))'
         );
         $stmt->execute([
             $data['token'],
@@ -86,6 +86,7 @@ class ShareLinkRepository
             $data['label'],
             $data['allow_download'] ? 1 : 0,
             $data['password_hash'],
+            $data['max_views'] ?? null,
             $data['expires_in'],
             $data['expires_in'],
         ]);
@@ -102,7 +103,7 @@ class ShareLinkRepository
     {
         $sets = [];
         $params = [];
-        foreach (['access', 'label', 'password_hash'] as $col) {
+        foreach (['access', 'label', 'password_hash', 'max_views'] as $col) {
             if (array_key_exists($col, $fields)) {
                 $sets[] = "`{$col}` = ?";
                 $params[] = $fields[$col];

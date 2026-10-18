@@ -101,6 +101,7 @@ export function PreviewModal({ items, index, onIndex, onClose }: PreviewModalPro
               className="text-white hover:bg-white/15"
             />
           )}
+          {downloadHref && (
           <a
             href={item.url}
             target="_blank"
@@ -110,6 +111,7 @@ export function PreviewModal({ items, index, onIndex, onClose }: PreviewModalPro
           >
             <ExternalLink size={20} />
           </a>
+          )}
         </header>
 
         {/* Contenido */}

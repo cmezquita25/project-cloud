@@ -21,6 +21,9 @@ export interface ShareLink {
   /** Segundos hasta que caduca (negativo si ya caducó); null = sin caducidad. */
   expires_in: number | null
   view_count: number
+  /** Límite de visitas; null = sin límite. */
+  max_views: number | null
+  limit_reached: boolean
   download_count: number
   /** Segundos desde el último acceso; null = nunca se abrió. */
   accessed_ago: number | null
@@ -50,6 +53,8 @@ export interface LinkInput {
   expires_in?: number | null
   /** Texto = poner o cambiar; null = quitar. */
   password?: string | null
+  /** Límite de visitas; null = sin límite. */
+  max_views?: number | null
 }
 
 /** Políticas de la organización (Configuración → Espacio de trabajo). */

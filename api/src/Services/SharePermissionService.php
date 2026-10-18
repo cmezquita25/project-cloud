@@ -182,7 +182,7 @@ final class SharePermissionService
 
         if ($targetType === 'unit' || (empty($folderIds) && $targetType !== 'file')) {
             $stmtShares = $this->pdo->prepare("
-                SELECT sa.id as share_id, sa.permission_level, u.id, u.display_name, u.email
+                SELECT sa.id as share_id, sa.permission_level, sa.can_share, sa.block_download, u.id, u.display_name, u.email
                 FROM shared_access sa
                 JOIN users u ON u.id = sa.invited_user_id
                 WHERE sa.owner_id = :owner_id AND sa.target_type = 'unit'
@@ -199,6 +199,8 @@ final class SharePermissionService
                         'email' => (string) $row['email'],
                         'role' => 'invited',
                         'permission_level' => (string) $row['permission_level'],
+                        'can_share' => (bool) $row['can_share'],
+                        'block_download' => (bool) $row['block_download'],
                         'avatar_url' => AvatarService::urlFor($uid),
                     ];
                 }
@@ -218,7 +220,7 @@ final class SharePermissionService
             }
 
             $sql = "
-                SELECT sa.id as share_id, sa.permission_level, u.id, u.display_name, u.email
+                SELECT sa.id as share_id, sa.permission_level, sa.can_share, sa.block_download, u.id, u.display_name, u.email
                 FROM shared_access sa
                 JOIN users u ON u.id = sa.invited_user_id
                 WHERE sa.owner_id = :owner_id AND (" . implode(' OR ', $conditions) . ")
@@ -238,6 +240,8 @@ final class SharePermissionService
                         'email' => (string) $row['email'],
                         'role' => 'invited',
                         'permission_level' => (string) $row['permission_level'],
+                        'can_share' => (bool) $row['can_share'],
+                        'block_download' => (bool) $row['block_download'],
                         'avatar_url' => AvatarService::urlFor($uid),
                     ];
                 }
@@ -245,6 +249,91 @@ final class SharePermissionService
         }
 
         return $collaborators;
+    }
+
+    /** @var array<string, list<array{permission_level:string,can_share:int,block_download:int}>> */
+    private array $folderGrantCache = [];
+
+    /**
+     * Lo que un invitado puede hacer con un archivo o carpeta, sumando todas las
+     * invitaciones que lo alcanzan (directa, carpetas superiores, unidad
+     * completa). null = no tiene acceso. El propietario puede todo.
+     *
+     * - share: alguna invitación le permite crear enlaces y QR.
+     * - download: alguna invitación le permite descargar (la más permisiva gana).
+     *
+     * @return array{owner:bool,permission:string,share:bool,download:bool}|null
+     */
+    public function rights(int $userId, string $targetType, int $targetId): ?array
+    {
+        $table = $targetType === 'file' ? 'files' : 'folders';
+        $stmt = $this->pdo->prepare("SELECT * FROM `{$table}` WHERE id = ? AND deleted_at IS NULL");
+        $stmt->execute([$targetId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            return null;
+        }
+        $ownerId = (int) $row['user_id'];
+        if ($ownerId === $userId) {
+            return ['owner' => true, 'permission' => 'full', 'share' => true, 'download' => true];
+        }
+
+        $grants = [];
+        if ($targetType === 'file') {
+            $grants = $this->grantRows($ownerId, $userId, 'file', [$targetId]);
+            $folderId = $row['folder_id'] !== null ? (int) $row['folder_id'] : null;
+        } else {
+            $folderId = $targetId;
+        }
+        $grants = array_merge($grants, $this->folderChainGrants($ownerId, $userId, $folderId));
+        if ($grants === []) {
+            return null;
+        }
+        $permission = 'read';
+        $share = false;
+        $download = false;
+        foreach ($grants as $g) {
+            if ($g['permission_level'] === 'full') {
+                $permission = 'full';
+            }
+            $share = $share || (int) $g['can_share'] === 1;
+            $download = $download || (int) $g['block_download'] === 0;
+        }
+        return ['owner' => false, 'permission' => $permission, 'share' => $share, 'download' => $download];
+    }
+
+    /** Invitaciones a una carpeta, sus superiores y la unidad completa (memorizado por petición). */
+    private function folderChainGrants(int $ownerId, int $userId, ?int $folderId): array
+    {
+        $key = "{$ownerId}:{$userId}:" . ($folderId ?? 'root');
+        if (isset($this->folderGrantCache[$key])) {
+            return $this->folderGrantCache[$key];
+        }
+        $ids = [];
+        $current = $folderId;
+        for ($i = 0; $i < 100 && $current !== null; $i++) {
+            $ids[] = $current;
+            $stmt = $this->pdo->prepare('SELECT parent_id FROM folders WHERE id = ? AND deleted_at IS NULL');
+            $stmt->execute([$current]);
+            $parent = $stmt->fetchColumn();
+            $current = $parent !== false && $parent !== null ? (int) $parent : null;
+        }
+        $grants = array_merge($ids === [] ? [] : $this->grantRows($ownerId, $userId, 'folder', $ids), $this->grantRows($ownerId, $userId, 'unit', []));
+        return $this->folderGrantCache[$key] = $grants;
+    }
+
+    /** @param list<int> $ids */
+    private function grantRows(int $ownerId, int $userId, string $type, array $ids): array
+    {
+        $sql = 'SELECT permission_level, can_share, block_download FROM shared_access WHERE owner_id = ? AND invited_user_id = ? AND target_type = ?';
+        $params = [$ownerId, $userId, $type];
+        if ($type !== 'unit') {
+            $sql .= ' AND target_id IN (' . implode(',', array_fill(0, count($ids), '?')) . ')';
+            array_push($params, ...$ids);
+        }
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     private function satisfiesPermission(?string $actual, string $required): bool

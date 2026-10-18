@@ -102,7 +102,8 @@ export function useDriveAdapter(): IExplorerAdapter {
 
     getDownloadUrl: (item: DriveItem) => {
       // Privado: su enlace firmado, pidiendo descarga en vez de mostrarlo.
-      if (item.type === 'file') return item.visibility === 'private' ? `${item.url}&download=1` : item.url
+      // download_url: null si la invitación bloquea la descarga.
+      if (item.type === 'file') return item.download_url === undefined ? item.url : item.download_url ?? ''
       return ''
     }
   }), [])

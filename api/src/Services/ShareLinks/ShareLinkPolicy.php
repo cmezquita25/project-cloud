@@ -8,12 +8,15 @@ use ProjectCloud\Core\HttpException;
 use ProjectCloud\Repositories\FileRepository;
 use ProjectCloud\Repositories\FolderRepository;
 use ProjectCloud\Services\AssetsService;
+use ProjectCloud\Services\SharePermissionService;
 
 /**
  * Quién puede crear y administrar enlaces (plan §5.1-⑤):
  *
- *   Mi unidad          → solo el propietario. Los invitados no, aunque tengan
- *                        permiso «full».
+ *   Mi unidad          → el propietario, y los invitados a los que les activó
+ *                        «Puede compartir enlaces» (nunca solo por tener «full»).
+ *                        Si su invitación bloquea la descarga, sus enlaces
+ *                        tampoco permiten descargar.
  *   Unidad compartida  → solo los admins.
  *   Global             → los admins ven y revocan cualquier enlace, pero no
  *                        crean enlaces sobre la unidad de otro usuario.
@@ -25,7 +28,7 @@ final class ShareLinkPolicy
      * usuario pueda compartirlo.
      *
      * @param array{id:int,role:string} $user
-     * @return array{scope:string,target_type:string,target_id:?int,target_path:?string,row:?array<string,mixed>}
+     * @return array{scope:string,target_type:string,target_id:?int,target_path:?string,row:?array<string,mixed>,no_download:bool}
      */
     public static function assertCanManageTarget(array $user, string $scope, string $type, mixed $targetId, mixed $targetPath): array
     {
@@ -46,7 +49,7 @@ final class ShareLinkPolicy
             if (($type === 'folder' && !is_dir($abs)) || ($type === 'file' && !is_file($abs))) {
                 throw HttpException::notFound('El elemento ya no existe en la unidad compartida.');
             }
-            return ['scope' => 'org', 'target_type' => $type, 'target_id' => null, 'target_path' => $path, 'row' => null];
+            return ['scope' => 'org', 'target_type' => $type, 'target_id' => null, 'target_path' => $path, 'row' => null, 'no_download' => false];
         }
 
         if ($scope !== 'drive') {
@@ -57,11 +60,16 @@ final class ShareLinkPolicy
         if ($row === null) {
             throw HttpException::notFound('El elemento no existe o está en la papelera.');
         }
+        $noDownload = false;
         if ((int) $row['user_id'] !== $user['id']) {
-            // Mismo mensaje para invitados y admins: solo el propietario comparte.
-            throw HttpException::forbidden('Solo el propietario puede crear enlaces de este elemento.', 'LINK_FORBIDDEN');
+            $rights = (new SharePermissionService())->rights($user['id'], $type, $id);
+            if ($rights === null || !$rights['share']) {
+                // Mismo mensaje para invitados y admins: solo el propietario (o a quien él autorice).
+                throw HttpException::forbidden('Solo el propietario puede crear enlaces de este elemento.', 'LINK_FORBIDDEN');
+            }
+            $noDownload = !$rights['download'];
         }
-        return ['scope' => 'drive', 'target_type' => $type, 'target_id' => $id, 'target_path' => null, 'row' => $row];
+        return ['scope' => 'drive', 'target_type' => $type, 'target_id' => $id, 'target_path' => null, 'row' => $row, 'no_download' => $noDownload];
     }
 
     /**
@@ -88,13 +96,18 @@ final class ShareLinkPolicy
         if ($link['scope'] === 'org') {
             return $user['role'] === 'admin';
         }
-        if ((int) $link['created_by'] === $user['id']) {
-            return true;
-        }
         $row = $link['target_type'] === 'file'
             ? (new FileRepository())->findAnyById((int) $link['target_id'])
             : (new FolderRepository())->findAnyById((int) $link['target_id']);
-        return $row !== null && (int) $row['user_id'] === $user['id'];
+        if ($row !== null && (int) $row['user_id'] === $user['id']) {
+            return true; // el propietario edita cualquier enlace de lo suyo
+        }
+        if ((int) $link['created_by'] !== $user['id'] || $row === null) {
+            return false;
+        }
+        // Un invitado edita los suyos mientras conserve «Puede compartir enlaces».
+        $rights = (new SharePermissionService())->rights($user['id'], (string) $link['target_type'], (int) $link['target_id']);
+        return $rights !== null && $rights['share'];
     }
 
     /**

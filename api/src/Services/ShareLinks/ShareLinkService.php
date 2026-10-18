@@ -74,9 +74,10 @@ final class ShareLinkService
             'target_path'    => $t['target_path'],
             'access'         => $access,
             'label'          => self::label($in['label'] ?? null),
-            'allow_download' => (bool) ($in['allow_download'] ?? true),
+            'allow_download' => !$t['no_download'] && (bool) ($in['allow_download'] ?? true),
             'password_hash'  => isset($in['password']) && $in['password'] !== '' ? self::passwordHash($in['password']) : null,
             'expires_in'     => $expiresIn,
+            'max_views'      => self::maxViews($in['max_views'] ?? null),
         ]);
 
         return self::present((array) $this->links->find($id));
@@ -111,11 +112,21 @@ final class ShareLinkService
         if (array_key_exists('expires_in', $in)) {
             $fields['expires_in'] = self::expiresIn($in['expires_in']);
         }
+        if (array_key_exists('max_views', $in)) {
+            $fields['max_views'] = self::maxViews($in['max_views']);
+        }
         if (array_key_exists('password', $in)) {
             $fields['password_hash'] = $in['password'] === null || $in['password'] === '' ? null : self::passwordHash($in['password']);
         }
         if ($fields === []) {
             throw HttpException::badRequest('Nada que actualizar.');
+        }
+        // Un invitado con la descarga bloqueada no puede abrirla en sus enlaces.
+        if (!empty($fields['allow_download']) && $link['scope'] === 'drive') {
+            $rights = (new \ProjectCloud\Services\SharePermissionService())->rights($user['id'], (string) $link['target_type'], (int) $link['target_id']);
+            if ($rights !== null && !$rights['download']) {
+                $fields['allow_download'] = false;
+            }
         }
         LinkSettings::assertAllowed($fields['access'] ?? null, array_key_exists('expires_in', $fields), $fields['expires_in'] ?? null);
 
@@ -239,6 +250,8 @@ final class ShareLinkService
             'status'           => $status,
             'expires_in'       => $l['expires_at'] !== null ? (int) $l['expires_in'] : null,
             'view_count'       => (int) $l['view_count'],
+            'max_views'        => isset($l['max_views']) ? (int) $l['max_views'] : null,
+            'limit_reached'    => isset($l['max_views']) && (int) $l['view_count'] >= (int) $l['max_views'],
             'download_count'   => (int) $l['download_count'],
             'accessed_ago'     => $l['last_accessed_at'] !== null ? (int) $l['accessed_ago'] : null,
             'created_ago'      => (int) $l['created_ago'],
@@ -298,6 +311,18 @@ final class ShareLinkService
             throw self::invalid('label', 'La etiqueta admite hasta 120 caracteres.');
         }
         return $label;
+    }
+
+    /** Límite de visitas; null = sin límite. */
+    private static function maxViews(mixed $value): ?int
+    {
+        if ($value === null || $value === '' || $value === 0 || $value === '0') {
+            return null;
+        }
+        if (!is_numeric($value) || (int) $value < 1 || (int) $value > 1000000) {
+            throw self::invalid('max_views', 'El límite de visitas debe estar entre 1 y 1 000 000.');
+        }
+        return (int) $value;
     }
 
     /** Segundos desde ahora; null = sin caducidad. */

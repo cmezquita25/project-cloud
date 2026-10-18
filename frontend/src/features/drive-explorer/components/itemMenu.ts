@@ -40,6 +40,8 @@ export function buildItemMenu(
 ): MenuItem[] {
   const isFile = item.type === 'file'
   const isPrivate = item.visibility === 'private'
+  // Invitado con la descarga bloqueada: sin descargar, URL, copiar ni duplicar.
+  const canDownload = item.my_rights?.download !== false
   const items: MenuItem[] = []
 
   const isTrash = item.path.startsWith('.trash/')
@@ -82,12 +84,12 @@ export function buildItemMenu(
   }
 
   // Enlaces y QR: solo quien puede crearlos (los invitados nunca, aunque tengan «full»).
-  if (caps.canCreateLinks && isOwner(item, currentUserId)) {
+  if (caps.canCreateLinks && (isOwner(item, currentUserId) || item.my_rights?.share === true)) {
     items.push({ id: 'link', label: 'Enlace y QR', icon: QrCode, onSelect: () => act('link') })
   }
 
   if (isFile) {
-    if (caps.canDownload) {
+    if (caps.canDownload && canDownload) {
       items.push({ id: 'download', label: 'Descargar', icon: Download, onSelect: () => act('download') })
       // Los privados no tienen URL pública (se comparten con enlaces o invitaciones).
       if (!isPrivate) {
@@ -114,11 +116,11 @@ export function buildItemMenu(
     items.push({ id: 'move', label: 'Mover a', icon: FolderInput, onSelect: () => act('move') })
   }
   
-  if (caps.canCopy) {
+  if (caps.canCopy && canDownload) {
     items.push({ id: 'copy', label: 'Copiar a', icon: Copy, onSelect: () => act('copy') })
   }
   
-  if (isFile && caps.canDuplicate) {
+  if (isFile && caps.canDuplicate && canDownload) {
     items.push({ id: 'duplicate', label: 'Duplicar', icon: CopyPlus, onSelect: () => act('duplicate') })
   }
 

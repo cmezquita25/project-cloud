@@ -28,13 +28,15 @@ interface LinkFormProps {
   link?: ShareLink
   /** Políticas de la organización: limitan acceso y caducidad. */
   policy?: LinkPolicy
+  /** La invitación de quien comparte bloquea la descarga. */
+  downloadLocked?: boolean
   submitting?: boolean
   onSubmit: (input: LinkInput) => void
   onCancel?: () => void
 }
 
 /** Formulario de un enlace: acceso, caducidad, etiqueta, contraseña y descarga. */
-export function LinkForm({ link, policy, submitting = false, onSubmit, onCancel }: LinkFormProps) {
+export function LinkForm({ link, policy, downloadLocked = false, submitting = false, onSubmit, onCancel }: LinkFormProps) {
   const editing = Boolean(link)
   const maxSeconds = policy && policy.max_expiry_days > 0 ? policy.max_expiry_days * 86400 : null
   const allowNever = policy?.allow_never ?? true
@@ -56,7 +58,8 @@ export function LinkForm({ link, policy, submitting = false, onSubmit, onCancel 
   const [label, setLabel] = useState(link?.label ?? '')
   const [usePassword, setUsePassword] = useState(link?.has_password ?? false)
   const [password, setPassword] = useState('')
-  const [allowDownload, setAllowDownload] = useState(link?.allow_download ?? true)
+  const [allowDownload, setAllowDownload] = useState(downloadLocked ? false : (link?.allow_download ?? true))
+  const [maxViews, setMaxViews] = useState(link?.max_views ? String(link.max_views) : '')
   const [error, setError] = useState<string | null>(null)
 
   const expiryOptions = editing
@@ -68,6 +71,12 @@ export function LinkForm({ link, policy, submitting = false, onSubmit, onCancel 
     e.preventDefault()
     setError(null)
     const input: LinkInput = { access, label: label.trim() || null, allow_download: allowDownload }
+    const views = maxViews.trim() === '' ? null : Number(maxViews)
+    if (views !== null && (!Number.isInteger(views) || views < 1 || views > 1_000_000)) {
+      setError('El límite de visitas debe ser un número entero mayor que 0 (vacío = sin límite).')
+      return
+    }
+    input.max_views = views
 
     if (expiry === 'never') input.expires_in = null
     else if (expiry === 'custom') {
@@ -121,6 +130,15 @@ export function LinkForm({ link, policy, submitting = false, onSubmit, onCancel 
         />
       )}
       <Input
+        type="number"
+        min={1}
+        label="Límite de visitas (opcional)"
+        placeholder="Sin límite"
+        hint={link && link.max_views ? `Lleva ${link.view_count} de ${link.max_views}. Súbelo para que vuelva a abrir.` : 'Al alcanzarlo, el enlace deja de abrir para nuevos visitantes.'}
+        value={maxViews}
+        onChange={(e) => setMaxViews(e.target.value)}
+      />
+      <Input
         label="Etiqueta (opcional)"
         placeholder='Ej.: "QR stand expo", "Cliente X"'
         value={label}
@@ -132,8 +150,8 @@ export function LinkForm({ link, policy, submitting = false, onSubmit, onCancel 
           <Checkbox checked={usePassword} onChange={(e) => setUsePassword(e.target.checked)} />
           Proteger con contraseña
         </label>
-        <label className="inline-flex cursor-pointer items-center gap-2">
-          <Checkbox checked={allowDownload} onChange={(e) => setAllowDownload(e.target.checked)} />
+        <label className={downloadLocked ? 'inline-flex items-center gap-2 opacity-60' : 'inline-flex cursor-pointer items-center gap-2'} title={downloadLocked ? 'El propietario bloqueó la descarga para ti' : undefined}>
+          <Checkbox checked={allowDownload} disabled={downloadLocked} onChange={(e) => setAllowDownload(e.target.checked)} />
           Permitir descarga
         </label>
       </div>

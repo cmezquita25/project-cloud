@@ -102,7 +102,7 @@ export function PublicLinkPage() {
         (gate.info.link.target_type === 'file' && gate.info.file ? (
           <PublicFileView file={gate.info.file} />
         ) : (
-          <PublicFolderView token={token} linkKey={gate.key} rootName={gate.info.name} />
+          <PublicFolderView token={token} linkKey={gate.key} rootName={gate.info.name} allowDownload={gate.info.link.allow_download} />
         ))}
     </PublicLayout>
   )
@@ -247,6 +247,7 @@ const ERRORS: Record<string, { icon: typeof Clock; title: string; tone: 'danger'
   LINK_UNAVAILABLE: { icon: AlertTriangle, title: 'Ya no está disponible', tone: 'warning' },
   LINK_NOT_FOUND: { icon: Link2Off, title: 'Este enlace no existe', tone: 'danger' },
   LINKS_DISABLED: { icon: Link2Off, title: 'Enlaces desactivados', tone: 'warning' },
+  LINK_LIMIT: { icon: Link2Off, title: 'Límite de visitas alcanzado', tone: 'warning' },
 }
 
 function ErrorState({ code, message }: { code: string; message: string }) {
@@ -292,7 +293,7 @@ function PublicFileView({ file }: { file: FileItem }) {
 
 // --- Enlace de carpeta ---
 
-function PublicFolderView({ token, linkKey, rootName }: { token: string; linkKey: string | null; rootName: string }) {
+function PublicFolderView({ token, linkKey, rootName, allowDownload }: { token: string; linkKey: string | null; rootName: string; allowDownload: boolean }) {
   const [searchParams, setSearchParams] = useSearchParams()
   const folder = searchParams.get('f') ?? ''
   const [sort, setSort] = useSortState()
@@ -360,6 +361,14 @@ function PublicFolderView({ token, linkKey, rootName }: { token: string; linkKey
     }
   }
 
+  const zipUrl = (() => {
+    const q = new URLSearchParams()
+    if (folder) q.set('folder', folder)
+    if (linkKey) q.set('k', linkKey)
+    const qs = q.toString()
+    return `/api/v1/public/links/${encodeURIComponent(token)}/zip${qs ? `?${qs}` : ''}`
+  })()
+
   // Un clic abre (no hay selección ni acciones en la vista pública).
   const interactions = { onItemClick: (item: DriveItem) => openItem(item) }
 
@@ -368,6 +377,14 @@ function PublicFolderView({ token, linkKey, rootName }: { token: string; linkKey
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <Breadcrumbs crumbs={page?.breadcrumbs ?? []} rootLabel={rootName} onNavigate={navigate} />
         <div className="ml-auto flex items-center gap-2">
+          {allowDownload && items.length > 0 && (
+            <a href={zipUrl} download title="Descarga esta carpeta completa, con sus subcarpetas, en un archivo ZIP">
+              <Button size="sm" variant="secondary" leftIcon={Download}>
+                <span className="hidden sm:inline">Descargar todo (ZIP)</span>
+                <span className="sm:hidden">ZIP</span>
+              </Button>
+            </a>
+          )}
           <SortControl value={sort} onChange={setSort} showOwner={false} />
           <ViewToggle value={view} onChange={setViewMode} />
         </div>

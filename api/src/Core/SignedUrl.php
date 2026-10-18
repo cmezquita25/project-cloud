@@ -17,12 +17,16 @@ final class SignedUrl
 {
     private const WINDOW = 3600;
 
-    /** @param string $kind content | thumb */
+    /**
+     * @param string $kind content | thumb | download (la descarga se sirve por
+     *                     /content con su propia firma: la de vista previa no vale)
+     */
     public static function file(int $fileId, string $kind = 'content', array $extra = []): string
     {
         $exp = (intdiv(time(), self::WINDOW) + 2) * self::WINDOW;
         $query = http_build_query($extra + ['exp' => $exp, 'sig' => self::sign($fileId, $kind, $exp)]);
-        return "/api/v1/files/{$fileId}/{$kind}?{$query}";
+        $segment = $kind === 'download' ? 'content' : $kind;
+        return "/api/v1/files/{$fileId}/{$segment}?{$query}";
     }
 
     public static function verify(int $fileId, string $kind, mixed $exp, mixed $sig): bool

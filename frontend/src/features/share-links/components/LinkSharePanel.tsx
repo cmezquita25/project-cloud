@@ -33,6 +33,8 @@ interface LinkSharePanelProps {
   publicUrl?: string | null
   /** Hace privado el elemento (Mi unidad). Si no se pasa, no se ofrece. */
   onMakePrivate?: () => Promise<void>
+  /** Invitado con la descarga bloqueada: sus enlaces nunca permiten descargar. */
+  downloadLocked?: boolean
 }
 
 /** «hace 5 min», «en 3 días», a partir de segundos. */
@@ -56,7 +58,7 @@ function expiryText(link: ShareLink): string {
  * formulario para crear uno. Solo la ve quien puede crear enlaces (el
  * propietario en Mi unidad; un admin en la unidad compartida).
  */
-export function LinkSharePanel({ target, publicUrl, onMakePrivate }: LinkSharePanelProps) {
+export function LinkSharePanel({ target, publicUrl, onMakePrivate, downloadLocked = false }: LinkSharePanelProps) {
   const toast = useToast()
   const [links, setLinks] = useState<ShareLink[] | null>(null)
   const [info, setInfo] = useState<LinkTargetInfo | null>(null)
@@ -199,7 +201,7 @@ export function LinkSharePanel({ target, publicUrl, onMakePrivate }: LinkSharePa
           <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-content-primary">
             <Link2 size={16} className="text-primary" /> Nuevo enlace
           </p>
-          <LinkForm policy={policy} submitting={submitting} onSubmit={create} onCancel={links.length > 0 ? () => setCreating(false) : undefined} />
+          <LinkForm policy={policy} downloadLocked={downloadLocked} submitting={submitting} onSubmit={create} onCancel={links.length > 0 ? () => setCreating(false) : undefined} />
         </div>
       ) : (
         <Button variant="secondary" size="sm" leftIcon={Plus} onClick={() => setCreating(true)}>
@@ -213,7 +215,7 @@ export function LinkSharePanel({ target, publicUrl, onMakePrivate }: LinkSharePa
             Enlaces de {target.target_type === 'file' ? 'este archivo' : 'esta carpeta'} ({links.length})
           </h4>
           {links.map((link) => (
-            <LinkCard key={link.id} link={link} name={target.name} policy={policy} onCopy={() => copy(link)} onChange={replace} />
+            <LinkCard key={link.id} link={link} name={target.name} policy={policy} downloadLocked={downloadLocked} onCopy={() => copy(link)} onChange={replace} />
           ))}
         </div>
       )}
@@ -225,11 +227,12 @@ interface LinkCardProps {
   link: ShareLink
   name: string
   policy?: LinkPolicy
+  downloadLocked?: boolean
   onCopy: () => void
   onChange: (link: ShareLink) => void
 }
 
-function LinkCard({ link, name, policy, onCopy, onChange }: LinkCardProps) {
+function LinkCard({ link, name, policy, downloadLocked, onCopy, onChange }: LinkCardProps) {
   const toast = useToast()
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -277,6 +280,7 @@ function LinkCard({ link, name, policy, onCopy, onChange }: LinkCardProps) {
         {link.has_password && <Badge icon={KeyRound}>Contraseña</Badge>}
         {!link.allow_download && <Badge icon={Download}>Sin descarga</Badge>}
         {expired && <Badge tone="danger">Caducado</Badge>}
+        {link.limit_reached && <Badge tone="danger">Límite de visitas alcanzado</Badge>}
       </div>
       <p className={cn('mt-1 text-xs', expired ? 'text-danger' : 'text-content-tertiary')}>{expiryText(link)}</p>
 
@@ -298,7 +302,7 @@ function LinkCard({ link, name, policy, onCopy, onChange }: LinkCardProps) {
 
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-content-tertiary">
-          <span className="inline-flex items-center gap-1"><Eye size={13} /> {link.view_count.toLocaleString('es')} {link.view_count === 1 ? 'visita' : 'visitas'}</span>
+          <span className="inline-flex items-center gap-1"><Eye size={13} /> {link.view_count.toLocaleString('es')}{link.max_views !== null ? ` / ${link.max_views.toLocaleString('es')}` : ''} {link.view_count === 1 && link.max_views === null ? 'visita' : 'visitas'}</span>
           <span className="inline-flex items-center gap-1"><DownloadCloud size={13} /> {link.download_count.toLocaleString('es')} {link.download_count === 1 ? 'descarga' : 'descargas'}</span>
           <span>{link.accessed_ago === null ? 'Sin abrir aún' : `Último acceso ${relative(-link.accessed_ago)}`}</span>
         </p>
@@ -335,7 +339,7 @@ function LinkCard({ link, name, policy, onCopy, onChange }: LinkCardProps) {
       {editing && (
         <div className="mt-3 border-t border-slate-900/[0.06] pt-3 dark:border-white/[0.06]">
           {expired && <p className="mb-2 text-xs text-content-secondary">Elige una nueva caducidad: el enlace (y su QR) vuelven a funcionar con la misma dirección.</p>}
-          <LinkForm link={link} policy={policy} submitting={saving} onSubmit={save} onCancel={() => setEditing(false)} />
+          <LinkForm link={link} policy={policy} downloadLocked={downloadLocked} submitting={saving} onSubmit={save} onCancel={() => setEditing(false)} />
         </div>
       )}
     </div>
