@@ -196,10 +196,40 @@ function applyAppearance(data: PlatformSettings, userPreset: string | null | und
   setVar('--color-btn-text', custom?.btn_text_color)
 }
 
+/**
+ * Tema propio de la última persona que usó la app en este navegador. Sin
+ * sesión (login, al cerrar sesión, mientras se comprueba la sesión) se usa
+ * ese y no el de la organización: así la pantalla de acceso se ve con el
+ * estilo que esa persona eligió, y al entrar no salta de un tema a otro.
+ */
+const LAST_USER_PRESET_KEY = 'pc-last-user-preset'
+
+function readLastUserPreset(): string | null {
+  try {
+    return localStorage.getItem(LAST_USER_PRESET_KEY)
+  } catch {
+    return null
+  }
+}
+
+function rememberUserPreset(preset: string | null): void {
+  try {
+    if (preset) localStorage.setItem(LAST_USER_PRESET_KEY, preset)
+    else localStorage.removeItem(LAST_USER_PRESET_KEY)
+  } catch {
+    /* sin almacenamiento: el login usará el tema de la organización */
+  }
+}
+
 export function PlatformSettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<PlatformSettings | null>(readCachedSettings)
   const { user } = useAuth()
-  const userPreset = user?.theme_preset ?? null
+  // Con sesión: el de la cuenta (o ninguno = el de la organización). Sin sesión: el último recordado.
+  const userPreset = user ? (user.theme_preset ?? null) : readLastUserPreset()
+
+  useEffect(() => {
+    if (user) rememberUserPreset(user.theme_preset ?? null)
+  }, [user])
 
   useEffect(() => {
     let active = true
