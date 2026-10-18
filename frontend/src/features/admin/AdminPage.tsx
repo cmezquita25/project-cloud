@@ -21,6 +21,8 @@ import Chart from 'react-apexcharts'
 import { useTheme } from '@app/providers/ThemeProvider'
 import { useAssetsAccess } from '@features/assets/hooks/useAssetsAccess'
 import type { AdminUser } from './types'
+import { CronHealthAlert } from './components/CronHealthAlert'
+import { UpdateAvailableBanner } from './components/UpdateAvailableBanner'
 
 type Tab = 'overview' | 'users' | 'activity'
 
@@ -301,6 +303,8 @@ export function AdminPage() {
           </div>
         ) : tab === 'overview' && stats ? (
           <div className="space-y-6 pb-12">
+            <UpdateAvailableBanner />
+            <CronHealthAlert />
 
             {/* Bento Grid: Top row - Stats */}
             <div className="stagger-rise grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">

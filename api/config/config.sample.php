@@ -32,7 +32,7 @@ return [
         // Ruta absoluta a la carpeta pública de archivos (espeja el árbol virtual).
         'path' => __DIR__ . '/../../storage',
         // URL base pública para construir enlaces directos.
-        'public_url' => 'https://drive.techmaleon.mx/storage',
+        'public_url' => 'https://drive.techmaleon.com.mx/storage',
         // Tamaño de chunk para subidas grandes (bytes).
         'chunk_size' => 4 * 1024 * 1024, // 4 MB
     ],

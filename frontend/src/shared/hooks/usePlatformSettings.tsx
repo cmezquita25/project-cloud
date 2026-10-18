@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { api } from '../api'
+import { APP_VERSION } from '../config/version'
 
 interface PlatformSettings {
   logo_favicon: boolean
@@ -17,6 +18,45 @@ interface PlatformSettings {
   theme_preset?: string | null
   ga4_measurement_id?: string | null
   ga4_enabled?: boolean
+  /** Versión instalada en el servidor. */
+  app_version?: string
+  app_released_at?: string | null
+}
+
+/** Marca para no recargar en bucle si la versión no llegara a coincidir. */
+const VERSION_RELOAD_KEY = 'pc-version-reload'
+
+/**
+ * Si el servidor ya tiene otra versión (se actualizó mientras la pestaña
+ * seguía abierta o el navegador sirvió un index.html viejo), recarga una vez
+ * para traer los archivos nuevos.
+ */
+function reloadIfVersionChanged(serverVersion: string | undefined): boolean {
+  if (!serverVersion || serverVersion === APP_VERSION) return false
+  try {
+    if (sessionStorage.getItem(VERSION_RELOAD_KEY) === serverVersion) return false
+    // Las respuestas en caché son de la versión anterior: se descartan.
+    sessionStorage.clear()
+    sessionStorage.setItem(VERSION_RELOAD_KEY, serverVersion)
+  } catch {
+    return false // sin almacenamiento no hay forma segura de evitar el bucle
+  }
+  window.location.reload()
+  return true
+}
+
+/**
+ * Recarga la app descartando las respuestas guardadas en esta pestaña (caché
+ * de la API y de React Query). Se usa tras actualizar o revertir la plataforma.
+ */
+// eslint-disable-next-line react-refresh/only-export-components
+export function reloadWithFreshCache(): void {
+  try {
+    sessionStorage.clear()
+  } catch {
+    /* sin almacenamiento: la recarga igual trae los archivos nuevos */
+  }
+  window.location.reload()
 }
 
 export type ThemePreset = 'blizzard' | 'nebula'
@@ -65,6 +105,7 @@ export function PlatformSettingsProvider({ children }: { children: ReactNode }) 
     api.get<PlatformSettings>('/settings/public')
       .then((data) => {
         if (!active) return
+        if (reloadIfVersionChanged(data.app_version)) return
         setSettings(data)
         applyThemePreset(normalizeThemePreset(data.theme_preset))
 

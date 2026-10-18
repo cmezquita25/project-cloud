@@ -8,7 +8,7 @@ use ProjectCloud\Core\Config;
 
 /**
  * Manejo de CORS para desarrollo. En producción el front y la API comparten
- * dominio (drive.techmaleon.mx), por lo que CORS no es necesario; solo se
+ * dominio (drive.techmaleon.com.mx), por lo que CORS no es necesario; solo se
  * activa para orígenes de desarrollo explícitamente permitidos.
  *
  * Se aplica a nivel de front controller (emite cabeceras y responde OPTIONS).

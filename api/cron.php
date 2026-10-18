@@ -3,52 +3,63 @@
 declare(strict_types=1);
 
 /**
- * Script ejecutable del Cron del Servidor.
- * Puede ser programado en cPanel / Plesk cada 60s:
- * * * * * * php /ruta/absoluta/api/cron.php >/dev/null 2>&1
+ * Cron del servidor. Se programa cada minuto en el panel del hosting:
+ *
+ *   Plesk  → Tareas programadas → «Ejecutar un script PHP» → httpdocs/api/cron.php
+ *   cPanel → Trabajos de Cron   → php /home/<usuario>/public_html/api/cron.php
+ *   VPS    → crontab -e         → * * * * * php /ruta/api/cron.php >/dev/null 2>&1
+ *
+ * Por HTTP (servicios externos) se usa /api/v1/system/cron?token=… — esta ruta
+ * normalmente no es accesible por web (el .htaccess raíz manda /api/* al router),
+ * pero si el servidor la sirviera, se exige el mismo token.
  */
 
-require_once __DIR__ . '/bootstrap.php';
+$isConfigured = require __DIR__ . '/bootstrap.php';
 
 use ProjectCloud\Services\CronService;
-use ProjectCloud\Repositories\SettingsRepository;
 
-// Si se invoca por HTTP web, validar token secreto de cron
-if (php_sapi_name() !== 'cli') {
-    $settings = new SettingsRepository();
-    $cronSecret = $settings->get('cron_secret');
-    if (!$cronSecret) {
-        $cronSecret = bin2hex(random_bytes(16));
-        $settings->set('cron_secret', $cronSecret);
-    }
+$isCli = PHP_SAPI === 'cli';
 
-    $token = $_GET['token'] ?? ($_SERVER['HTTP_X_CRON_TOKEN'] ?? '');
-    if ($token !== $cronSecret) {
-        http_response_code(403);
-        header('Content-Type: application/json');
-        echo json_encode(['error' => 'Acceso denegado: Token de cron inválido']);
-        exit;
+if (!$isConfigured) {
+    if ($isCli) {
+        fwrite(STDERR, "[CRON] La plataforma aún no está instalada.\n");
+        exit(1);
     }
+    http_response_code(503);
+    exit;
 }
 
 try {
     $cron = new CronService();
-    $result = $cron->run();
 
-    if (php_sapi_name() === 'cli') {
-        echo "[CRON OK] " . date('Y-m-d H:i:s') . " - " . json_encode($result['tasks']) . "\n";
-    } else {
-        header('Content-Type: application/json');
-        echo json_encode($result);
+    if (!$isCli) {
+        $token = (string) ($_GET['token'] ?? ($_SERVER['HTTP_X_CRON_TOKEN'] ?? ''));
+        if (!$cron->isValidSecret($token)) {
+            http_response_code(403);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Acceso denegado: token de cron inválido']);
+            exit;
+        }
     }
+
+    $result = $cron->run($isCli ? 'cli' : 'http');
+
+    if ($isCli) {
+        $ran = implode(', ', array_keys($result['tasks']));
+        $summary = isset($result['skipped']) ? 'omitido: ' . $result['skipped'] : ($ran !== '' ? $ran : 'sin tareas pendientes');
+        echo '[CRON ' . ($result['ok'] ? 'OK' : 'CON ERRORES') . '] ' . gmdate('Y-m-d H:i:s') . " UTC - {$summary}\n";
+        exit($result['ok'] ? 0 : 1);
+    }
+
+    header('Content-Type: application/json');
+    echo json_encode($result);
 } catch (\Throwable $e) {
-    if (php_sapi_name() === 'cli') {
-        fwrite(STDERR, "[CRON ERROR] " . $e->getMessage() . "\n");
+    if ($isCli) {
+        fwrite(STDERR, '[CRON ERROR] ' . $e->getMessage() . "\n");
         exit(1);
-    } else {
-        http_response_code(500);
-        header('Content-Type: application/json');
-        echo json_encode(['error' => $e->getMessage()]);
     }
+    http_response_code(500);
+    header('Content-Type: application/json');
+    echo json_encode(['error' => 'Error interno del cron']);
+    error_log('[ProjectCloud][cron] ' . $e->getMessage());
 }
-

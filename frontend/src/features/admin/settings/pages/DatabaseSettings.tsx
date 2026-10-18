@@ -52,6 +52,9 @@ function BackupRow({
     <tr className="hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.07] transition-colors">
       <td className="px-4 py-3 font-medium text-content-primary whitespace-nowrap">
         {backup.filename}
+        {backup.kind === 'pre-update' && (
+          <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">Pre-actualización</span>
+        )}
       </td>
       <td className="px-4 py-3 whitespace-nowrap">
         {backup.created_at ? new Date(backup.created_at).toLocaleString() : 'Desconocida'}

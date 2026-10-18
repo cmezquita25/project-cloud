@@ -1,10 +1,12 @@
-import { Building2, Palette, Mail, FileText, ShieldCheck, Database, Blocks, Clock, type LucideIcon } from 'lucide-react'
+import { Building2, Palette, Mail, FileText, ShieldCheck, Database, Blocks, Clock, DownloadCloud, type LucideIcon } from 'lucide-react'
 
 export interface SettingsNavItem {
   to: string
   label: string
   icon: LucideIcon
   end?: boolean
+  /** Muestra un aviso (punto) cuando hay una actualización disponible. */
+  updateBadge?: boolean
 }
 
 /** Secciones de Configuración (pestañas verticales del panel de administración). */
@@ -17,4 +19,5 @@ export const SETTINGS_NAV: SettingsNavItem[] = [
   { to: '/admin/settings/email-templates', label: 'Plantillas de correo', icon: FileText },
   { to: '/admin/settings/workspace', label: 'Espacio de trabajo', icon: ShieldCheck },
   { to: '/admin/settings/database', label: 'Base de datos', icon: Database },
+  { to: '/admin/settings/updates', label: 'Actualizaciones', icon: DownloadCloud, updateBadge: true },
 ]

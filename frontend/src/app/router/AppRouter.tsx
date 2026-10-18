@@ -15,6 +15,7 @@ import { GeneralSettings } from '@features/admin/settings/pages/GeneralSettings'
 import { AppearanceSettings } from '@features/admin/settings/pages/AppearanceSettings'
 import { IntegrationsSettings } from '@features/admin/settings/pages/IntegrationsSettings'
 import { CronSettings } from '@features/admin/settings/pages/CronSettings'
+import { UpdatesSettings } from '@features/admin/settings/pages/UpdatesSettings'
 import { EmailSettings } from '@features/admin/settings/pages/EmailSettings'
 import { EmailTemplatesSettings } from '@features/admin/settings/pages/EmailTemplatesSettings'
 import { EmailTemplateEditor } from '@features/admin/settings/pages/EmailTemplateEditor'
@@ -95,6 +96,7 @@ const router = createBrowserRouter([
                       { path: 'appearance', element: <AppearanceSettings /> },
                       { path: 'integrations', element: <IntegrationsSettings /> },
                       { path: 'cron', element: <CronSettings /> },
+                      { path: 'updates', element: <UpdatesSettings /> },
                       { path: 'email', element: <EmailSettings /> },
                       { path: 'email-templates', element: <EmailTemplatesSettings /> },
                       { path: 'email-templates/:key', element: <EmailTemplateEditor /> },

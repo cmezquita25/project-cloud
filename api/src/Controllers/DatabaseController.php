@@ -43,14 +43,11 @@ final class DatabaseController
     /** POST /admin/database/migrate-auto */
     public function migrateAuto(Request $request): Response
     {
-        $migrator = new \ProjectCloud\Services\SchemaMigrator();
-        $count = $migrator->run();
-        
-        ActivityLogger::log($request, 'database_migrate_auto', 'system', 0, [
-            'statements_executed' => $count,
-        ]);
+        $result = (new \ProjectCloud\Services\MigrationRunner())->run();
 
-        return Response::success(['ok' => true, 'statements' => $count]);
+        ActivityLogger::log($request, 'database_migrate_auto', 'system', 0, $result);
+
+        return Response::success(['ok' => true, 'statements' => count($result['applied']), 'schema' => $result]);
     }
 
     /** GET /admin/database/backups */

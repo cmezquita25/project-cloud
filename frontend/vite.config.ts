@@ -1,10 +1,22 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'node:path'
+import { readFileSync } from 'node:fs'
+
+// Versión de la app: fuente única en /version.json (la comparte el backend
+// vía api/version.php, generado por scripts/sync-version.mjs).
+const versionInfo = JSON.parse(readFileSync(path.resolve(__dirname, '../version.json'), 'utf8')) as {
+  version: string
+  released_at: string
+}
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+  define: {
+    __APP_VERSION__: JSON.stringify(versionInfo.version),
+    __APP_RELEASED_AT__: JSON.stringify(versionInfo.released_at),
+  },
   // Base absoluta para soportar correctamente rutas anidadas en React Router (ej. /admin/users)
   base: '/',
   resolve: {

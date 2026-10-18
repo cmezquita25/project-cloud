@@ -314,6 +314,9 @@ final class Installer
         if ($username === '') {
             throw new HttpException(422, 'INVALID_USERNAME', 'El nombre de usuario no es válido.');
         }
+        if (\ProjectCloud\Services\ReservedUsernames::isReserved($username)) {
+            throw new HttpException(422, 'INVALID_USERNAME', 'Ese nombre de usuario está reservado por el sistema. Elige otro.');
+        }
 
         // Evita duplicados.
         $exists = $pdo->prepare('SELECT COUNT(*) FROM users WHERE username = ? OR email = ?');

@@ -36,3 +36,6 @@ Options -Indexes -ExecCGI
 RedirectMatch 404 ^/storage/\.uploads
 RedirectMatch 404 ^/storage/\.ratelimit
 RedirectMatch 404 ^/storage/\.trash
+
+# 5. Copias de seguridad antiguas (ahora viven en api/var/backups, fuera de la web).
+RedirectMatch 404 ^/storage/backups

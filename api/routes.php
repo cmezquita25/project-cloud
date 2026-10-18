@@ -28,6 +28,9 @@ use ProjectCloud\Controllers\AssetsController;
 use ProjectCloud\Controllers\DatabaseController;
 use ProjectCloud\Controllers\ShareController;
 use ProjectCloud\Controllers\NotificationController;
+use ProjectCloud\Controllers\CronController;
+use ProjectCloud\Controllers\SystemController;
+use ProjectCloud\Controllers\UpdateController;
 use ProjectCloud\Middleware\AuthMiddleware;
 use ProjectCloud\Middleware\AdminOnly;
 use ProjectCloud\Middleware\RateLimit;
@@ -36,6 +39,10 @@ return static function (Router $router): void {
     // --- Diagnóstico ---
     $router->get('/v1/health', [HealthController::class, 'index']);
     $router->get('/health', [HealthController::class, 'index']); // alias de conveniencia
+
+    // --- Sistema: estado (mantenimiento/versión) y cron por HTTP (con token) ---
+    $router->get('/v1/system/status', [SystemController::class, 'status']);
+    $router->get('/v1/system/cron',   [SystemController::class, 'cron'], [new RateLimit('cron_http', 10, 60)]);
 
     // --- Fase 9: Configuraciones públicas ---
     $router->get('/v1/settings/public', [SettingsController::class, 'publicConfig']);
@@ -170,8 +177,23 @@ return static function (Router $router): void {
     $router->get('/v1/admin/database/backups/{filename}/download', [\ProjectCloud\Controllers\DatabaseController::class, 'downloadBackup'], $admin);
 
     // Tareas Cron de Administración
-    $router->get('/v1/admin/cron',     [AdminController::class, 'cronStatus'], $admin);
-    $router->post('/v1/admin/cron/run', [AdminController::class, 'runCron'], $admin);
+    $router->get('/v1/admin/cron',                  [CronController::class, 'status'], $admin);
+    $router->post('/v1/admin/cron/run',             [CronController::class, 'runAll'], $admin);
+    $router->post('/v1/admin/cron/tasks/{key}/run', [CronController::class, 'runTask'], $admin);
+    $router->post('/v1/admin/cron/secret',          [CronController::class, 'regenerateSecret'], $admin);
+
+    // Modo mantenimiento
+    $router->post('/v1/admin/maintenance', [SystemController::class, 'setMaintenance'], $admin);
+
+    // Actualizaciones (OTA)
+    $router->get('/v1/admin/updates',              [UpdateController::class, 'status'], $admin);
+    $router->get('/v1/admin/updates/badge',        [UpdateController::class, 'badge'], $admin);
+    $router->post('/v1/admin/updates/check',       [UpdateController::class, 'check'], $admin);
+    $router->post('/v1/admin/updates/start',       [UpdateController::class, 'start'], $admin);
+    $router->post('/v1/admin/updates/step',        [UpdateController::class, 'step'], $admin);
+    $router->post('/v1/admin/updates/cancel',      [UpdateController::class, 'cancel'], $admin);
+    $router->post('/v1/admin/updates/revert',      [UpdateController::class, 'revert'], $admin);
+    $router->delete('/v1/admin/updates/old-files', [UpdateController::class, 'deleteOldFiles'], $admin);
 
     // Notificaciones de Usuario
     $router->get('/v1/notifications',              [NotificationController::class, 'list'], $auth);

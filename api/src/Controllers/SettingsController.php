@@ -37,6 +37,11 @@ final class SettingsController
         $config['theme_preset'] = ($storedPreset === 'nebula' || $storedPreset === 'classic') ? 'nebula' : 'blizzard';
         $config['ga4_measurement_id'] = $settings->get('ga4_measurement_id');
         $config['ga4_enabled'] = (bool) $settings->getInt('ga4_enabled', 0);
+        // Versión del backend: si no coincide con la del frontend en caché, el
+        // cliente recarga para no quedarse con bundles de la versión anterior.
+        $version = \ProjectCloud\Core\AppVersion::info();
+        $config['app_version'] = $version['version'];
+        $config['app_released_at'] = $version['released_at'];
         return Response::success($config);
     }
 

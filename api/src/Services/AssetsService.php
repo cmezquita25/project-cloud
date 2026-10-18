@@ -79,6 +79,12 @@ final class AssetsService
         return 'Unidad compartida';
     }
 
+    /** Ruta absoluta de la carpeta de la unidad compartida (exista o no). */
+    public function rootPath(): string
+    {
+        return $this->root;
+    }
+
     public function isActive(): bool
     {
         return is_dir($this->root);

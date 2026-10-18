@@ -8,6 +8,10 @@ dist-ssr/
 # Configuración sensible del backend (generada por el instalador)
 api/config/config.php
 api/config/install.lock
+api/config/maintenance.json
+
+# Carpeta privada del sistema (backups, temporales, estado del actualizador)
+api/var/
 
 # Sesiones de subida y archivos de usuarios (no versionar contenido real)
 storage/
@@ -34,3 +38,11 @@ graphify-out
 #Folders Prueba
 app-assets/
 thumbs/
+
+# Releases generados (se publican en el servidor de versiones, no se versionan)
+release/out/
+release/build/
+
+# Llaves de firma: NUNCA en el repositorio
+*.key
+*.pem

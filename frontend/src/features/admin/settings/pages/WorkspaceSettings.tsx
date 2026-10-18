@@ -103,7 +103,7 @@ export function WorkspaceSettings() {
           Raíz de la carpeta compartida (Ruta física)
         </label>
         <p className="text-xs text-content-tertiary mb-3">
-          El nombre de la carpeta (dentro de storage) que actúa como raíz en el servidor. Cambiar esto no eliminará la unidad anterior, solo apuntará a una nueva ubicación física.
+          El nombre de la carpeta (en la raíz del sitio, junto a storage) que actúa como raíz en el servidor. No puede usar el nombre de una carpeta del sistema (api, app-assets, storage…). Cambiar esto no eliminará la unidad anterior, solo apuntará a una nueva ubicación física.
         </p>
         <div className="flex gap-2">
           <input

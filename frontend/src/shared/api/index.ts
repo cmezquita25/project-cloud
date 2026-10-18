@@ -1,4 +1,5 @@
 export { api, setOnSessionExpired, forceRefresh } from './client'
 export { session } from './session'
 export { ApiError } from './ApiError'
+export { maintenance, MAINTENANCE_BYPASS_HEADER, type MaintenanceStatus } from './maintenance'
 export type { ApiEnvelope, ApiErrorPayload } from './types'

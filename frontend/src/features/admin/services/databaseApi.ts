@@ -5,6 +5,8 @@ export interface BackupItem {
   filename: string
   size_bytes: number
   created_at: string
+  /** pre-update = copia del sistema hecha automáticamente antes de actualizar. */
+  kind?: 'manual' | 'pre-update'
 }
 
 export const databaseApi = {

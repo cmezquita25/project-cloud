@@ -131,7 +131,7 @@ final class InstallController
     /** Deriva la URL pública de /storage desde el host actual (siempre HTTPS). */
     private function publicStorageUrl(): string
     {
-        $host = (string) ($_SERVER['HTTP_HOST'] ?? 'drive.techmaleon.mx');
+        $host = (string) ($_SERVER['HTTP_HOST'] ?? 'drive.techmaleon.com.mx');
         $host = preg_replace('/:\d+$/', '', $host) ?? $host; // quita puerto
         return "https://$host/storage";
     }

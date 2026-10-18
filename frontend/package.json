@@ -1,12 +1,14 @@
 {
   "name": "project-cloud-frontend",
   "private": true,
-  "version": "2.0.0",
+  "version": "2.1.0",
   "type": "module",
   "description": "Project Cloud — clon de Google Drive auto-hosteado (frontend)",
   "scripts": {
     "dev": "vite",
+    "prebuild": "node ../scripts/sync-version.mjs",
     "build": "tsc -b && vite build",
+    "postbuild": "node ../scripts/deploy-dist.mjs",
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx"
   },

@@ -19,6 +19,7 @@ use ProjectCloud\Services\EmailTemplateService;
 use ProjectCloud\Services\FileSystemService;
 use ProjectCloud\Services\MailService;
 use ProjectCloud\Services\PasswordResetService;
+use ProjectCloud\Services\ReservedUsernames;
 use ProjectCloud\Services\UrlBuilder;
 use ProjectCloud\Services\ConfigManager;
 use ProjectCloud\Core\Config;
@@ -75,6 +76,9 @@ final class AdminController
 
         $users = new UserRepository();
         $username = strtolower((string) $data['username']);
+        if (ReservedUsernames::isReserved($username)) {
+            throw HttpException::validation(['username' => ['Ese nombre de usuario está reservado por el sistema. Elige otro.']]);
+        }
         if ($users->existsByUsernameOrEmail($username, (string) $data['email'])) {
             throw new HttpException(409, 'USER_EXISTS', 'Ya existe un usuario con ese nombre o correo.');
         }
@@ -809,38 +813,5 @@ final class AdminController
             'k' => $num * 1024,
             default => (int) $val,
         };
-    }
-
-    /** GET /admin/cron — Estado y comandos del Cron */
-    public function cronStatus(Request $request): Response
-    {
-        $settings = new SettingsRepository();
-        $cronSecret = $settings->get('cron_secret');
-        if (!$cronSecret) {
-            $cronSecret = bin2hex(random_bytes(16));
-            $settings->set('cron_secret', $cronSecret);
-        }
-
-        $cronLastRun = $settings->get('cron_last_run');
-        $cronPath = realpath(__DIR__ . '/../../cron.php') ?: (getcwd() . '/cron.php');
-
-        $cronCommand = "* * * * * php " . $cronPath . " >/dev/null 2>&1";
-        $cronUrl = \ProjectCloud\Services\UrlBuilder::fullUrl("/cron.php?token=" . $cronSecret);
-
-        return Response::success([
-            'cron_last_run' => $cronLastRun,
-            'cron_secret'   => $cronSecret,
-            'cron_command'  => $cronCommand,
-            'cron_url'      => $cronUrl,
-        ]);
-    }
-
-    /** POST /admin/cron/run — Ejecuta manualmente el Cron ahora */
-    public function runCron(Request $request): Response
-    {
-        $cronService = new \ProjectCloud\Services\CronService();
-        $result = $cronService->run();
-        ActivityLogger::log($request, 'cron.run', 'system', null, $result['tasks']);
-        return Response::success($result);
     }
 }
