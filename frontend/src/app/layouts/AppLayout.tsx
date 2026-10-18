@@ -1,6 +1,6 @@
-import { Outlet, useLocation } from 'react-router-dom'
-import { useState, useEffect, useRef } from 'react'
-import { AppBackdrop, Portal, useEntranceOnChange } from '@shared/ui'
+import { Outlet } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { AppBackdrop, Portal } from '@shared/ui'
 import { useDisclosure } from '@shared/hooks/useDisclosure'
 import { useIsMobile } from '@shared/hooks/useMediaQuery'
 import { UploadDock } from '@features/uploads/components/UploadDock'
@@ -38,15 +38,8 @@ export function AppLayout() {
 
   const showDrawer = isMobile && (drawer.isOpen || isClosing)
 
-  // Entrada suave al cambiar de SECCIÓN (Mi unidad, Recientes, Admin…), no
-  // al navegar entre carpetas: eso se hace muchas veces seguidas y animarlo
-  // solo estorbaría. Las subsecciones de admin cuentan como sección propia.
-  const { pathname } = useLocation()
-  const segments = pathname.split('/').filter(Boolean)
-  const section =
-    segments[0] === 'folder' ? '' : segments[0] === 'admin' ? segments.slice(0, 2).join('/') : (segments[0] ?? '')
-  const pageRef = useRef<HTMLDivElement>(null)
-  useEntranceOnChange(pageRef, section)
+  // Sin animación al cambiar de sección: el fundido de entrada (opacidad 0 → 1)
+  // hacía parpadear títulos e iconos al pasar, p. ej., de Destacados a Papelera.
 
   return (
     <HeaderSearchProvider>
@@ -90,7 +83,7 @@ export function AppLayout() {
               de cargar y desborda. */}
           <main className="min-w-0 flex-1 flex flex-col overflow-y-auto [scrollbar-gutter:stable]">
             {/* Recibe la animación de entrada (sin `fill`: no deja transform). */}
-            <div ref={pageRef} className="mx-auto h-full w-full max-w-[1600px] px-4 py-4 sm:px-6 flex flex-col max-sm:h-auto max-sm:min-h-full max-sm:shrink-0">
+            <div className="mx-auto h-full w-full max-w-[1600px] px-4 py-4 sm:px-6 flex flex-col max-sm:h-auto max-sm:min-h-full max-sm:shrink-0">
               <Outlet />
             </div>
 

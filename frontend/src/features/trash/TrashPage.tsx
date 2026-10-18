@@ -155,10 +155,9 @@ export function TrashPage() {
   const isEmpty = !isLoading && !errorMessage && items.length === 0
 
   return (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.3 }}
+    <motion.div
+      // Sin fundido al entrar: hacía parpadear título e iconos al cambiar de sección.
+      initial={false}
       className="flex h-full flex-col"
     >
       {/* Cabecera con altura fija: sin salto al seleccionar. */}
@@ -303,7 +302,7 @@ function TrashRow({ item, busy, selected, onClick, onRestore, onPurge }: TrashRo
 
   return (
     <motion.tr
-      initial={{ opacity: 0 }}
+      initial={false}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.2 }}
       data-sel-key={key(item)}

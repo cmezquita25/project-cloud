@@ -682,7 +682,7 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
               }
             />
           ) : (
-            <AnimatePresence mode="wait">
+            <AnimatePresence mode="wait" initial={false}>
               {view === 'list' ? (
                 <motion.div
                   key="list"

@@ -58,7 +58,7 @@ export function FileListView({
           </tr>
         </thead>
         <motion.tbody
-          initial={{ opacity: 0 }}
+          initial={false}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.2 }}
         >

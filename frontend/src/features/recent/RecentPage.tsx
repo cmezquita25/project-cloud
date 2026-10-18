@@ -14,10 +14,9 @@ export function RecentPage() {
   const errorMessage = error instanceof ApiError ? error.message : (error ? 'No se pudo cargar recientes' : null)
 
   return (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.3 }}
+    <motion.div
+      // Sin fundido al entrar: hacía parpadear título e iconos al cambiar de sección.
+      initial={false}
       className="flex h-full flex-col"
     >
       <h1 className="mb-4 text-2xl font-semibold text-content-primary">Recientes</h1>
