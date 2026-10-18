@@ -7,7 +7,7 @@ declare(strict_types=1);
  * GENERADO por scripts/sync-version.mjs a partir de version.json — no editar a mano.
  */
 return [
-    'version'     => '2.4.0',
+    'version'     => '2.5.0',
     'schema'      => 8,
     'released_at' => '2026-10-18',
 ];
