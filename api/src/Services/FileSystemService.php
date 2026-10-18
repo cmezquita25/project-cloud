@@ -70,6 +70,11 @@ final class FileSystemService
         if ($name === '' || $name === '.' || $name === '..') {
             throw HttpException::badRequest('Nombre inválido', 'INVALID_NAME');
         }
+        // Apache y PHP leen .htaccess/.htpasswd y .user.ini como configuración
+        // de la carpeta donde están: subirlos cambiaría cómo se sirve.
+        if (preg_match('/^\.(ht|user\.ini$)/i', $name) === 1) {
+            throw HttpException::badRequest('Ese nombre está reservado por el servidor.', 'RESERVED_NAME');
+        }
         return $name;
     }
 

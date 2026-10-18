@@ -7,12 +7,14 @@ interface Props {
   item: DriveItem | null
   onClose: () => void
   /** Aplica el cambio (adaptador del explorador). */
-  onConfirm: (item: DriveItem, visibility: Visibility) => Promise<{ filesChanged: number }>
+  onConfirm: (item: DriveItem, visibility: Visibility) => Promise<{ filesChanged: number; check?: 'blocked' | 'exposed' | 'unknown' }>
+  /** Unidad compartida: textos para carpetas de la organización. */
+  shared?: boolean
   onDone: () => void
 }
 
 /** Confirmación de «Hacer privado» / «Hacer público» de un archivo o carpeta. */
-export function VisibilityDialog({ item, onClose, onConfirm, onDone }: Props) {
+export function VisibilityDialog({ item, onClose, onConfirm, onDone, shared = false }: Props) {
   const toast = useToast()
   const [busy, setBusy] = useState(false)
   if (!item) return null
@@ -24,7 +26,12 @@ export function VisibilityDialog({ item, onClose, onConfirm, onDone }: Props) {
   const confirm = async () => {
     setBusy(true)
     try {
-      const { filesChanged } = await onConfirm(item, target)
+      const { filesChanged, check } = await onConfirm(item, target)
+      // El servidor comprobó la URL directa de un archivo y aún se sirve: el
+      // hosting no respeta .htaccess en esa carpeta.
+      if (check === 'exposed') {
+        toast.error('Atención: el servidor todavía sirve los archivos por su URL directa. Revisa la configuración del hosting (nginx sirviendo archivos estáticos sin pasar por Apache).')
+      }
       toast.success(
         toPrivate
           ? isFolder ? `Carpeta privada · ${filesChanged} ${filesChanged === 1 ? 'archivo' : 'archivos'} sin URL pública` : 'Archivo privado'
@@ -60,8 +67,10 @@ export function VisibilityDialog({ item, onClose, onConfirm, onDone }: Props) {
           <>
             <p>
               {isFolder ? 'Todo el contenido de la carpeta, incluido lo que subas después, ' : 'El archivo '}
-              <b className="text-content-primary">dejará de tener URL pública</b>. Solo tú y las personas con acceso podrán verlo
-              desde la plataforma.
+              <b className="text-content-primary">dejará de tener URL pública</b>.{' '}
+              {shared
+                ? 'Solo se podrá ver desde la plataforma (quienes tienen acceso a la unidad) y por enlaces compartidos.'
+                : 'Solo tú y las personas con acceso podrán verlo desde la plataforma.'}
             </p>
             <p className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-xs">
               Si usas su URL en un sitio web, en código o la compartiste, <b>dejará de funcionar</b>.
@@ -75,7 +84,9 @@ export function VisibilityDialog({ item, onClose, onConfirm, onDone }: Props) {
             </p>
             {isFolder && (
               <p className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-xs">
-                También los archivos privados que haya dentro pasarán a públicos.
+                {shared
+                  ? 'Las subcarpetas que hayas hecho privadas por separado siguen privadas.'
+                  : 'También los archivos privados que haya dentro pasarán a públicos.'}
               </p>
             )}
           </>

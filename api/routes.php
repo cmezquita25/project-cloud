@@ -62,6 +62,7 @@ return static function (Router $router): void {
     // Archivos privados: con enlace firmado temporal (no requieren sesión).
     $router->get('/v1/files/{id}/content', [FileController::class, 'content']);
     $router->get('/v1/assets/thumb', [AssetsController::class, 'thumb']);
+    $router->get('/v1/assets/content', [AssetsController::class, 'content']);
 
     // --- Enlaces compartidos: lado del visitante (sin sesión, solo lectura) ---
     $router->get('/v1/public/links/{token}',          [ShareLinkController::class, 'open'], [new RateLimit('link_open', 60, 60)]);
@@ -132,6 +133,7 @@ return static function (Router $router): void {
     $router->post('/v1/assets/upload',  [AssetsController::class, 'upload'], $auth);
     $router->post('/v1/assets/move',    [AssetsController::class, 'move'], $auth);
     $router->post('/v1/assets/rename',  [AssetsController::class, 'rename'], $auth);
+    $router->patch('/v1/assets/visibility', [AssetsController::class, 'setVisibility'], $auth);
     $router->delete('/v1/assets',       [AssetsController::class, 'delete'], $auth);
 
     // --- Permisos de Compartición (Mi Unidad) ---

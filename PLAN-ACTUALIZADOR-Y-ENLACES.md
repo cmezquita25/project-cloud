@@ -1085,7 +1085,7 @@ Alternativa sin actualizador: subir `frontend/dist` (mismo contenido) sobre `htt
 
 **Probado en local:** 62 comprobaciones nuevas, más las 71 de la Fase 6 y las 48 de la Fase 7 (regresión), y recorrido de interfaz con Playwright.
 
-### 19.1 Propuesta — privacidad en la unidad compartida (sin implementar)
+### 19.1 Propuesta — privacidad en la unidad compartida (implementada en la 2.5.0, ver §20)
 
 Hoy todo lo de la unidad compartida es público a propósito: sus URL directas se usan en sitios y documentos. Volverlo privado de golpe rompería esos usos, y no hay forma de saber cuáles existen (Apache sirve esas URL sin pasar por PHP).
 
@@ -1100,4 +1100,25 @@ Propuesta, **opt-in y por carpeta**:
 La app ya usa **Lucide** en ~90 archivos. Google Material Symbols solo aparece en **dos** lugares (el icono de nube de Mi perfil y del indicador de almacenamiento), pero `index.html` carga **toda** la fuente de iconos de Google en cada visita: una petición externa y una descarga grande para dos iconos.
 
 Propuesta: cambiar esos dos por `Cloud` de Lucide y quitar la fuente de `index.html`. Es un cambio pequeño y sin riesgo; menos peso y una dependencia externa menos. (Opcional: servir también Poppins desde el propio sitio en vez de Google Fonts.)
+
+---
+
+## 20. v2.5.0 (2026-10-18)
+
+**Privacidad por carpeta en la unidad compartida** (opt-in, solo admins; sin migración):
+- Se ajustó la propuesta de §19.1: en vez de mover los archivos a otra carpeta (cambiaría rutas, enlaces y miniaturas), la carpeta privada recibe un `.htaccess` de la plataforma (`# Project Cloud: carpeta privada`, `Require all denied`). Nada se mueve: el marcador viaja con la carpeta al moverla o renombrarla, y hacerla pública lo borra (las URL directas vuelven tal cual).
+- Lo de dentro hereda (una subcarpeta de una privada no se puede hacer pública por separado). Si la carpeta ya tenía un `.htaccess` propio, no se pisa.
+- Sus archivos se sirven por `/v1/assets/content` con enlace firmado (descarga con firma propia) y miniaturas firmadas. Los enlaces compartidos siguen funcionando.
+- Al hacerla privada, el servidor **comprueba de verdad** la URL directa de uno de sus archivos: si aún se sirve (p. ej. nginx sirviendo estáticos sin pasar por Apache), avisa.
+- Las copias de seguridad siempre incluyen los `.htaccess`, aunque se filtren extensiones.
+
+**Seguridad:** no se pueden subir ni crear `.htaccess`, `.htpasswd` ni `.user.ini` (Apache y PHP los leen como configuración de la carpeta donde quedan).
+
+**Descargas con «Guardar como»:** con la File System Access API (Chrome, Edge) se elige la ubicación y el archivo se escribe mientras se descarga; varios archivos van a una carpeta elegida una vez. Firefox y Safari mantienen la descarga normal. Aplica al explorador, Recientes/Destacados/Búsqueda, la vista previa y la página de enlaces (incluido el ZIP).
+
+**Temas con los tonos de la marca** (tomados de `agent-bar/src/styles/theme.css`): gradientes, fondos casi negros, superficies, bordes, brillos (con su intensidad `--glow-k`) y sombras de los vidrios para Blizzard, Supernova y Techmaleon. Nebula sin cambios. Los oscuros de Blizzard aplican solo cuando no hay otro estilo (`.dark:not([data-theme-preset])`).
+
+**«Cargar más» sin huecos:** la entrada escalonada de la cuadrícula animaba los elementos 11 y 12 con retraso mientras los siguientes aparecían al instante; ahora la animación solo corre al abrir una carpeta o cambiar el orden.
+
+**Probado en local:** 31 comprobaciones nuevas (privacidad y nombres reservados) más la regresión completa (71 + 48 + 62) y recorrido de interfaz con Playwright.
 

@@ -16,6 +16,8 @@ export interface ExplorerCapabilities {
   canChangeVisibility?: boolean
   /** Enlaces y QR: el propietario en Mi unidad, un admin en la unidad compartida. */
   canCreateLinks?: boolean
+  /** Solo las carpetas cambian de visibilidad (unidad compartida). */
+  visibilityFoldersOnly?: boolean
 }
 
 export interface IExplorerAdapter {
@@ -42,7 +44,7 @@ export interface IExplorerAdapter {
   restoreItem?: (item: DriveItem) => Promise<void>
   starItem: (item: DriveItem, starred: boolean) => Promise<void>
   duplicateItem: (item: DriveItem) => Promise<void>
-  setVisibility?: (item: DriveItem, visibility: Visibility) => Promise<{ filesChanged: number }>
+  setVisibility?: (item: DriveItem, visibility: Visibility) => Promise<{ filesChanged: number; check?: 'blocked' | 'exposed' | 'unknown' }>
   
   getDownloadUrl: (item: DriveItem) => string
 }

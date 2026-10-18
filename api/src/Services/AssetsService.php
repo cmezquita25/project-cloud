@@ -7,6 +7,7 @@ namespace ProjectCloud\Services;
 use ProjectCloud\Core\Config;
 use ProjectCloud\Core\Database;
 use ProjectCloud\Core\HttpException;
+use ProjectCloud\Core\SignedUrl;
 use ProjectCloud\Repositories\SettingsRepository;
 
 /**
@@ -456,16 +457,28 @@ final class AssetsService
             }
         }
 
+        // Carpetas privadas (opt-in): sus archivos se sirven con enlace firmado.
+        $privacy = new AssetsPrivacy($this);
+        $hereIsPrivate = $relative !== '' && $privacy->isPrivatePath($relative, true);
+        $searching = (is_string($query) && $query !== '') || $type !== '' || $date !== '';
+
         $enrichedFiles = [];
         foreach ($files as $f) {
+            $isPrivate = $searching ? $privacy->isPrivatePath($f['path'], false) : $hereIsPrivate;
+            $public = $this->publicUrl($f['path']);
+            $isImage = str_starts_with((string) $this->detectMime($f['abs']), 'image/');
             $enrichedFiles[] = [
+                'visibility'    => $isPrivate ? 'private' : 'public',
+                'public_url'    => $isPrivate ? null : $public,
+                'download_url'  => $isPrivate ? SignedUrl::asset($f['path'], 'download') : $public,
+                'thumbnail_url' => $isPrivate && $isImage ? SignedUrl::asset($f['path'], 'thumb', ['s' => 400]) : null,
                 'type'       => 'file',
                 'name'       => $f['name'],
                 'path'       => $f['path'],
                 'size_bytes' => (int) @filesize($f['abs']),
                 'mime_type'  => $this->detectMime($f['abs']),
                 'extension'  => $f['extension'],
-                'url'        => $this->publicUrl($f['path']),
+                'url'        => $isPrivate ? SignedUrl::asset($f['path'], 'content') : $public,
                 'owners'     => isset($owners[$f['path']]) ? [$owners[$f['path']]] : [[
                     'username' => 'system',
                     'display_name' => 'Sistema',
@@ -496,6 +509,7 @@ final class AssetsService
              }
              
              $enrichedFolders[] = [
+                 'visibility' => $hereIsPrivate || ($searching ? $privacy->isPrivatePath($f['path'], true) : $privacy->isPrivateDir($f['abs'])) ? 'private' : 'public',
                  'type' => 'folder',
                  'name' => $f['name'],
                  'path' => $f['path'],

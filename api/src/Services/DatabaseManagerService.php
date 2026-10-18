@@ -347,6 +347,11 @@ final class DatabaseManagerService
         if ($mode === 'all') {
             return true;
         }
+        // Las protecciones de carpeta (p. ej. carpetas privadas de la unidad
+        // compartida) siempre van en la copia, filtre lo que filtre.
+        if ($filename === '.htaccess') {
+            return true;
+        }
         $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
         $listed = in_array($ext, $this->content['extensions'], true);
         return $mode === 'only' ? $listed : !$listed;

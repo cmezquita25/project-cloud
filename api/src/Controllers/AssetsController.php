@@ -7,10 +7,12 @@ namespace ProjectCloud\Controllers;
 use ProjectCloud\Core\HttpException;
 use ProjectCloud\Core\Request;
 use ProjectCloud\Core\Response;
+use ProjectCloud\Core\SignedUrl;
 use ProjectCloud\Core\Validator;
 use ProjectCloud\Repositories\UserRepository;
 use ProjectCloud\Services\ActivityLogger;
 use ProjectCloud\Services\AssetsService;
+use ProjectCloud\Services\AssetsPrivacy;
 use ProjectCloud\Services\ThumbnailService;
 
 /**
@@ -58,11 +60,67 @@ final class AssetsController
         return Response::success($service->list($path, $role, $sort, $order, $limit, $offset, $q, $type, $date));
     }
 
-    /** GET /assets/thumb?path=... — miniatura de una imagen de assets (pública). */
+    /**
+     * GET /assets/thumb?path=... — miniatura de una imagen de assets. Las de
+     * carpetas privadas solo con su enlace firmado.
+     */
     public function thumb(Request $request): void
     {
-        $abs = $this->service()->absoluteFile((string) $request->input('path', ''));
-        (new ThumbnailService())->stream($abs, max(64, min(1024, (int) $request->input('s', 400))));
+        $path = $this->cleanPath((string) $request->input('path', ''));
+        $service = $this->service();
+        $private = (new AssetsPrivacy($service))->isPrivatePath($path, false);
+        if ($private && !SignedUrl::verifyAsset($path, 'thumb', $request->input('exp'), $request->input('sig'))) {
+            throw HttpException::notFound('Archivo no encontrado en assets.');
+        }
+        $abs = $service->absoluteFile($path);
+        (new ThumbnailService())->stream($abs, max(64, min(1024, (int) $request->input('s', 400))), $private);
+    }
+
+    /**
+     * GET /assets/content?path=&exp=&sig=[&download=1] — archivo de una carpeta
+     * privada, con enlace firmado (las etiquetas <img>/<video> no mandan la
+     * sesión). La descarga tiene su propia firma.
+     */
+    public function content(Request $request): void
+    {
+        $path = $this->cleanPath((string) $request->input('path', ''));
+        $download = (bool) $request->input('download');
+        if (!SignedUrl::verifyAsset($path, $download ? 'download' : 'content', $request->input('exp'), $request->input('sig'))) {
+            throw HttpException::forbidden('El enlace caducó o no es válido.', 'LINK_EXPIRED');
+        }
+        $abs = $this->service()->absoluteFile($path);
+        \ProjectCloud\Services\FileStreamer::send($abs, basename($path), mime_content_type($abs) ?: null, $download);
+    }
+
+    /**
+     * PATCH /assets/visibility { path, visibility } — carpeta privada o pública
+     * (solo admins). Responde cuántos archivos cambian y si el servidor ya
+     * bloquea sus URL directas.
+     */
+    public function setVisibility(Request $request): Response
+    {
+        if (($request->user()['role'] ?? '') !== 'admin') {
+            throw HttpException::forbidden('Solo los administradores cambian la privacidad de la unidad compartida.');
+        }
+        $body = $request->json();
+        $visibility = (string) ($body['visibility'] ?? '');
+        if (!in_array($visibility, ['public', 'private'], true)) {
+            throw HttpException::badRequest('Visibilidad no válida.');
+        }
+        $path = $this->cleanPath((string) ($body['path'] ?? ''));
+        $result = (new AssetsPrivacy($this->service()))->set($path, $visibility === 'private');
+        ActivityLogger::log($request, 'assets.visibility', 'asset', null, ['path' => $path, 'visibility' => $visibility, 'files' => $result['files'], 'check' => $result['check']]);
+        return Response::success(['visibility' => $visibility, 'files_changed' => $result['files'], 'check' => $result['check']]);
+    }
+
+    /** Ruta relativa limpia: sin «..» ni segmentos ocultos. */
+    private function cleanPath(string $path): string
+    {
+        $clean = \ProjectCloud\Services\ShareLinks\ShareLinkPolicy::normalizeOrgPath($path);
+        if ($clean === null || $clean === '') {
+            throw HttpException::notFound('Archivo no encontrado en assets.');
+        }
+        return $clean;
     }
 
     /** POST /assets/folder — crea una carpeta. */

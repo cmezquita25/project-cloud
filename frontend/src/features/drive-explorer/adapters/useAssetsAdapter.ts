@@ -16,7 +16,11 @@ function toDriveFile(f: any): FileItem {
     extension: f.extension,
     is_starred: false,
     url: f.url,
-    thumbnail_url: f.mime_type?.startsWith('image/') ? `/api/v1/assets/thumb?path=${encodeURIComponent(f.path)}` : undefined,
+    // Carpetas privadas: url y miniatura firmadas, sin URL pública.
+    public_url: f.public_url,
+    download_url: f.download_url,
+    visibility: f.visibility,
+    thumbnail_url: f.thumbnail_url ?? (f.mime_type?.startsWith('image/') ? `/api/v1/assets/thumb?path=${encodeURIComponent(f.path)}` : undefined),
     created_at: null,
     updated_at: null,
     owner: f.owner,
@@ -33,6 +37,7 @@ function toDriveFolder(f: any): FolderItem {
     name: f.name,
     path: f.path,
     is_starred: false,
+    visibility: f.visibility,
     created_at: null,
     updated_at: null,
     owner: f.owner,
@@ -60,6 +65,9 @@ export function useAssetsAdapter(): IExplorerAdapter {
       canShare: false,
       canBlockActions: access?.is_admin ?? false,
       canCreateLinks: access?.is_admin ?? false,
+      // Privacidad por carpeta (opt-in): solo admins.
+      canChangeVisibility: access?.is_admin ?? false,
+      visibilityFoldersOnly: true,
     },
 
     loadContents: async (folderId, sort, signal, offset, limit, q, type, date) => {
@@ -122,8 +130,13 @@ export function useAssetsAdapter(): IExplorerAdapter {
       throw new Error('Not supported in Assets')
     },
 
+    setVisibility: async (item: DriveItem, visibility) => {
+      const res = await assetsApi.setVisibility(String(item.id), visibility)
+      return { filesChanged: res.files_changed, check: res.check }
+    },
+
     getDownloadUrl: (item: DriveItem) => {
-      if (item.type === 'file') return item.url
+      if (item.type === 'file') return item.download_url === undefined ? item.url : item.download_url ?? ''
       return ''
     }
   }), [canWrite, access?.folder_name, access?.is_admin])

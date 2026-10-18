@@ -98,7 +98,7 @@ export function buildItemMenu(
     }
   }
 
-  if (caps.canChangeVisibility && item.visibility !== undefined && isOwner(item, currentUserId)) {
+  if (caps.canChangeVisibility && item.visibility !== undefined && isOwner(item, currentUserId) && (!caps.visibilityFoldersOnly || item.type === 'folder')) {
     items.push({
       id: 'visibility',
       label: isPrivate ? 'Hacer público' : 'Hacer privado',

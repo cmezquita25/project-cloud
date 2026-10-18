@@ -74,6 +74,9 @@ export const assetsApi = {
   remove: (path: string) => api.delete<{ ok: true }>(`/assets?path=${encodeURIComponent(path)}`),
   
   restore: (path: string) => api.post<{ ok: true }>('/assets/restore', { path }),
+  /** Carpeta privada o pública (solo admins). check: si el servidor ya bloquea sus URL directas. */
+  setVisibility: (path: string, visibility: 'public' | 'private') =>
+    api.patch<{ visibility: string; files_changed: number; check: 'blocked' | 'exposed' | 'unknown' }>('/assets/visibility', { path, visibility }),
 
   /** Subida directa (multipart). El tamaño máximo por archivo lo fija el hosting. */
   async upload(path: string, file: File): Promise<AssetFile> {

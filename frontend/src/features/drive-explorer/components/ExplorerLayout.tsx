@@ -760,6 +760,7 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
           onClose={() => setDialog(null)}
           onConfirm={adapter.setVisibility}
           onDone={reload}
+          shared={adapter.mode === 'assets'}
         />
       )}
       <NamePromptDialog

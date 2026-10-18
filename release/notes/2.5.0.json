@@ -1,0 +1,18 @@
+{
+  "min_from_version": "2.1.0",
+  "requirements": {
+    "php": "8.1",
+    "extensions": ["zip", "pdo_mysql", "curl", "sodium", "mbstring"]
+  },
+  "migrations": {
+    "reversible": true
+  },
+  "changelog": [
+    { "type": "feature", "text": "Unidad compartida: los administradores pueden hacer privada una carpeta concreta. Sus archivos dejan de tener URL directa y se ven desde la plataforma y por enlaces compartidos; todo lo demás sigue público como siempre, y se puede deshacer." },
+    { "type": "feature", "text": "Al descargar se elige dónde guardar (Chrome y Edge); varios archivos a la vez van a la carpeta que elijas. En otros navegadores, la descarga de siempre." },
+    { "type": "feature", "text": "Blizzard, Supernova y Techmaleon afinados con los tonos exactos de la marca: gradientes, fondos casi negros, superficies y brillos en modo oscuro." },
+    { "type": "fix", "text": "Al «Cargar más» ya no quedan huecos un instante mientras aparecen los elementos." },
+    { "type": "security", "text": "No se pueden subir archivos ni crear carpetas llamados .htaccess, .htpasswd o .user.ini: el servidor los lee como configuración de la carpeta." }
+  ],
+  "features": ["maintenance_mode", "scheduled_tasks", "ota_updater", "scheduled_backups", "restore_diagnostics", "private_files", "share_links", "link_panel", "folder_zip", "invite_controls", "user_theme", "shared_private_folders"]
+}
