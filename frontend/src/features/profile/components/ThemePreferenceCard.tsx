@@ -8,10 +8,10 @@ import { authApi } from '@features/auth/services/authApi'
 
 /** Muestra de cada estilo (los mismos degradados de index.css). */
 const PRESETS: { id: ThemePreset; label: string; from: string; to: string }[] = [
-  { id: 'blizzard', label: 'Blizzard', from: '#2563eb', to: '#06b6d4' },
+  { id: 'blizzard', label: 'Blizzard', from: '#1d4ed8', to: '#38bdf8' },
   { id: 'nebula', label: 'Nebula', from: '#1a73e8', to: '#9333ea' },
-  { id: 'supernova', label: 'Supernova', from: '#f43f5e', to: '#9333ea' },
-  { id: 'techmaleon', label: 'Techmaleon', from: '#00c853', to: '#1e40af' },
+  { id: 'supernova', label: 'Supernova', from: '#e11d48', to: '#7e22ce' },
+  { id: 'techmaleon', label: 'Techmaleon', from: '#00c950', to: '#1e48b0' },
 ]
 
 /**

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Star, LockKeyhole, Lock } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { cn } from '@shared/lib/cn'
@@ -19,6 +20,23 @@ interface FileGridViewProps {
 }
 
 const itemKey = (i: DriveItem) => `${i.type}-${i.id}`
+
+/**
+ * La entrada escalonada (`stagger-rise`) solo al abrir una carpeta o cambiar el
+ * orden (cambia el primer elemento), no al «Cargar más»: los elementos nuevos
+ * 11 y 12 entraban con retraso de animación mientras los siguientes aparecían
+ * al instante, y quedaba un hueco un momento.
+ */
+function useEntranceStagger(resetKey: string): boolean {
+  const [active, setActive] = useState(true)
+  useEffect(() => {
+    setActive(true)
+    // 12 × 30 ms de retraso + 420 ms de animación, con margen.
+    const t = window.setTimeout(() => setActive(false), 900)
+    return () => window.clearTimeout(t)
+  }, [resetKey])
+  return active
+}
 const isImage = (i: DriveItem): i is FileItem =>
   i.type === 'file' && !!i.mime_type?.startsWith('image/')
 
@@ -40,13 +58,14 @@ export function FileGridView({
   const files = items.filter((i): i is FileItem => i.type === 'file')
 
   const common = { selected, onOpen, onAction, interactions, capabilities, readOnly }
+  const stagger = useEntranceStagger(items[0] ? itemKey(items[0]) : '') ? 'stagger-rise ' : ''
 
   return (
     <div className="space-y-6">
       {folders.length > 0 && (
         <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
           <h3 className="mb-3 text-sm font-medium text-content-secondary">Carpetas</h3>
-          <div className="stagger-rise grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className={stagger + 'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'}>
             {folders.map((item) => (
               <FolderChip key={itemKey(item)} item={item} {...common} />
             ))}
@@ -57,7 +76,7 @@ export function FileGridView({
       {files.length > 0 && (
         <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, delay: 0.1 }}>
           <h3 className="mb-3 text-sm font-medium text-content-secondary">Archivos</h3>
-          <div className="stagger-rise grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+          <div className={stagger + 'grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6'}>
             {files.map((item) => (
               <FileCard key={itemKey(item)} item={item} {...common} />
             ))}

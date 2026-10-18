@@ -16,6 +16,7 @@ import {
 import { AppBackdrop, Button, EmptyState, Input, Spinner } from '@shared/ui'
 import { ApiError, forceRefresh, session } from '@shared/api'
 import { cn } from '@shared/lib/cn'
+import { saveFile } from '@shared/lib/download'
 import { formatBytes } from '@shared/lib/formatBytes'
 import { getFileIcon } from '@shared/lib/fileIcons'
 import { useIsMobile } from '@shared/hooks/useMediaQuery'
@@ -277,9 +278,9 @@ function PublicFileView({ file }: { file: FileItem }) {
             <Button variant="secondary" leftIcon={ExternalLink}>Abrir</Button>
           </a>
           {file.download_url && (
-            <a href={file.download_url} download={file.name}>
-              <Button leftIcon={Download}>Descargar</Button>
-            </a>
+            <Button leftIcon={Download} onClick={() => void saveFile({ url: file.download_url!, name: file.name }).catch(() => window.open(file.download_url!, '_blank', 'noopener'))}>
+              Descargar
+            </Button>
           )}
         </div>
       </div>
@@ -378,12 +379,16 @@ function PublicFolderView({ token, linkKey, rootName, allowDownload }: { token: 
         <Breadcrumbs crumbs={page?.breadcrumbs ?? []} rootLabel={rootName} onNavigate={navigate} />
         <div className="ml-auto flex items-center gap-2">
           {allowDownload && items.length > 0 && (
-            <a href={zipUrl} download title="Descarga esta carpeta completa, con sus subcarpetas, en un archivo ZIP">
-              <Button size="sm" variant="secondary" leftIcon={Download}>
-                <span className="hidden sm:inline">Descargar todo (ZIP)</span>
-                <span className="sm:hidden">ZIP</span>
-              </Button>
-            </a>
+            <Button
+              size="sm"
+              variant="secondary"
+              leftIcon={Download}
+              title="Descarga esta carpeta completa, con sus subcarpetas, en un archivo ZIP"
+              onClick={() => void saveFile({ url: zipUrl, name: `${page?.breadcrumbs.at(-1)?.name ?? rootName}.zip` }).catch(() => window.open(zipUrl, '_blank', 'noopener'))}
+            >
+              <span className="hidden sm:inline">Descargar todo (ZIP)</span>
+              <span className="sm:hidden">ZIP</span>
+            </Button>
           )}
           <SortControl value={sort} onChange={setSort} showOwner={false} />
           <ViewToggle value={view} onChange={setViewMode} />

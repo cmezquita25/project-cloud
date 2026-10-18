@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { publicUrlOf } from '@features/drive-explorer/lib/publicUrl'
 import { useNavigate } from 'react-router-dom'
 import { cn } from '@shared/lib/cn'
+import { saveFile, saveFiles } from '@shared/lib/download'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, FolderInput, Copy, Trash2, Download, Info, Link as LinkIcon, type LucideIcon } from 'lucide-react'
 import { PublicUrlsModal } from '@features/drive-explorer/components/PublicUrlsModal'
@@ -159,15 +160,26 @@ export function ItemCollection({ items, loading, error, reload, empty, showLocat
     toast.success('URL pública copiada')
   }
 
+  /** Descarga con «Guardar como» (elige la ubicación donde el navegador lo permite). */
   function download(item: DriveItem) {
     if (item.type !== 'file') return
-    const a = document.createElement('a')
-    a.href = item.url
-    a.download = item.name
-    a.rel = 'noopener'
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
+    const url = item.download_url === undefined ? item.url : item.download_url
+    if (!url) return
+    saveFile({ url, name: item.name })
+      .then((r) => r === 'saved' && toast.success('Archivo guardado'))
+      .catch((e) => toast.error(e instanceof Error ? e.message : 'No se pudo descargar'))
+  }
+
+  /** Varios: se elige una carpeta una sola vez (donde el navegador lo permite). */
+  function downloadMany(items: DriveItem[]) {
+    const files = items.flatMap((i) => {
+      const url = i.type === 'file' ? (i.download_url === undefined ? i.url : i.download_url) : null
+      return url ? [{ url, name: i.name }] : []
+    })
+    if (files.length === 0) return
+    saveFiles(files)
+      .then((r) => r === 'saved' && toast.success(`${files.length} archivos guardados`))
+      .catch((e) => toast.error(e instanceof Error ? e.message : 'No se pudo descargar'))
   }
 
   const onAction = (item: DriveItem, action: ItemAction) => {
@@ -238,7 +250,7 @@ export function ItemCollection({ items, loading, error, reload, empty, showLocat
               </span>
               <div className="flex items-center gap-1">
                 {selectedItems.length > 0 && selectedItems.every((i) => i.type === 'file') && (
-                  <IconButton icon={Download} label="Descargar" size="sm" onClick={() => selectedItems.forEach(download)} />
+                  <IconButton icon={Download} label="Descargar" size="sm" onClick={() => downloadMany(selectedItems)} />
                 )}
                 <IconButton icon={FolderInput} label="Mover" size="sm" onClick={() => setDialog({ kind: 'move', mode: 'move', items: selectedItems })} />
                 <IconButton icon={Copy} label="Copiar" size="sm" onClick={() => setDialog({ kind: 'move', mode: 'copy', items: selectedItems })} />

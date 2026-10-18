@@ -17,12 +17,12 @@ type ColorKey = 'primary_color' | 'btn_gradient_start' | 'btn_gradient_end' | 'b
 const PRESETS: Record<ThemePreset, { label: string; description: string; check: string; colors: Record<ColorKey, string> }> = {
   blizzard: {
     label: 'Blizzard',
-    description: 'Azul → cian. El estilo de marca por defecto.',
+    description: 'Azules intensos → cian, sin morados. En oscuro, negro azulado.',
     check: '#2563eb', // = --color-check de index.css
     colors: {
       primary_color: '#2563eb',
-      btn_gradient_start: '#2563eb',
-      btn_gradient_end: '#06b6d4',
+      btn_gradient_start: '#1d4ed8',
+      btn_gradient_end: '#38bdf8',
       btn_text_color: '#ffffff',
     },
   },
@@ -39,23 +39,23 @@ const PRESETS: Record<ThemePreset, { label: string; description: string; check: 
   },
   supernova: {
     label: 'Supernova',
-    description: 'Rojo → morado sobre negros. En oscuro, superficies negras.',
-    check: '#e11d48', // = --color-check de index.css
+    description: 'Rojos con toques morados. En oscuro, sobre negro.',
+    check: '#be123c', // = --color-check de index.css
     colors: {
       primary_color: '#e11d48',
-      btn_gradient_start: '#f43f5e',
-      btn_gradient_end: '#9333ea',
+      btn_gradient_start: '#e11d48',
+      btn_gradient_end: '#7e22ce',
       btn_text_color: '#ffffff',
     },
   },
   techmaleon: {
     label: 'Techmaleon',
-    description: 'Verde → azul. Los colores de la marca Techmaleon.',
-    check: '#16a34a', // = --color-check de index.css
+    description: 'Verdes que pasan a azules oscuros. Los colores de la marca Techmaleon.',
+    check: '#009a82', // = --color-check de index.css
     colors: {
-      primary_color: '#16a34a',
-      btn_gradient_start: '#00c853',
-      btn_gradient_end: '#1e40af',
+      primary_color: '#009a82',
+      btn_gradient_start: '#00c950',
+      btn_gradient_end: '#1e48b0',
       btn_text_color: '#ffffff',
     },
   },

@@ -29,7 +29,8 @@ interface AppBackdropProps {
 export function AppBackdrop({ animated = false }: AppBackdropProps) {
   const drift = animated && 'animate-aurora-drift'
   return (
-    <div aria-hidden="true" className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+    // `--glow-k`: los temas casi negros bajan la fuerza de los halos.
+    <div aria-hidden="true" className="pointer-events-none fixed inset-0 -z-10 overflow-hidden" style={{ opacity: 'var(--glow-k, 1)' }}>
       <div className="grid-surface absolute inset-0" />
       <div
         className={cn(

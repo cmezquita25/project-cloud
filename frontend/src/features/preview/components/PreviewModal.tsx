@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { Portal, IconButton, Spinner } from '@shared/ui'
 import { cn } from '@shared/lib/cn'
+import { saveFile } from '@shared/lib/download'
 import { getFileIcon, getFileKind } from '@shared/lib/fileIcons'
 import { formatBytes } from '@shared/lib/formatBytes'
 import type { FileItem } from '@features/drive-explorer/types'
@@ -64,15 +65,10 @@ export function PreviewModal({ items, index, onIndex, onClose }: PreviewModalPro
 
   // Enlaces públicos: `download_url` (null = el enlace no permite descargar).
   const downloadHref = item.download_url === undefined ? item.url : item.download_url
+  // «Guardar como»: elige la ubicación donde el navegador lo permite.
   const download = () => {
     if (!downloadHref) return
-    const a = document.createElement('a')
-    a.href = downloadHref
-    a.download = item.name
-    a.rel = 'noopener'
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
+    saveFile({ url: downloadHref, name: item.name }).catch(() => window.open(downloadHref, '_blank', 'noopener'))
   }
 
   return (

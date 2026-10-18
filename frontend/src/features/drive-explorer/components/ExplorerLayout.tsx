@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { publicUrlOf } from '@features/drive-explorer/lib/publicUrl'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { cn } from '@shared/lib/cn'
+import { saveFiles } from '@shared/lib/download'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   FolderPlus,
@@ -364,16 +365,15 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
     toast.success('URL pública copiada')
   }
 
-  function download(item: DriveItem) {
-    const url = adapter.getDownloadUrl(item)
-    if (!url) return
-    const a = document.createElement('a')
-    a.href = url
-    a.download = item.name
-    a.rel = 'noopener'
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
+  /** Descarga con «Guardar como» (elige la ubicación donde el navegador lo permite). */
+  function download(targets: DriveItem[]) {
+    const files = targets
+      .map((item) => ({ url: adapter.getDownloadUrl(item), name: item.name }))
+      .filter((t) => t.url !== '')
+    if (files.length === 0) return
+    saveFiles(files)
+      .then((r) => r === 'saved' && toast.success(files.length === 1 ? 'Archivo guardado' : `${files.length} archivos guardados`))
+      .catch((e) => toast.error(e instanceof Error ? e.message : 'No se pudo descargar'))
   }
 
   const onAction = (item: DriveItem, action: ItemAction) => {
@@ -387,7 +387,7 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
       case 'details':
         return setShowDetails(true)
       case 'download':
-        return download(item)
+        return download([item])
       case 'copyUrl':
         return void copyUrl(item)
       case 'star':
@@ -521,7 +521,7 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
               </span>
               <div className="flex items-center gap-1">
                 {selectedItems.length > 0 && selectedItems.every((i) => i.type === 'file' && i.my_rights?.download !== false) && adapter.capabilities.canDownload && (
-                  <IconButton icon={Download} label="Descargar" size="sm" onClick={() => selectedItems.forEach(download)} />
+                  <IconButton icon={Download} label="Descargar" size="sm" onClick={() => download(selectedItems)} />
                 )}
                 {adapter.capabilities.canMove && (
                   <IconButton icon={FolderInput} label="Mover" size="sm" onClick={() => setDialog({ kind: 'move', mode: 'move', items: selectedItems })} />
