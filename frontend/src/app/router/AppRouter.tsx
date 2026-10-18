@@ -9,19 +9,6 @@ import { RecentPage } from '@features/recent/RecentPage'
 import { StarredPage } from '@features/starred/StarredPage'
 import { TrashPage } from '@features/trash/TrashPage'
 import { SearchPage } from '@features/search/SearchPage'
-import { AdminPage } from '@features/admin/AdminPage'
-import { SettingsLayout } from '@features/admin/settings/SettingsLayout'
-import { GeneralSettings } from '@features/admin/settings/pages/GeneralSettings'
-import { AppearanceSettings } from '@features/admin/settings/pages/AppearanceSettings'
-import { IntegrationsSettings } from '@features/admin/settings/pages/IntegrationsSettings'
-import { CronSettings } from '@features/admin/settings/pages/CronSettings'
-import { UpdatesSettings } from '@features/admin/settings/pages/UpdatesSettings'
-import { EmailSettings } from '@features/admin/settings/pages/EmailSettings'
-import { EmailTemplatesSettings } from '@features/admin/settings/pages/EmailTemplatesSettings'
-import { EmailTemplateEditor } from '@features/admin/settings/pages/EmailTemplateEditor'
-import { WorkspaceSettings } from '@features/admin/settings/pages/WorkspaceSettings'
-import { DatabaseSettings } from '@features/admin/settings/pages/DatabaseSettings'
-import { StoragePage } from '@features/storage-quota/StoragePage'
 import { ProfilePage } from '@features/profile/ProfilePage'
 import { NotificationsPage } from '@features/notifications/pages/NotificationsPage'
 import { AssetsPage } from '@features/assets/AssetsPage'
@@ -30,6 +17,47 @@ import { ForgotPasswordPage } from '@features/auth/ForgotPasswordPage'
 import { ResetPasswordPage } from '@features/auth/ResetPasswordPage'
 import { PublicLinkPage } from '@features/public-link/PublicLinkPage'
 import { MyLinksPage } from '@features/share-links/pages/MyLinksPage'
+
+/*
+  Administración y Almacenamiento se cargan al entrar (code-splitting): llevan
+  las gráficas (ApexCharts, ~800 KB) y la mayoría de usuarios nunca las abre.
+*/
+const RELOAD_KEY = 'pc-chunk-reload'
+
+/**
+ * Tras una actualización, una pestaña abierta con la versión anterior pide
+ * archivos que ya no existen: se recarga una vez para traer los nuevos.
+ */
+function withReload<T>(load: () => Promise<T>): () => Promise<T> {
+  return () =>
+    load().then(
+      (mod) => {
+        try {
+          sessionStorage.removeItem(RELOAD_KEY)
+        } catch {
+          /* sin almacenamiento */
+        }
+        return mod
+      },
+      (err) => {
+        try {
+          if (!sessionStorage.getItem(RELOAD_KEY)) {
+            sessionStorage.setItem(RELOAD_KEY, '1')
+            window.location.reload()
+            return new Promise<T>(() => {}) // la recarga reemplaza la página
+          }
+        } catch {
+          /* sin almacenamiento: se muestra el error */
+        }
+        throw err
+      }
+    )
+}
+
+const lazyAdmin = withReload(() => import('@features/admin/AdminPage').then((m) => ({ Component: m.AdminPage })))
+const lazyStorage = withReload(() => import('@features/storage-quota/StoragePage').then((m) => ({ Component: m.StoragePage })))
+const lazySettings = <K extends string>(load: () => Promise<Record<K, React.ComponentType>>, name: K) =>
+  withReload(() => load().then((m) => ({ Component: m[name] })))
 
 /**
  * Rutas de la aplicación.
@@ -80,7 +108,7 @@ const router = createBrowserRouter([
               { path: 'starred', element: <StarredPage /> },
               { path: 'trash', element: <TrashPage /> },
               { path: 'search', element: <SearchPage /> },
-              { path: 'quota', element: <StoragePage /> },
+              { path: 'quota', lazy: lazyStorage },
               { path: 'profile', element: <ProfilePage /> },
               { path: 'notifications', element: <NotificationsPage /> },
               { path: 'links', element: <MyLinksPage /> },
@@ -93,7 +121,7 @@ const router = createBrowserRouter([
                 children: [
                   {
                     path: 'admin',
-                    element: <AdminPage />,
+                    lazy: lazyAdmin,
                     children: [
                       { index: true, element: null },
                       { path: 'users', element: null },
@@ -104,18 +132,18 @@ const router = createBrowserRouter([
                   // Configuración con pestañas verticales (layout propio + subrutas).
                   {
                     path: 'admin/settings',
-                    element: <SettingsLayout />,
+                    lazy: lazySettings(() => import('@features/admin/settings/SettingsLayout'), 'SettingsLayout'),
                     children: [
-                      { index: true, element: <GeneralSettings /> },
-                      { path: 'appearance', element: <AppearanceSettings /> },
-                      { path: 'integrations', element: <IntegrationsSettings /> },
-                      { path: 'cron', element: <CronSettings /> },
-                      { path: 'updates', element: <UpdatesSettings /> },
-                      { path: 'email', element: <EmailSettings /> },
-                      { path: 'email-templates', element: <EmailTemplatesSettings /> },
-                      { path: 'email-templates/:key', element: <EmailTemplateEditor /> },
-                      { path: 'workspace', element: <WorkspaceSettings /> },
-                      { path: 'database', element: <DatabaseSettings /> },
+                      { index: true, lazy: lazySettings(() => import('@features/admin/settings/pages/GeneralSettings'), 'GeneralSettings') },
+                      { path: 'appearance', lazy: lazySettings(() => import('@features/admin/settings/pages/AppearanceSettings'), 'AppearanceSettings') },
+                      { path: 'integrations', lazy: lazySettings(() => import('@features/admin/settings/pages/IntegrationsSettings'), 'IntegrationsSettings') },
+                      { path: 'cron', lazy: lazySettings(() => import('@features/admin/settings/pages/CronSettings'), 'CronSettings') },
+                      { path: 'updates', lazy: lazySettings(() => import('@features/admin/settings/pages/UpdatesSettings'), 'UpdatesSettings') },
+                      { path: 'email', lazy: lazySettings(() => import('@features/admin/settings/pages/EmailSettings'), 'EmailSettings') },
+                      { path: 'email-templates', lazy: lazySettings(() => import('@features/admin/settings/pages/EmailTemplatesSettings'), 'EmailTemplatesSettings') },
+                      { path: 'email-templates/:key', lazy: lazySettings(() => import('@features/admin/settings/pages/EmailTemplateEditor'), 'EmailTemplateEditor') },
+                      { path: 'workspace', lazy: lazySettings(() => import('@features/admin/settings/pages/WorkspaceSettings'), 'WorkspaceSettings') },
+                      { path: 'database', lazy: lazySettings(() => import('@features/admin/settings/pages/DatabaseSettings'), 'DatabaseSettings') },
                     ],
                   },
                 ],

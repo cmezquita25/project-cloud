@@ -51,7 +51,7 @@ final class BackupController
     }
 
     /**
-     * POST /admin/database/backups — crea una copia ahora. Responde enseguida
+     * POST /admin/backups — crea una copia ahora. Responde enseguida
      * (202) y la copia sigue en segundo plano si el servidor usa PHP-FPM; si no,
      * responde al terminar.
      */

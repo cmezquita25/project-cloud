@@ -58,6 +58,13 @@ final class UpdateRunner
     /** Archivos de api/ que el paquete jamás puede tocar. */
     private const PROTECTED = ['#^api/config/(config\.php|install\.lock|maintenance\.json)$#', '#^api/var/#'];
 
+    /**
+     * Scripts de depuración de versiones antiguas que nunca formaron parte de un
+     * paquete: se retiran del servidor al actualizar (check_db.php, en la raíz,
+     * se podía ejecutar desde el navegador y mostraba datos de usuarios).
+     */
+    private const LEGACY_FILES = ['public/check_db.php', 'api/check_assets.php', 'api/debug_assets.php', 'api/migrate_assets.php'];
+
     private const DOWNLOAD_CHUNK = 16 * 1024 * 1024;
     private const STEP_BUDGET_SECONDS = 20;
     private const HISTORY_LIMIT = 20;
@@ -739,6 +746,8 @@ final class UpdateRunner
                 }
             }
         }
+
+        $candidates = array_unique(array_merge($candidates, self::LEGACY_FILES));
 
         $obsolete = [];
         foreach ($candidates as $name) {

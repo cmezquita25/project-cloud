@@ -99,6 +99,10 @@ DirectoryIndex index.html
     RewriteRule ^api/index\.php$ - [L]
     RewriteRule ^api/ api/index.php [L,QSA]
 
+    # 6b-bis. Ningún .php suelto en la raíz se ejecuta: la plataforma solo
+    #         ejecuta PHP a través de api/index.php.
+    RewriteRule ^[^/]+\.php$ - [R=404,L]
+
     # 6c. Los archivos de /storage se sirven directos (URLs públicas del drive).
     RewriteRule ^storage/ - [L]
 

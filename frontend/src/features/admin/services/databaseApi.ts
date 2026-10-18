@@ -139,13 +139,13 @@ export const databaseApi = {
   },
 
   listBackups: async (): Promise<BackupItem[]> => {
-    const res = await api.get<{ backups: BackupItem[] }>('/admin/database/backups')
+    const res = await api.get<{ backups: BackupItem[] }>('/admin/backups')
     return res.backups
   },
 
   /** Inicia una copia; el servidor responde enseguida y la copia sigue en segundo plano. */
   createBackup: async (): Promise<BackupJob> => {
-    const res = await api.post<{ job: BackupJob }>('/admin/database/backups')
+    const res = await api.post<{ job: BackupJob }>('/admin/backups')
     return res.job
   },
 
@@ -158,12 +158,12 @@ export const databaseApi = {
 
   /** Diagnóstico previo (no modifica nada). */
   analyzeBackup: (filename: string) =>
-    api.post<RestoreAnalysis>(`/admin/database/backups/${encodeURIComponent(filename)}/analyze`),
+    api.post<RestoreAnalysis>(`/admin/backups/${encodeURIComponent(filename)}/analyze`),
 
   /** Activa el mantenimiento y lanza la restauración; el avance se consulta con el token. */
   restoreBackup: (filename: string, options: RestoreOptions) =>
     api.post<{ job: RestoreJob; maintenance_bypass: string; progress_token: string }>(
-      `/admin/database/backups/${encodeURIComponent(filename)}/restore`,
+      `/admin/backups/${encodeURIComponent(filename)}/restore`,
       { ...options, ack: true }
     ),
 
@@ -177,11 +177,11 @@ export const databaseApi = {
   },
 
   deleteBackup: async (filename: string): Promise<void> => {
-    await api.delete(`/admin/database/backups/${encodeURIComponent(filename)}`)
+    await api.delete(`/admin/backups/${encodeURIComponent(filename)}`)
   },
 
   getDownloadUrl: (filename: string): string => {
     const token = session.getAccess() || ''
-    return `/api/v1/admin/database/backups/${encodeURIComponent(filename)}/download?token=${token}`
+    return `/api/v1/admin/backups/${encodeURIComponent(filename)}/download?token=${token}`
   }
 }

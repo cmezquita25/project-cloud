@@ -14,7 +14,7 @@ use ProjectCloud\Services\Backup\RestoreRunner;
 /** Restauración de copias con diagnóstico previo. */
 final class RestoreController
 {
-    /** POST /admin/database/backups/{filename}/analyze — diagnóstico (no modifica nada). */
+    /** POST /admin/backups/{filename}/analyze — diagnóstico (no modifica nada). */
     public function analyze(Request $request): Response
     {
         $report = (new RestoreAnalyzer())->analyze((string) $request->param('filename'));
@@ -22,7 +22,7 @@ final class RestoreController
     }
 
     /**
-     * POST /admin/database/backups/{filename}/restore
+     * POST /admin/backups/{filename}/restore
      * Body: { ack: true, restore_config?: bool, quarantine?: bool, safety_copy?: bool }
      *
      * Activa el mantenimiento y responde con el token de paso y el token de

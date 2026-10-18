@@ -202,20 +202,20 @@ return static function (Router $router): void {
     $router->post('/v1/admin/email-templates/{key}/reset',    [EmailTemplateController::class, 'reset'], $admin);
     $router->post('/v1/admin/email-templates/{key}/preview',  [EmailTemplateController::class, 'preview'], $admin);
 
-    // Migración y Backups (Base de Datos)
+    // Migraciones y copias de seguridad (las rutas /admin/database/backups* se retiraron en la 2.4.0)
     $router->post('/v1/admin/database/migrate',               [\ProjectCloud\Controllers\DatabaseController::class, 'migrate'], $admin);
     $router->post('/v1/admin/database/migrate-auto',          [\ProjectCloud\Controllers\DatabaseController::class, 'migrateAuto'], $admin);
-    $router->get('/v1/admin/database/backups',                [\ProjectCloud\Controllers\DatabaseController::class, 'listBackups'], $admin);
-    $router->post('/v1/admin/database/backups',               [BackupController::class, 'create'], $admin);
+    $router->get('/v1/admin/backups',                [\ProjectCloud\Controllers\DatabaseController::class, 'listBackups'], $admin);
+    $router->post('/v1/admin/backups',               [BackupController::class, 'create'], $admin);
     $router->get('/v1/admin/backups/settings',                [BackupController::class, 'settings'], $admin);
     $router->put('/v1/admin/backups/settings',                [BackupController::class, 'saveSettings'], $admin);
     $router->post('/v1/admin/backups/estimate',               [BackupController::class, 'estimate'], $admin);
     $router->get('/v1/admin/backups/extensions',              [BackupController::class, 'extensions'], $admin);
     $router->get('/v1/admin/backups/job',                     [BackupController::class, 'job'], $admin);
-    $router->delete('/v1/admin/database/backups/{filename}',  [\ProjectCloud\Controllers\DatabaseController::class, 'deleteBackup'], $admin);
-    $router->post('/v1/admin/database/backups/{filename}/analyze', [RestoreController::class, 'analyze'], $admin);
-    $router->post('/v1/admin/database/backups/{filename}/restore', [RestoreController::class, 'start'], $admin);
-    $router->get('/v1/admin/database/backups/{filename}/download', [\ProjectCloud\Controllers\DatabaseController::class, 'downloadBackup'], $admin);
+    $router->delete('/v1/admin/backups/{filename}',  [\ProjectCloud\Controllers\DatabaseController::class, 'deleteBackup'], $admin);
+    $router->post('/v1/admin/backups/{filename}/analyze', [RestoreController::class, 'analyze'], $admin);
+    $router->post('/v1/admin/backups/{filename}/restore', [RestoreController::class, 'start'], $admin);
+    $router->get('/v1/admin/backups/{filename}/download', [\ProjectCloud\Controllers\DatabaseController::class, 'downloadBackup'], $admin);
 
     // Tareas Cron de Administración
     $router->get('/v1/admin/cron',                  [CronController::class, 'status'], $admin);

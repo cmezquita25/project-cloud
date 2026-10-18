@@ -50,14 +50,14 @@ final class DatabaseController
         return Response::success(['ok' => true, 'statements' => count($result['applied']), 'schema' => $result]);
     }
 
-    /** GET /admin/database/backups */
+    /** GET /admin/backups */
     public function listBackups(Request $request): Response
     {
         $backups = $this->service()->listBackups();
         return Response::success(['backups' => $backups]);
     }
 
-    /** DELETE /admin/database/backups/{filename} */
+    /** DELETE /admin/backups/{filename} */
     public function deleteBackup(Request $request): Response
     {
         $filename = (string) $request->param('filename');
@@ -70,7 +70,7 @@ final class DatabaseController
         return Response::success(['ok' => true]);
     }
 
-    /** GET /admin/database/backups/{filename}/download */
+    /** GET /admin/backups/{filename}/download */
     public function downloadBackup(Request $request): void
     {
         $filename = (string) $request->param('filename');
