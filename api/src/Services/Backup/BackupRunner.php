@@ -187,7 +187,7 @@ final class BackupRunner
     {
         $regular = array_values(array_filter(
             $service->listBackups(),
-            static fn(array $b): bool => $b['kind'] !== 'pre-update'
+            static fn(array $b): bool => $b['kind'] === 'manual' // pre-update y pre-restore tienen su propia cola
         ));
         // listBackups() ya viene de la más reciente a la más antigua.
         if ($keep !== null) {

@@ -5,8 +5,55 @@ export interface BackupItem {
   filename: string
   size_bytes: number
   created_at: string
-  /** pre-update = copia del sistema hecha automáticamente antes de actualizar. */
-  kind?: 'manual' | 'pre-update'
+  /** pre-update / pre-restore = copia del sistema hecha automáticamente antes de actualizar o restaurar. */
+  kind?: 'manual' | 'pre-update' | 'pre-restore'
+}
+
+export interface RestoreCheck {
+  key: string
+  level: 'ok' | 'info' | 'warning' | 'error'
+  label: string
+  detail: string
+}
+
+export interface RestoreAnalysis {
+  status: 'ok' | 'warning' | 'blocked'
+  checks: RestoreCheck[]
+  backup: {
+    filename: string
+    size_bytes: number
+    created_at: string
+    app_version: string | null
+    scope: 'full' | 'system'
+    includes: string[] | null
+    restore_bytes: number
+  }
+  defaults: RestoreOptions
+}
+
+export interface RestoreOptions {
+  restore_config: boolean
+  quarantine: boolean
+  safety_copy: boolean
+}
+
+export interface RestoreJob {
+  id: string
+  status: 'running' | 'completed' | 'rolled_back' | 'failed' | 'error'
+  phase: string
+  progress: number
+  filename: string
+  options: RestoreOptions
+  started_at: string
+  finished_at: string | null
+  safety_file: string | null
+  files: number
+  files_total: number
+  quarantined: number
+  quarantine_dir: string | null
+  log: { at: string; level: 'info' | 'warning' | 'error'; message: string }[]
+  error: string | null
+  phases: { key: string; label: string }[]
 }
 
 export type BackupSchedule = 'off' | 'daily' | 'weekly' | 'biweekly' | 'monthly'
@@ -100,8 +147,24 @@ export const databaseApi = {
   extensions: async (): Promise<ExtensionStat[]> => (await api.get<{ extensions: ExtensionStat[] }>('/admin/backups/extensions')).extensions,
   job: async (): Promise<BackupJob | null> => (await api.get<{ job: BackupJob | null }>('/admin/backups/job')).job,
 
-  restoreBackup: async (filename: string): Promise<void> => {
-    await api.post(`/admin/database/backups/${encodeURIComponent(filename)}/restore`)
+  /** Diagnóstico previo (no modifica nada). */
+  analyzeBackup: (filename: string) =>
+    api.post<RestoreAnalysis>(`/admin/database/backups/${encodeURIComponent(filename)}/analyze`),
+
+  /** Activa el mantenimiento y lanza la restauración; el avance se consulta con el token. */
+  restoreBackup: (filename: string, options: RestoreOptions) =>
+    api.post<{ job: RestoreJob; maintenance_bypass: string; progress_token: string }>(
+      `/admin/database/backups/${encodeURIComponent(filename)}/restore`,
+      { ...options, ack: true }
+    ),
+
+  /** Avance de la restauración. Sin sesión: tras restaurar, las sesiones son las de la copia. */
+  restoreProgress: async (token: string, bypass: string | null): Promise<RestoreJob | null> => {
+    const headers: Record<string, string> = { 'X-Restore-Token': token }
+    if (bypass) headers['X-Maintenance-Bypass'] = bypass
+    const res = await fetch('/api/v1/system/restore-progress', { headers, cache: 'no-store' })
+    const body = (await res.json().catch(() => null)) as { success: boolean; data?: { job: RestoreJob } } | null
+    return res.ok && body?.success && body.data ? body.data.job : null
   },
 
   deleteBackup: async (filename: string): Promise<void> => {

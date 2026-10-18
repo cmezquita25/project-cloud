@@ -57,21 +57,6 @@ final class DatabaseController
         return Response::success(['backups' => $backups]);
     }
 
-    /** POST /admin/database/backups/{filename}/restore */
-    public function restoreBackup(Request $request): Response
-    {
-        set_time_limit(600);
-        $filename = (string) $request->param('filename');
-        
-        $this->service()->restoreBackup($filename);
-        
-        ActivityLogger::log($request, 'backup_restore', 'system', 0, [
-            'filename' => $filename,
-        ]);
-
-        return Response::success(['ok' => true]);
-    }
-
     /** DELETE /admin/database/backups/{filename} */
     public function deleteBackup(Request $request): Response
     {

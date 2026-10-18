@@ -238,6 +238,7 @@ final class DatabaseManagerService
                     : null,
                 'files'       => $this->filesAdded,
                 'files_bytes' => $this->bytesAdded,
+                'excluded_by_filter' => $full && $this->content['users'] ? $this->excludedByFilter() : null,
             ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
 
             // close() es quien lee los archivos añadidos: el dump debe existir hasta aquí.
@@ -317,6 +318,29 @@ final class DatabaseManagerService
         closedir($handle);
     }
 
+    /**
+     * Archivos de usuarios registrados en la BD que el filtro de extensiones dejó
+     * fuera de la copia: tras restaurar aparecerán como no disponibles.
+     *
+     * @return array{count:int, bytes:int}
+     */
+    private function excludedByFilter(): array
+    {
+        $mode = $this->content['ext_mode'] ?? 'all';
+        $exts = $this->content['extensions'];
+        if ($mode === 'all' || $exts === []) {
+            return ['count' => 0, 'bytes' => 0];
+        }
+        $in = implode(',', array_fill(0, count($exts), '?'));
+        $where = $mode === 'only'
+            ? "(extension IS NULL OR LOWER(extension) NOT IN ({$in}))"
+            : "LOWER(extension) IN ({$in})";
+        $stmt = Database::pdo()->prepare("SELECT COUNT(*), COALESCE(SUM(size_bytes), 0) FROM files WHERE deleted_at IS NULL AND {$where}");
+        $stmt->execute($exts);
+        [$count, $bytes] = $stmt->fetch(PDO::FETCH_NUM);
+        return ['count' => (int) $count, 'bytes' => (int) $bytes];
+    }
+
     private function extensionAllowed(string $filename): bool
     {
         $mode = $this->content['ext_mode'] ?? 'all';
@@ -341,7 +365,11 @@ final class DatabaseManagerService
                 'filename' => $name,
                 'size_bytes' => filesize($path),
                 'created_at' => $mtime ? gmdate('Y-m-d H:i:s', $mtime) : null,
-                'kind' => str_contains($name, '_pre-update-') ? 'pre-update' : 'manual',
+                'kind' => match (true) {
+                    str_contains($name, '_pre-update-') => 'pre-update',
+                    str_contains($name, '_pre-restore') => 'pre-restore',
+                    default => 'manual',
+                },
             ];
         }
 
@@ -352,69 +380,15 @@ final class DatabaseManagerService
     }
 
     /**
-     * Restaura un backup: ejecuta el volcado SQL sentencia por sentencia y
-     * reemplaza configuración y archivos.
+     * Ejecuta un volcado SQL completo leído de un stream (p. ej. directamente
+     * del ZIP, sin extraerlo). Estricto: cualquier error aborta. Devuelve el
+     * número de sentencias ejecutadas.
+     *
+     * @param resource      $handle
+     * @param callable|null $progress fn(int $statements): void, cada 200 sentencias
      */
-    public function restoreBackup(string $filename): void
+    public function runDump($handle, ?callable $progress = null): int
     {
-        $zipPath = $this->getBackupPath($filename);
-
-        if (!class_exists('ZipArchive')) {
-            throw new HttpException(500, 'NO_ZIP_ARCHIVE', 'La extensión ZipArchive no está habilitada.');
-        }
-
-        $zip = new ZipArchive();
-        if ($zip->open($zipPath) !== true) {
-            throw new HttpException(500, 'RESTORE_FAILED', 'No se pudo abrir el archivo ZIP.');
-        }
-
-        $tempExtractDir = Paths::var('tmp') . DIRECTORY_SEPARATOR . 'restore_' . bin2hex(random_bytes(6));
-        @mkdir($tempExtractDir, 0775, true);
-
-        try {
-            if (!$zip->extractTo($tempExtractDir)) {
-                throw new HttpException(500, 'RESTORE_FAILED', 'No se pudo extraer el archivo ZIP.');
-            }
-            $zip->close();
-
-            // 1. Base de datos
-            $dumpFile = $tempExtractDir . DIRECTORY_SEPARATOR . 'database_dump.sql';
-            if (is_file($dumpFile)) {
-                $this->runDumpFile($dumpFile);
-            }
-
-            // 2. Configuración (si existía en el backup)
-            $extractedConfig = $tempExtractDir . DIRECTORY_SEPARATOR . 'config';
-            if (is_dir($extractedConfig)) {
-                $this->copyRecursive($extractedConfig, Paths::apiRoot() . DIRECTORY_SEPARATOR . 'config');
-            }
-
-            // 3. Directorios de almacenamiento: 'storage' va a storage.path y el
-            //    resto (unidad compartida) al mismo nivel que storage.
-            $skip = ['.', '..', 'config'];
-            foreach (scandir($tempExtractDir) ?: [] as $entry) {
-                $extractedPath = $tempExtractDir . DIRECTORY_SEPARATOR . $entry;
-                if (in_array($entry, $skip, true) || !is_dir($extractedPath)) {
-                    continue;
-                }
-                $target = $entry === 'storage'
-                    ? $this->storageRoot
-                    : dirname($this->storageRoot) . DIRECTORY_SEPARATOR . $entry;
-                $this->copyRecursive($extractedPath, $target);
-            }
-        } finally {
-            $this->deleteRecursive($tempExtractDir);
-        }
-    }
-
-    /** Ejecuta un volcado completo sentencia por sentencia (estricto: cualquier error aborta). */
-    private function runDumpFile(string $dumpFile): void
-    {
-        $handle = fopen($dumpFile, 'rb');
-        if ($handle === false) {
-            throw new HttpException(500, 'RESTORE_FAILED', 'No se pudo leer el volcado de la base de datos.');
-        }
-
         $pdo = Database::pdo();
         $index = 0;
         try {
@@ -425,12 +399,15 @@ final class DatabaseManagerService
                 } catch (\PDOException $e) {
                     throw new HttpException(500, 'RESTORE_SQL_ERROR', "Error en la sentencia #{$index} del volcado: " . $e->getMessage());
                 }
+                if ($progress !== null && $index % 200 === 0) {
+                    $progress($index);
+                }
             }
         } finally {
-            fclose($handle);
             // Por si el volcado se cortó antes de reactivarlas.
             $pdo->exec('SET FOREIGN_KEY_CHECKS = 1');
         }
+        return $index;
     }
 
     /**
@@ -498,46 +475,5 @@ final class DatabaseManagerService
                 );
             }
         }
-    }
-
-    private function copyRecursive(string $src, string $dst): void
-    {
-        if (is_dir($src)) {
-            @mkdir($dst, 0775, true);
-            $handle = opendir($src);
-            if ($handle !== false) {
-                while (($entry = readdir($handle)) !== false) {
-                    if ($entry === '.' || $entry === '..') {
-                        continue;
-                    }
-                    $this->copyRecursive(
-                        $src . DIRECTORY_SEPARATOR . $entry,
-                        $dst . DIRECTORY_SEPARATOR . $entry
-                    );
-                }
-                closedir($handle);
-            }
-        } elseif (is_file($src)) {
-            @copy($src, $dst);
-        }
-    }
-
-    private function deleteRecursive(string $dir): void
-    {
-        if (!is_dir($dir)) {
-            return;
-        }
-        $handle = opendir($dir);
-        if ($handle !== false) {
-            while (($entry = readdir($handle)) !== false) {
-                if ($entry === '.' || $entry === '..') {
-                    continue;
-                }
-                $path = $dir . DIRECTORY_SEPARATOR . $entry;
-                is_dir($path) ? $this->deleteRecursive($path) : @unlink($path);
-            }
-            closedir($handle);
-        }
-        @rmdir($dir);
     }
 }

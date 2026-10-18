@@ -40,9 +40,11 @@ final class SessionRevoker
      * Los refresh tokens se borran (no solo se revocan) para que el cliente
      * reciba "sesión inválida" en vez de la alarma de reuso de token.
      */
-    public function revokeAll(): int
+    public function revokeAll(int $atLeast = 0): int
     {
-        $epoch = self::currentEpoch($this->settings) + 1;
+        // $atLeast: tras restaurar una copia, la época guardada en la BD es la
+        // de entonces; la nueva debe superar también a la que había antes.
+        $epoch = max(self::currentEpoch($this->settings), $atLeast) + 1;
         $this->settings->set(self::EPOCH_KEY, (string) $epoch);
         $this->pdo->exec('DELETE FROM refresh_tokens');
         return $epoch;

@@ -3,7 +3,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button, useLoader, useToast, IconButton, ProgressBar } from '@shared/ui'
 import { Menu, MenuItem } from '@shared/ui/Menu'
 import { formatBytes as formatSize } from '@shared/lib/formatBytes'
-import { databaseApi, BackupItem, type BackupJob } from '../../services/databaseApi'
+import { databaseApi, BackupItem, type BackupJob, type RestoreJob } from '../../services/databaseApi'
+import { RestoreDialog } from '../../components/backups/RestoreDialog'
+import { RestoringScreen } from '../../components/backups/RestoringScreen'
 import { BackupScheduleCard, BACKUP_SETTINGS_KEY } from '../../components/backups/BackupScheduleCard'
 import { RefreshCw, MoreVertical, Download, RotateCcw, Trash2 } from 'lucide-react'
 
@@ -56,6 +58,9 @@ function BackupRow({
         {backup.filename}
         {backup.kind === 'pre-update' && (
           <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">Pre-actualización</span>
+        )}
+        {backup.kind === 'pre-restore' && (
+          <span className="ml-2 rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">Antes de restaurar</span>
         )}
       </td>
       <td className="px-4 py-3 whitespace-nowrap">
@@ -198,21 +203,10 @@ export function DatabaseSettings() {
     }
   }
 
-  const handleRestore = async (filename: string) => {
-    if (!window.confirm(`¿Estás seguro de restaurar el backup "${filename}"? Esto reemplazará toda tu base de datos y archivos de almacenamiento actuales.`)) {
-      return
-    }
-
-    loader.show('Restaurando sistema desde el backup...')
-    try {
-      await databaseApi.restoreBackup(filename)
-      toast.success('Restauración completada. Se recargará la página.')
-      setTimeout(() => window.location.reload(), 2000)
-    } catch {
-      toast.error('Error al restaurar el backup.')
-      loader.hide()
-    }
-  }
+  // Restauración: diagnóstico en el diálogo y, al confirmar, pantalla de progreso.
+  const [restoreTarget, setRestoreTarget] = useState<string | null>(null)
+  const [restoring, setRestoring] = useState<{ job: RestoreJob; token: string; bypass: string } | null>(null)
+  const handleRestore = (filename: string) => setRestoreTarget(filename)
 
   const handleDelete = async (filename: string) => {
     if (!window.confirm(`¿Estás seguro de eliminar el backup "${filename}"?`)) {
@@ -349,6 +343,15 @@ export function DatabaseSettings() {
           </table>
         </div>
       </div>
+      <RestoreDialog
+        filename={restoreTarget}
+        onClose={() => setRestoreTarget(null)}
+        onStarted={(job, token, bypass) => {
+          setRestoreTarget(null)
+          setRestoring({ job, token, bypass })
+        }}
+      />
+      {restoring && <RestoringScreen job={restoring.job} token={restoring.token} bypass={restoring.bypass} />}
     </div>
   )
 }

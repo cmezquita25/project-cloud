@@ -684,7 +684,7 @@ Servicio central: `ShareLinkPolicy::canCreate(user, target)`, junto a `SharePerm
 | **2. Actualizador** ✅ *implementada y probada de punta a punta en un sitio aislado (ver §9)* | Detección por cron · notificación, banner y badges · página Actualizaciones · modal previo · runner por pasos · `old-files` · rollback · eliminar respaldo · migraciones versionadas | Todos los escenarios de 3.8 pasan con `2.1.0 → 2.1.1 → 2.1.2` contra el servidor local | L |
 | **→ Release v2.1.0** | Fases 0–2. **Instalación manual única** en `drive` (con copia completa previa) | — | — |
 | **3. Copias programadas** ✅ *implementada y probada en local (ver §11)* | Programación · rotación estricta 1–3 · cola pre-actualización · contenido y extensiones · estimación de tamaño · job por pasos | La copia programada corre sola y nunca hay más de N | M |
-| **4. Restauración con diagnóstico** | `backup.json` · analizador · restauración con runner y mantenimiento · cuarentena de huérfanos | El informe detecta los faltantes por filtro y las copias más nuevas que la plataforma | M |
+| **4. Restauración con diagnóstico** ✅ *implementada y probada en local (ver §12)* | `backup.json` · analizador · restauración con runner y mantenimiento · cuarentena de huérfanos | El informe detecta los faltantes por filtro y las copias más nuevas que la plataforma | M |
 | **→ Release v2.2.0** | **Primera actualización OTA real** (prueba de fuego del actualizador) | — | — |
 | **5. Visibilidad privada** | Columna `visibility` · `storage/.private` · mover binarios · proteger thumbs · default de subidas en el perfil | Un archivo privado da 404 en `/storage/…` y funciona dentro de la app | M |
 | **6. Enlaces + QR** | `share_links` · `ShareLinkPolicy` · página `/s/{token}` · **vista pública de carpeta de solo lectura** (sidebar vacía, migas acotadas, subcarpetas, vista previa y descarga) · diálogo unificado · QR · caducidad · contador · en **Mi unidad y en la unidad compartida** | Carlos crea un QR; Pedro (invitado) no ve la opción; un visitante sin cuenta navega la carpeta pero no puede subir ni salir de ella; el enlace caduca a la hora indicada | L |
@@ -881,3 +881,49 @@ Es idéntico, archivo por archivo, al ZIP firmado del actualizador (mismo `colle
 **Probado en local:** validación (máximo 1–3, filtro sin extensiones), estimación ≈ tamaño real (57.8 MB estimados / 57 MB reales), filtro «excepto .zip» (24 MB, sin .zip, con las imágenes), rotación con máximo 2 (la tercera copia borró la más antigua solo tras terminar), copia programada por el cron (se crea al vencer y no se repite en la siguiente pasada), interfaz en claro, oscuro y móvil.
 
 **Publicación:** el plan agrupa las fases 3 y 4 en la **v2.2.0**, que llegará a `drive` por el actualizador (sin subida manual). No subas el `frontend/dist` actual a mano: contiene la Fase 3 con el número 2.1.0.
+
+---
+
+## 12. Fase 4 — Restauración con diagnóstico (2026-10-17)
+
+**Diagnóstico** (botón «Restaurar» de cada copia; no modifica nada). Semáforo: *Todo en orden* · *Advertencias* · *No se puede restaurar*.
+
+| Revisión | Qué detecta |
+| :--- | :--- |
+| Integridad | ZIP dañado o cortado; rutas que intenten salir de la raíz o pisar `api/`, `var/`, `old-files/` |
+| Base de datos | Volcado ausente o cortado (marca `-- END OF DUMP`) |
+| Versión | Copia de una versión más nueva → bloqueo; más antigua → la estructura se actualiza sola tras restaurar |
+| Archivos fuera de la copia | Los excluidos por el filtro de extensiones (número y tamaño exactos, guardados en `backup.json`) |
+| Archivos posteriores | Subidos después de la copia: se apartan en cuarentena (`api/var/restore-orphans/…`) en vez de quedar sin registro |
+| Usuarios | Creados después de la copia (dejarán de existir) |
+| Configuración | `config.php` distinto: por seguridad se conserva el actual salvo que se pida restaurarlo |
+| Unidad compartida | La copia usa otra carpeta: se restaura en la suya y se vuelve a activar; la carpeta actual **no se borra** |
+| Espacio en disco | Lo que ocupará la restauración frente al espacio libre |
+
+**Restauración:** mismo esquema que una actualización.
+1. Modo mantenimiento y cierre de sesiones.
+2. Copia del estado actual (`…_pre-restore.zip`, cola propia de 1).
+3. Base de datos leída directo del ZIP, sin extraerlo.
+4. Migraciones.
+5. Archivos.
+6. Cuarentena.
+7. Cierre de sesiones otra vez: las de la copia tampoco valen.
+8. Fin del mantenimiento.
+
+El avance se consulta con un token propio, porque tras restaurar la base las sesiones son las de la copia.
+
+**Ante fallos:** si falla la base de datos o la migración, se recarga sola la copia del estado actual (*La restauración no se aplicó: la plataforma quedó como estaba*). Si eso también fallara, el mantenimiento sigue activo con instrucciones.
+
+**Probado en local:** diagnóstico con huérfano detectado; restauración completa (ajuste posterior eliminado, huérfano en cuarentena, sesiones revocadas, mantenimiento desactivado, progreso solo con token); copias cortada, «de una versión más nueva» y con ruta tramposa → bloqueadas sin activar el mantenimiento; SQL roto a mitad del volcado → reversión automática al estado anterior; cambio de unidad compartida (`assets2`) → la carpeta activa no se toca ni se manda a cuarentena; interfaz completa hasta volver al login. Las fechas se comparan en la zona horaria de MySQL (la conexión no fija una, así que puede no ser UTC).
+
+**Nota:** las copias respaldan solo la unidad compartida **activa**; una carpeta anterior que siga en el disco no entra en las copias nuevas.
+
+## 13. Publicación v2.2.0 (fases 3 y 4) — primera actualización por el actualizador
+
+Paquete en `release/out/`: `manifest.json`, `releases/project-cloud-2.2.0.zip` (y `.htaccess`, ya subido con la 2.1.0).
+
+1. En `techmaleon.com.mx/project-cloud/`: sube `releases/project-cloud-2.2.0.zip` y, **al final**, reemplaza `manifest.json`.
+2. En `drive`: **Configuración → Actualizaciones → Buscar actualizaciones** → «Actualizar ahora» → «Crear copia del sistema y continuar».
+3. Al terminar: el pie de página dice **v2.2.0** y en **Base de datos** aparecen «Copias automáticas» y el diagnóstico al restaurar.
+
+No hace falta subir nada por FTP a `drive`.

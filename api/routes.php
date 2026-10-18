@@ -32,6 +32,7 @@ use ProjectCloud\Controllers\CronController;
 use ProjectCloud\Controllers\SystemController;
 use ProjectCloud\Controllers\UpdateController;
 use ProjectCloud\Controllers\BackupController;
+use ProjectCloud\Controllers\RestoreController;
 use ProjectCloud\Middleware\AuthMiddleware;
 use ProjectCloud\Middleware\AdminOnly;
 use ProjectCloud\Middleware\RateLimit;
@@ -44,6 +45,7 @@ return static function (Router $router): void {
     // --- Sistema: estado (mantenimiento/versión) y cron por HTTP (con token) ---
     $router->get('/v1/system/status', [SystemController::class, 'status']);
     $router->get('/v1/system/cron',   [SystemController::class, 'cron'], [new RateLimit('cron_http', 10, 60)]);
+    $router->get('/v1/system/restore-progress', [RestoreController::class, 'progress'], [new RateLimit('restore_progress', 120, 60)]);
 
     // --- Fase 9: Configuraciones públicas ---
     $router->get('/v1/settings/public', [SettingsController::class, 'publicConfig']);
@@ -179,7 +181,8 @@ return static function (Router $router): void {
     $router->get('/v1/admin/backups/extensions',              [BackupController::class, 'extensions'], $admin);
     $router->get('/v1/admin/backups/job',                     [BackupController::class, 'job'], $admin);
     $router->delete('/v1/admin/database/backups/{filename}',  [\ProjectCloud\Controllers\DatabaseController::class, 'deleteBackup'], $admin);
-    $router->post('/v1/admin/database/backups/{filename}/restore', [\ProjectCloud\Controllers\DatabaseController::class, 'restoreBackup'], $admin);
+    $router->post('/v1/admin/database/backups/{filename}/analyze', [RestoreController::class, 'analyze'], $admin);
+    $router->post('/v1/admin/database/backups/{filename}/restore', [RestoreController::class, 'start'], $admin);
     $router->get('/v1/admin/database/backups/{filename}/download', [\ProjectCloud\Controllers\DatabaseController::class, 'downloadBackup'], $admin);
 
     // Tareas Cron de Administración
