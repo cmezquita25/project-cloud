@@ -93,8 +93,10 @@ export function Topbar({ onMenuClick }: TopbarProps) {
       móvil (Portal, z-sidebar) tiene que seguir tapando la barra. Los hijos no
       llevan desenfoque propio (blur anidado = parpadeo); el buscador usa
       `input-glass`, que es solo un tinte.
+      Móvil: `topbar-mobile` la vuelve fija y sólida (ver index.css: color de
+      la barra de estado en iPhone); la compensa `topbar-offset` en AppLayout.
     */
-    <header className="glass-strong flex h-16 shrink-0 items-center gap-2 border-x-0 border-t-0 px-2 max-sm:sticky max-sm:top-0 max-sm:z-30 sm:px-4">
+    <header className="glass-strong topbar-mobile flex h-16 shrink-0 items-center gap-2 border-x-0 border-t-0 px-2 sm:px-4">
       <IconButton icon={MenuIcon} label="Menú" onClick={onMenuClick} className="md:hidden" />
 
       <div className="flex items-center gap-2 pl-1 pr-2 sm:pr-6">

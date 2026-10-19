@@ -241,7 +241,7 @@ export function ItemCollection({ items, loading, error, reload, empty, showLocat
     <div className="relative flex h-full max-sm:h-auto max-sm:flex-1">
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Barra de herramientas */}
-        <div className="toolbar-float sticky top-[4.5rem] z-20 mb-3 flex flex-wrap items-center justify-between gap-x-2 gap-y-2 px-3 py-2 sm:static sm:mb-3 sm:h-9 sm:flex-nowrap sm:gap-3 sm:px-0 sm:py-0">
+        <div className="toolbar-float sticky-below-topbar sticky z-20 mb-3 flex flex-wrap items-center justify-between gap-x-2 gap-y-2 px-3 py-2 sm:static sm:mb-3 sm:h-9 sm:flex-nowrap sm:gap-3 sm:px-0 sm:py-0">
           {selected.size > 0 ? (
             <div className="flex min-w-0 flex-wrap items-center gap-2">
               <IconButton icon={X} label="Deseleccionar" size="sm" onClick={clearSelection} />

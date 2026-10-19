@@ -28,6 +28,7 @@ import { usePreview } from '@features/preview'
 import { useAssetsAccess } from '@features/assets/hooks/useAssetsAccess'
 import { useHeaderSearch } from '@app/layouts/HeaderSearchContext'
 import { usePlatformSettings } from '@shared/hooks/usePlatformSettings'
+import { useMediaQuery } from '@shared/hooks/useMediaQuery'
 import { VisibilityDialog } from './dialogs/VisibilityDialog'
 import { useAuth } from '@features/auth/AuthProvider'
 import { useFolderContents } from '../hooks/useFolderContents'
@@ -92,6 +93,10 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
   const [isSelectMode, setIsSelectMode] = useState(false)
   const [showDetails, setShowDetails] = useState(false)
   const [dragging, setDragging] = useState(false)
+  // Arrastre interno solo con ratón/trackpad. En pantallas táctiles (iPhone),
+  // `draggable` activa el «levantar» del sistema al mantener el dedo y no sirve
+  // para mover: se seleccionan y se usa «Mover».
+  const hasFinePointer = useMediaQuery('(any-pointer: fine)')
   const dragCounter = useRef(0)
   // Selección con teclado/ratón (ancla para rangos con Shift).
   const anchorIndex = useRef<number | null>(null)
@@ -122,11 +127,12 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
       return
     }
     const sentinel = heroSentinelRef.current
-    const root = scrollRef.current
-    if (!sentinel || !root) return
+    if (!sentinel) return
+    // Raíz = viewport: sirve con el scroll interno (escritorio; el recorte del
+    // contenedor cuenta) y con el scroll del documento (móvil).
     const obs = new IntersectionObserver(
       (entries) => setShowInHeader(!entries[0]?.isIntersecting),
-      { root, threshold: 0 }
+      { threshold: 0 }
     )
     obs.observe(sentinel)
     return () => {
@@ -331,7 +337,7 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
   const interactions: ItemInteractions = {
     onItemClick,
     onItemContextMenu,
-    dragEnabled: true,
+    dragEnabled: hasFinePointer,
     onItemDragStart,
     onItemDragEnd,
     onDropOnFolder,
@@ -510,7 +516,7 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="toolbar-float sticky top-[4.5rem] z-20 mb-3 flex flex-wrap items-center justify-between gap-x-2 gap-y-2 px-3 py-2 sm:static sm:mb-4 sm:h-10 sm:flex-nowrap sm:gap-3 sm:px-0 sm:py-0">
+        <div className="toolbar-float sticky-below-topbar sticky z-20 mb-3 flex flex-wrap items-center justify-between gap-x-2 gap-y-2 px-3 py-2 sm:static sm:mb-4 sm:h-10 sm:flex-nowrap sm:gap-3 sm:px-0 sm:py-0">
           {selected.size > 0 ? (
             <div className="flex min-w-0 flex-wrap items-center gap-2">
               <IconButton icon={X} label="Deseleccionar" size="sm" onClick={clearSelection} />

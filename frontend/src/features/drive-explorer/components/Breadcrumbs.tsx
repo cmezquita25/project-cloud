@@ -9,26 +9,19 @@ interface BreadcrumbsProps {
   rootLabel?: string
 }
 
-/**
- * Migas de pan con navegación, siempre en una sola línea.
- * - Escritorio: colapsa rutas largas (> 4 niveles) a raíz … penúltimo / último.
- * - Móvil: la ruta completa se desliza en horizontal y arranca mostrando la
- *   carpeta actual; un degradado en el borde indica que hay más a la izquierda.
- */
-export function Breadcrumbs({ crumbs, onNavigate, rootLabel = 'Mi unidad' }: BreadcrumbsProps) {
-  const collapsed = crumbs.length > 4
-  const scrollerRef = useRef<HTMLElement>(null)
-  const [fadeLeft, setFadeLeft] = useState(false)
+interface CrumbProps {
+  label: string
+  id: FolderRef
+  active: boolean
+  onNavigate: (id: FolderRef) => void
+  className?: string
+}
 
-  // Al cambiar de carpeta, desplaza hasta el final (la carpeta actual).
-  useEffect(() => {
-    const el = scrollerRef.current
-    if (!el) return
-    el.scrollLeft = el.scrollWidth
-    setFadeLeft(el.scrollLeft > 0)
-  }, [crumbs])
-
-  const Crumb = ({ label, id, active, className }: { label: string; id: FolderRef; active: boolean; className?: string }) => (
+// Fuera de `Breadcrumbs` a propósito: definido dentro, React lo trataba como un
+// componente nuevo en cada render y recreaba los botones (el ResizeObserver de
+// abajo quedaba observando nodos ya desmontados).
+function Crumb({ label, id, active, onNavigate, className }: CrumbProps) {
+  return (
     <button
       type="button"
       onClick={() => !active && onNavigate(id)}
@@ -44,6 +37,36 @@ export function Breadcrumbs({ crumbs, onNavigate, rootLabel = 'Mi unidad' }: Bre
       {label}
     </button>
   )
+}
+
+/**
+ * Migas de pan con navegación, siempre en una sola línea.
+ * - Escritorio: colapsa rutas largas (> 4 niveles) a raíz … penúltimo / último.
+ * - Móvil: la ruta completa se desliza en horizontal y arranca mostrando la
+ *   carpeta actual; un degradado en el borde indica que hay más a la izquierda.
+ */
+export function Breadcrumbs({ crumbs, onNavigate, rootLabel = 'Mi unidad' }: BreadcrumbsProps) {
+  const collapsed = crumbs.length > 4
+  const scrollerRef = useRef<HTMLElement>(null)
+  const [fadeLeft, setFadeLeft] = useState(false)
+  const pathKey = crumbs.map((c) => c.id).join('/')
+
+  // Al cambiar de carpeta, desplaza hasta el final (la carpeta actual). Se
+  // repite si cambia el ancho de las migas o de la barra (p. ej. al terminar
+  // de cargar la tipografía), que si no deja la última a medias.
+  useEffect(() => {
+    const el = scrollerRef.current
+    if (!el) return
+    const toEnd = () => {
+      el.scrollLeft = el.scrollWidth
+      setFadeLeft(el.scrollLeft > 0)
+    }
+    toEnd()
+    const ro = new ResizeObserver(toEnd)
+    ro.observe(el)
+    Array.from(el.children).forEach((c) => ro.observe(c))
+    return () => ro.disconnect()
+  }, [pathKey])
 
   return (
     <nav
@@ -56,7 +79,7 @@ export function Breadcrumbs({ crumbs, onNavigate, rootLabel = 'Mi unidad' }: Bre
         fadeLeft && '[mask-image:linear-gradient(to_right,transparent,#000_1.5rem)]'
       )}
     >
-      <Crumb label={rootLabel} id="root" active={crumbs.length === 0} />
+      <Crumb label={rootLabel} id="root" active={crumbs.length === 0} onNavigate={onNavigate} />
       {collapsed && (
         <span className="hidden shrink-0 items-center sm:flex">
           <ChevronRight size={18} className="shrink-0 text-content-tertiary" />
@@ -69,7 +92,7 @@ export function Breadcrumbs({ crumbs, onNavigate, rootLabel = 'Mi unidad' }: Bre
         return (
           <Fragment key={c.id}>
             <ChevronRight size={16} className={cn('shrink-0 text-content-tertiary sm:h-[18px] sm:w-[18px]', hiddenOnDesktop && 'sm:hidden')} />
-            <Crumb label={c.name} id={c.id} active={i === crumbs.length - 1} className={cn(hiddenOnDesktop && 'sm:hidden')} />
+            <Crumb label={c.name} id={c.id} active={i === crumbs.length - 1} onNavigate={onNavigate} className={cn(hiddenOnDesktop && 'sm:hidden')} />
           </Fragment>
         )
       })}

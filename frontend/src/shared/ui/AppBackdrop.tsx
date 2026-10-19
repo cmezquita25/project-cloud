@@ -30,7 +30,10 @@ export function AppBackdrop({ animated = false }: AppBackdropProps) {
   const drift = animated && 'animate-aurora-drift'
   return (
     // `--glow-k`: los temas casi negros bajan la fuerza de los halos.
-    <div aria-hidden="true" className="pointer-events-none fixed inset-0 -z-10 overflow-hidden" style={{ opacity: 'var(--glow-k, 1)' }}>
+    // Alto fijo `100lvh` (no `inset-0`): en iPhone las barras de Safari se
+    // encogen al desplazarse y con `bottom: 0` el fondo cambiaba de tamaño (y se
+    // repintaba) en cada frame del scroll.
+    <div aria-hidden="true" className="pointer-events-none fixed inset-x-0 top-0 -z-10 h-screen overflow-hidden supports-[height:100lvh]:h-lvh" style={{ opacity: 'var(--glow-k, 1)' }}>
       <div className="grid-surface absolute inset-0" />
       <div
         className={cn(

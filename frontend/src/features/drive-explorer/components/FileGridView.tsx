@@ -133,7 +133,7 @@ function FolderChip({ item, selected, onOpen, onAction, interactions, capabiliti
         className={cn(
           // `glass-lite`: aspecto glass SIN desenfoque (puede haber cientos).
           // Los estados de destino de soltado y selección se mantienen.
-          'group relative flex items-center gap-3 rounded-xl border px-3 py-3 transition-all duration-300 cursor-pointer h-full',
+          'group relative flex items-center gap-3 rounded-xl border px-3 py-3 transition-[background-color,border-color,box-shadow] duration-300 cursor-pointer h-full',
           isDropTarget
             ? 'border-primary bg-primary/15 ring-2 ring-primary'
             : isSelected
@@ -165,7 +165,7 @@ function FileCard({ item, selected, onOpen, onAction, interactions, capabilities
         data-sel-key={itemKey(item)}
         {...itemHandlers(item, onOpen, interactions)}
         className={cn(
-          'group relative flex flex-col overflow-hidden rounded-xl border transition-all duration-300 cursor-pointer h-full',
+          'group relative flex flex-col overflow-hidden rounded-xl border transition-[background-color,border-color,box-shadow] duration-300 cursor-pointer h-full',
           isSelected
             ? 'border-primary bg-primary/10 ring-1 ring-primary/40'
             : 'glass-lite glass-hover'
