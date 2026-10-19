@@ -146,7 +146,9 @@ function FolderChip({ item, selected, onOpen, onAction, interactions, capabiliti
       {item.is_starred && <Star size={14} className="shrink-0 fill-warning text-warning" />}
       {item.visibility === 'private' && <LockKeyhole size={14} className="shrink-0 text-content-tertiary" aria-label="Privado" />}
       {item.blocked_actions && item.blocked_actions.length > 0 && <Lock size={14} className="shrink-0 text-danger" />}
-      {!readOnly && <div className="flex shrink-0 items-center justify-end p-1 opacity-0 group-hover:opacity-100 group-focus:opacity-100 group-focus-within:opacity-100" onClick={(e) => e.stopPropagation()}>
+      {/* ⋮ visible siempre en táctil: si apareciera con el «hover», iOS toma el
+          toque como hover y no hace clic (la carpeta no se seleccionaba). */}
+      {!readOnly && <div className="flex shrink-0 items-center justify-end p-1 [@media(hover:hover)]:opacity-0 group-hover:opacity-100 group-focus:opacity-100 group-focus-within:opacity-100" onClick={(e) => e.stopPropagation()}>
         <ItemActionsMenu item={item} onAction={onAction} capabilities={capabilities} />
       </div>}
       </div>
@@ -199,7 +201,8 @@ function FileCard({ item, selected, onOpen, onAction, interactions, capabilities
         {item.is_starred && <Star size={13} className="shrink-0 fill-warning text-warning" />}
       {item.visibility === 'private' && <LockKeyhole size={13} className="shrink-0 text-content-tertiary" aria-label="Privado" />}
         {item.blocked_actions && item.blocked_actions.length > 0 && <Lock size={13} className="shrink-0 text-danger" />}
-        {!readOnly && <div className="absolute right-1 top-1 opacity-0 group-hover:opacity-100 group-focus:opacity-100 group-focus-within:opacity-100" onClick={(e) => e.stopPropagation()}>
+        {/* Táctil: ⋮ siempre visible, en el pie (ver FolderChip). */}
+        {!readOnly && <div className="absolute right-1 top-1 [@media(hover:hover)]:opacity-0 group-hover:opacity-100 group-focus:opacity-100 group-focus-within:opacity-100 [@media(hover:none)]:static [@media(hover:none)]:-my-1.5 [@media(hover:none)]:-mr-1" onClick={(e) => e.stopPropagation()}>
           <ItemActionsMenu item={item} onAction={onAction} capabilities={capabilities} />
         </div>}
       </div>

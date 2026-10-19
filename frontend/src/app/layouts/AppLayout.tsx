@@ -46,7 +46,7 @@ export function AppLayout() {
     <HeaderSearchProvider>
       <WhatsNewProvider>
       <GoogleAnalyticsTracker />
-      <div className="topbar-offset flex h-full flex-col overflow-hidden max-sm:h-auto max-sm:min-h-[100svh] max-sm:[overflow:clip_visible]">
+      <div className="topbar-offset flex h-full flex-col overflow-hidden max-sm:h-auto max-sm:min-h-[100svh] max-sm:overflow-visible">
       {/* Fondo de marca (estático en la app). Hermano del contenido, no envoltorio. */}
       <AppBackdrop />
       <Topbar onMenuClick={drawer.open} />
@@ -77,7 +77,7 @@ export function AppLayout() {
         {/* Transparente para que se vea el fondo de marca. Sin `backdrop-filter`,
             `filter` ni `transform`: el recuadro de selección por arrastre es
             `fixed` y vive aquí dentro; cualquiera de ellos lo descolocaría. */}
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden max-sm:[overflow:clip_visible]">
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden max-sm:overflow-visible">
           {/* `scrollbar-gutter: stable` (aquí y en los contenedores con scroll
               propio: explorador, colecciones, papelera, admin, ajustes): el
               hueco de la barra queda reservado siempre, así el contenido no

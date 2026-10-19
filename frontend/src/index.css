@@ -345,6 +345,13 @@
     body {
       overflow-anchor: none;
     }
+    /* Ningún contenedor de las barras `sticky` puede recortar (`overflow` ≠
+       visible, ni siquiera `clip`): Safari en iPhone las trata entonces como
+       pegadas a ese contenedor y las recoloca a destiempo al desplazarse (la
+       barra de la ruta temblaba). Tampoco `overflow-x` en <html>: haría que el
+       `overflow: hidden` con que los diálogos bloquean el scroll se quede en
+       <body> en vez de bloquear la página. Las tablas recortan dentro de su
+       propia tarjeta, así que no hay desplazamiento horizontal. */
   }
 
 

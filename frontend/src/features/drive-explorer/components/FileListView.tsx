@@ -103,7 +103,9 @@ export function FileListView({
                 )}
               >
                 {!readOnly && <td className="py-3 pl-4 pr-2">
-                  <span className={cn('block', isSelected ? '' : 'opacity-0 group-hover:opacity-100')}>
+                  {/* La casilla aparece con el «hover» solo con ratón: en iOS, mostrarla
+                      al tocar convertiría el toque en hover y no haría clic. */}
+                  <span className={cn('block', isSelected ? '' : 'opacity-0 [@media(hover:hover)]:group-hover:opacity-100')}>
                     <Checkbox
                       checked={isSelected}
                       onChange={() => onSelectToggle(item)}
