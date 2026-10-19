@@ -1,0 +1,15 @@
+{
+  "min_from_version": "2.1.0",
+  "requirements": {
+    "php": "8.1",
+    "extensions": ["zip", "pdo_mysql", "curl", "sodium", "mbstring"]
+  },
+  "migrations": {
+    "reversible": true
+  },
+  "changelog": [
+    { "type": "fix", "text": "En el celular, tocar un elemento lo selecciona y suelta el anterior, como en escritorio. Para elegir varios se usa el botón «Seleccionar». Aplica en Mi unidad, la unidad compartida, Recientes, Destacados y Búsqueda." },
+    { "type": "improvement", "text": "En el celular, la barra superior tiene el mismo tono que en escritorio en lugar de un fondo casi negro, y la zona de la hora y la batería toma ese mismo color." }
+  ],
+  "features": ["maintenance_mode", "scheduled_tasks", "ota_updater", "scheduled_backups", "restore_diagnostics", "private_files", "share_links", "link_panel", "folder_zip", "invite_controls", "user_theme", "shared_private_folders", "whats_new"]
+}
