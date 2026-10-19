@@ -117,7 +117,6 @@ export type ItemAction =
   | 'restore'
   | 'block'
   | 'visibility'
-  | 'link'
 
 
 export type ViewMode = 'list' | 'grid'

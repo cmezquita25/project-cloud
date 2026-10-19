@@ -215,7 +215,7 @@ export function ShareDialog({
   ]
 
   return (
-    <Dialog open={open} onClose={onClose} title={linkTarget ? `Compartir — ${targetName}` : `Compartir acceso — ${targetName}`} size="2xl">
+    <Dialog open={open} onClose={onClose} title={`Compartir — ${targetName}`} size="2xl">
       <div className="space-y-5 pt-1">
         {showPeople && linkTarget && (
           <div role="tablist" className="flex gap-1 rounded-xl bg-slate-900/[0.04] p-1 dark:bg-white/[0.05]">

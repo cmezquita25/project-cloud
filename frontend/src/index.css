@@ -330,6 +330,17 @@
     height: 100%;
   }
 
+  /* Móvil: el scroll lo lleva el documento, no un contenedor interno. Solo así
+     Safari iOS (y Chrome Android) encogen su barra de direcciones/inferior al
+     desplazarse; con scroll interno la barra queda siempre grande. */
+  @media (max-width: 639.98px) {
+    body,
+    #root {
+      height: auto;
+      min-height: 100%;
+    }
+  }
+
 
   body {
     @apply bg-canvas text-content-primary font-sans antialiased;

@@ -183,7 +183,7 @@ export function LinksPanel({ mode }: LinksPanelProps) {
           <EmptyState
             icon={Link2}
             title={q ? 'Sin resultados' : 'No hay enlaces aquí'}
-            description={mode === 'mine' ? 'Crea enlaces desde el menú de un archivo o carpeta: «Enlace y QR».' : 'Cuando alguien comparta un enlace aparecerá aquí.'}
+            description={mode === 'mine' ? 'Crea enlaces desde el menú de un archivo o carpeta: «Compartir» → «Enlace y QR».' : 'Cuando alguien comparta un enlace aparecerá aquí.'}
           />
         ) : (
           <ul className="divide-y divide-slate-900/[0.06] dark:divide-white/[0.06]">

@@ -1,0 +1,16 @@
+{
+  "min_from_version": "2.1.0",
+  "requirements": {
+    "php": "8.1",
+    "extensions": ["zip", "pdo_mysql", "curl", "sodium", "mbstring"]
+  },
+  "migrations": {
+    "reversible": true
+  },
+  "changelog": [
+    { "type": "improvement", "text": "El menú de un archivo o carpeta une «Compartir acceso» y «Enlace y QR» en una sola opción: «Compartir». Las primeras opciones quedan en este orden: Vista previa, Compartir, Copiar URL pública, Hacer privado / público y Descargar." },
+    { "type": "improvement", "text": "En el celular la página se desplaza completa, así la barra inferior del navegador (Safari en iPhone) se encoge al bajar y deja más espacio al contenido." },
+    { "type": "improvement", "text": "En el celular la ruta de carpetas va en una sola línea que se desliza de lado y muestra siempre la carpeta actual, en vez de crecer en varias líneas." }
+  ],
+  "features": ["maintenance_mode", "scheduled_tasks", "ota_updater", "scheduled_backups", "restore_diagnostics", "private_files", "share_links", "link_panel", "folder_zip", "invite_controls", "user_theme", "shared_private_folders", "whats_new"]
+}

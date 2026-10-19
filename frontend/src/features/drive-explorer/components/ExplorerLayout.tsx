@@ -382,8 +382,6 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
         return openItem(item)
       case 'share':
         return setDialog({ kind: 'share', item, tab: 'people' })
-      case 'link':
-        return setDialog({ kind: 'share', item, tab: 'link' })
       case 'details':
         return setShowDetails(true)
       case 'download':
@@ -512,7 +510,7 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="toolbar-float sticky top-2 z-20 mb-3 flex flex-wrap items-center justify-between gap-x-2 gap-y-2 px-3 py-2 sm:static sm:mb-4 sm:h-10 sm:flex-nowrap sm:gap-3 sm:px-0 sm:py-0">
+        <div className="toolbar-float sticky top-[4.5rem] z-20 mb-3 flex flex-wrap items-center justify-between gap-x-2 gap-y-2 px-3 py-2 sm:static sm:mb-4 sm:h-10 sm:flex-nowrap sm:gap-3 sm:px-0 sm:py-0">
           {selected.size > 0 ? (
             <div className="flex min-w-0 flex-wrap items-center gap-2">
               <IconButton icon={X} label="Deseleccionar" size="sm" onClick={clearSelection} />

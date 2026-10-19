@@ -15,7 +15,6 @@ import {
   UserPlus,
   LockKeyhole,
   Globe,
-  QrCode,
 } from 'lucide-react'
 import type { MenuItem } from '@shared/ui'
 import type { DriveItem, ItemAction } from '../types'
@@ -74,28 +73,17 @@ export function buildItemMenu(
     onSelect: () => act('open'),
   })
 
-  if (caps.canShare !== false) {
-    items.push({
-      id: 'share',
-      label: 'Compartir acceso',
-      icon: UserPlus,
-      onSelect: () => act('share'),
-    })
+  // Un solo «Compartir»: el diálogo trae las pestañas Personas y Enlace y QR
+  // (enlaces solo para quien puede crearlos; los invitados nunca, aunque tengan «full»).
+  const canLinks = caps.canCreateLinks && (isOwner(item, currentUserId) || item.my_rights?.share === true)
+  if (caps.canShare !== false || canLinks) {
+    items.push({ id: 'share', label: 'Compartir', icon: UserPlus, onSelect: () => act('share') })
   }
 
-  // Enlaces y QR: solo quien puede crearlos (los invitados nunca, aunque tengan «full»).
-  if (caps.canCreateLinks && (isOwner(item, currentUserId) || item.my_rights?.share === true)) {
-    items.push({ id: 'link', label: 'Enlace y QR', icon: QrCode, onSelect: () => act('link') })
-  }
-
-  if (isFile) {
-    if (caps.canDownload && canDownload) {
-      items.push({ id: 'download', label: 'Descargar', icon: Download, onSelect: () => act('download') })
-      // Los privados no tienen URL pública (se comparten con enlaces o invitaciones).
-      if (!isPrivate) {
-        items.push({ id: 'copyUrl', label: 'Copiar URL pública', icon: LinkIcon, onSelect: () => act('copyUrl') })
-      }
-    }
+  const fileDownload = isFile && caps.canDownload && canDownload
+  // Los privados no tienen URL pública (se comparten con enlaces o invitaciones).
+  if (fileDownload && !isPrivate) {
+    items.push({ id: 'copyUrl', label: 'Copiar URL pública', icon: LinkIcon, onSelect: () => act('copyUrl') })
   }
 
   if (caps.canChangeVisibility && item.visibility !== undefined && isOwner(item, currentUserId) && (!caps.visibilityFoldersOnly || item.type === 'folder')) {
@@ -107,6 +95,9 @@ export function buildItemMenu(
     })
   }
 
+  if (fileDownload) {
+    items.push({ id: 'download', label: 'Descargar', icon: Download, onSelect: () => act('download') })
+  }
 
   if (caps.canRename) {
     items.push({ id: 'rename', label: 'Cambiar nombre', icon: Pencil, onSelect: () => act('rename'), divider: true })

@@ -46,7 +46,7 @@ export function AppLayout() {
     <HeaderSearchProvider>
       <WhatsNewProvider>
       <GoogleAnalyticsTracker />
-      <div className="flex h-full flex-col overflow-hidden">
+      <div className="flex h-full flex-col overflow-hidden max-sm:h-auto max-sm:min-h-[100dvh] max-sm:[overflow:clip_visible]">
       {/* Fondo de marca (estático en la app). Hermano del contenido, no envoltorio. */}
       <AppBackdrop />
       <Topbar onMenuClick={drawer.open} />
@@ -77,19 +77,19 @@ export function AppLayout() {
         {/* Transparente para que se vea el fondo de marca. Sin `backdrop-filter`,
             `filter` ni `transform`: el recuadro de selección por arrastre es
             `fixed` y vive aquí dentro; cualquiera de ellos lo descolocaría. */}
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden max-sm:[overflow:clip_visible]">
           {/* `scrollbar-gutter: stable` (aquí y en los contenedores con scroll
               propio: explorador, colecciones, papelera, admin, ajustes): el
               hueco de la barra queda reservado siempre, así el contenido no
               salta ~12px al cambiar de página ni cuando una carpeta termina
               de cargar y desborda. */}
-          <main className="min-w-0 flex-1 flex flex-col overflow-y-auto [scrollbar-gutter:stable]">
+          <main className="min-w-0 flex-1 flex flex-col overflow-y-auto [scrollbar-gutter:stable] max-sm:overflow-visible">
             <div className="mx-auto h-full w-full max-w-[1600px] px-4 py-4 sm:px-6 flex flex-col max-sm:h-auto max-sm:min-h-full max-sm:shrink-0">
               <Outlet />
             </div>
 
             {/* Móvil: footer dentro del scroll (se ve al llegar al final) */}
-            <div className="mt-auto block shrink-0 sm:hidden">
+            <div className="mt-auto block shrink-0 pb-[env(safe-area-inset-bottom)] sm:hidden">
               <Footer variant="stacked" />
             </div>
           </main>

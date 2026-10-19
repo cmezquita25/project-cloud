@@ -94,7 +94,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
       llevan desenfoque propio (blur anidado = parpadeo); el buscador usa
       `input-glass`, que es solo un tinte.
     */
-    <header className="glass-strong flex h-16 shrink-0 items-center gap-2 border-x-0 border-t-0 px-2 sm:px-4">
+    <header className="glass-strong flex h-16 shrink-0 items-center gap-2 border-x-0 border-t-0 px-2 max-sm:sticky max-sm:top-0 max-sm:z-30 sm:px-4">
       <IconButton icon={MenuIcon} label="Menú" onClick={onMenuClick} className="md:hidden" />
 
       <div className="flex items-center gap-2 pl-1 pr-2 sm:pr-6">
