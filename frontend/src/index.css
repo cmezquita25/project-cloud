@@ -530,15 +530,34 @@
   }
 
   /*
-    Topbar en móvil: FIJA y de color SÓLIDO (el fondo del tema).
+    Topbar en móvil: FIJA y con COLOR DE FONDO opaco.
     Safari 26 en iPhone ya no usa `theme-color`: pinta la zona de la barra de
     estado (hora, batería…) con el `background-color` del elemento fijo pegado
     arriba. El glass es un degradado (`background-image`) sin color de fondo,
     así que Safari se quedaba con el color que capturó al cargar y no seguía
-    los cambios de tema. Con `position: fixed` + color sólido lo toma siempre;
+    los cambios de tema. Con `position: fixed` + color opaco lo toma siempre;
     ThemeProvider le pide releerlo al cambiar de tema. `env(safe-area-inset-top)`
     es 0 en Safari normal y cubre el notch si el contenido llega hasta arriba.
+
+    El color imita la superficie glass de escritorio (medida sobre el fondo de
+    marca): el fondo del tema con un velo blanco (oscuro: ~6 %; claro: casi
+    blanco) y, encima, el halo de marca al centro como el que deja ver el
+    glass. Safari usa solo el color de fondo, así que la barra de estado queda
+    del tono de la topbar. Sin `color-mix` se queda el fondo del tema.
+    `--topbar-surface` vive en <html> (como el resto de tokens del tema) para
+    que ThemeProvider lo lea aunque la topbar no esté montada (login).
   */
+  :root {
+    --topbar-surface: rgb(var(--color-canvas));
+  }
+  @supports (color: color-mix(in srgb, red, blue)) {
+    :root {
+      --topbar-surface: color-mix(in srgb, rgb(var(--color-canvas)) 35%, #fff);
+    }
+    .dark {
+      --topbar-surface: color-mix(in srgb, rgb(var(--color-canvas)) 94%, #fff);
+    }
+  }
   @media (max-width: 639.98px) {
     header.topbar-mobile {
       position: fixed;
@@ -546,9 +565,13 @@
       z-index: 25; /* sobre la barra de herramientas (20), bajo drawer (30) y paneles (40+) */
       height: calc(4rem + env(safe-area-inset-top));
       padding-top: env(safe-area-inset-top);
-      background: rgb(var(--color-canvas)) !important;
+      background-color: var(--topbar-surface) !important;
+      background-image: radial-gradient(ellipse 70% 160% at 50% 0%, rgb(var(--glow-a) / 0.07), transparent 70%) !important;
       backdrop-filter: none !important;
       -webkit-backdrop-filter: none !important;
+    }
+    .dark header.topbar-mobile {
+      background-image: radial-gradient(ellipse 70% 160% at 50% 0%, rgb(var(--glow-a) / 0.12), transparent 70%) !important;
     }
     .topbar-offset {
       padding-top: calc(4rem + env(safe-area-inset-top));

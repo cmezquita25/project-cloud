@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <!-- Lo ajusta ThemeProvider al fondo real del tema elegido en la app. -->
-    <meta name="theme-color" content="#020617" />
+    <meta name="theme-color" content="#0f1318" />
     <meta name="description" content="Almacenamiento en la nube." />
     <title>Drive</title>
     <link rel="icon" type="image/png" href="/api/v1/settings/logo/favicon" />
@@ -25,7 +25,7 @@
           var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
           var dark = stored === 'dark' || ((stored === 'system' || !stored) && prefersDark);
           if (dark) document.documentElement.classList.add('dark');
-          if (!dark) document.querySelector('meta[name="theme-color"]').setAttribute('content', '#f9fafc');
+          if (!dark) document.querySelector('meta[name="theme-color"]').setAttribute('content', '#fdfdfe');
           // Estilo de color (Blizzard por defecto; Nebula, Supernova, Techmaleon):
           // lo cachea usePlatformSettings para que no parpadee al recargar.
           // Nombre de la organización (última configuración conocida): el título

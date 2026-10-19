@@ -32,6 +32,30 @@ function resolve(mode: ThemeMode): 'light' | 'dark' {
   return mode === 'system' ? getSystemPref() : mode
 }
 
+/**
+ * Color de la topbar móvil (`--topbar-surface`) en formato `#rrggbb`. Se pinta
+ * en un elemento temporal para resolver `var()`/`color-mix()`. El resultado de
+ * `color-mix` llega como `color(srgb r g b)` (canales 0–1), que `theme-color`
+ * no siempre entiende: se pasa a hex a mano (ni el canvas lo convierte).
+ */
+function resolveTopbarSurface(): string {
+  const el = document.createElement('div')
+  el.style.cssText = 'position:absolute;width:0;height:0;visibility:hidden;background-color:var(--topbar-surface)'
+  document.body.appendChild(el)
+  const computed = getComputedStyle(el).backgroundColor
+  el.remove()
+  const channels = computed.match(/[\d.]+/g)?.map(Number) ?? []
+  if (channels.length < 3) return computed
+  const scale = computed.startsWith('color(') ? 255 : 1
+  return (
+    '#' +
+    channels
+      .slice(0, 3)
+      .map((c) => Math.round(Math.min(255, Math.max(0, c * scale))).toString(16).padStart(2, '0'))
+      .join('')
+  )
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [mode, setModeState] = useState<ThemeMode>(() => {
     const stored = localStorage.getItem(STORAGE_KEY) as ThemeMode | null
@@ -53,9 +77,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   // Barra de estado del móvil (zona del notch), al cambiar el tema o el estilo
   // de color. Se recalcula tras la transición de colores (220 ms).
-  //  - `theme-color`: lo usan Chrome Android y Safari anterior al 26.
+  //  - `theme-color` = tono de la topbar móvil (`--topbar-surface`): lo usan
+  //    Chrome Android y Safari anterior al 26.
   //  - Safari 26 toma el color del elemento fijo pegado arriba (la topbar móvil,
-  //    sólida: ver `.topbar-mobile` en index.css), pero solo lo relee cuando
+  //    opaca: ver `.topbar-mobile` en index.css), pero solo lo relee cuando
   //    entra o sale un elemento fijo (por eso abrir un sidebar lo «arreglaba»).
   //    Se monta un instante una franja fija, invisible bajo la topbar, para que
   //    lo relea con el color nuevo.
@@ -66,7 +91,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const sync = () => {
       window.clearTimeout(t)
       t = window.setTimeout(() => {
-        const color = getComputedStyle(document.body).backgroundColor
+        const color = resolveTopbarSurface()
         if (color === lastColor) return
         const isChange = lastColor !== null
         lastColor = color

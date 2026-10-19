@@ -94,7 +94,9 @@ export function ItemCollection({ items, loading, error, reload, empty, showLocat
   // Selección por clic (el mosaico ya no muestra casilla): clic selecciona,
   // Ctrl/Cmd alterna. Se pinta el elemento seleccionado.
   const onItemClick = (item: DriveItem, e: React.MouseEvent) => {
-    const isMobileSelection = isSelectMode || (window.innerWidth < 640 && selected.size > 0)
+    // Selección múltiple al tocar solo con el modo «Seleccionar» activo; fuera
+    // de él, un toque selecciona ese elemento y suelta el anterior (como un clic).
+    const isMobileSelection = isSelectMode
     if (e.ctrlKey || e.metaKey || isMobileSelection) {
       setSelected((prev) => {
         const next = new Set(prev)

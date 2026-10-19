@@ -254,7 +254,9 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
   // --- Selección estilo Drive: clic simple, Ctrl/Cmd alterna, Shift rango ---
   const onItemClick = (item: DriveItem, e: React.MouseEvent) => {
     const index = items.findIndex((i) => key(i) === key(item))
-    const isMobileSelection = isSelectMode || (window.innerWidth < 640 && selected.size > 0)
+    // Selección múltiple al tocar solo con el modo «Seleccionar» activo; fuera
+    // de él, un toque selecciona ese elemento y suelta el anterior (como un clic).
+    const isMobileSelection = isSelectMode
 
     if (e.shiftKey && anchorIndex.current !== null) {
       const a = Math.min(anchorIndex.current, index)
