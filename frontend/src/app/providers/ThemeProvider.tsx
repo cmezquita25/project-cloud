@@ -66,8 +66,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
           meta.name = 'theme-color'
           document.head.appendChild(meta)
         }
+        // Solo el meta: un fondo en <html> haría que el de <body> se pinte como
+        // caja propia y tape el fondo de marca (`AppBackdrop`, en z negativo).
         meta.content = color
-        document.documentElement.style.backgroundColor = color
       }, 250)
     }
     sync()
