@@ -46,7 +46,7 @@ export function AppLayout() {
     <HeaderSearchProvider>
       <WhatsNewProvider>
       <GoogleAnalyticsTracker />
-      <div className="flex h-full flex-col overflow-hidden max-sm:h-auto max-sm:min-h-[100dvh] max-sm:[overflow:clip_visible]">
+      <div className="flex h-full flex-col overflow-hidden max-sm:h-auto max-sm:min-h-[100svh] max-sm:[overflow:clip_visible]">
       {/* Fondo de marca (estático en la app). Hermano del contenido, no envoltorio. */}
       <AppBackdrop />
       <Topbar onMenuClick={drawer.open} />

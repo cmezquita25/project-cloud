@@ -51,6 +51,34 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return () => window.clearTimeout(t)
   }, [mode])
 
+  // Barra de estado del móvil (zona del notch): `theme-color` sigue al fondo real
+  // de la app (tema claro/oscuro y estilo de color), no a la preferencia del
+  // sistema. Se recalcula tras la transición de colores (220 ms).
+  useEffect(() => {
+    let t: number | undefined
+    const sync = () => {
+      window.clearTimeout(t)
+      t = window.setTimeout(() => {
+        const color = getComputedStyle(document.body).backgroundColor
+        let meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')
+        if (!meta) {
+          meta = document.createElement('meta')
+          meta.name = 'theme-color'
+          document.head.appendChild(meta)
+        }
+        meta.content = color
+        document.documentElement.style.backgroundColor = color
+      }, 250)
+    }
+    sync()
+    const observer = new MutationObserver(sync)
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme-preset'] })
+    return () => {
+      observer.disconnect()
+      window.clearTimeout(t)
+    }
+  }, [])
+
   // Reacciona a cambios del sistema cuando el modo es 'system'.
   useEffect(() => {
     if (mode !== 'system') return
