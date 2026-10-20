@@ -31,6 +31,8 @@ export interface AssetsAccess {
   is_admin: boolean
   can_write: boolean
   active?: boolean
+  /** El admin eligió «Omitir» al sugerirle crear la unidad compartida. */
+  setup_dismissed?: boolean
   folder_name?: string
   folder_alias?: string
   custom_alias?: string
@@ -106,7 +108,12 @@ export const assetsApi = {
   permissions: () => api.get<{ users: AssetPermissionUser[] }>('/admin/assets/permissions'),
   setPermissions: (userIds: number[]) =>
     api.put<{ user_ids: number[] }>('/admin/assets/permissions', { user_ids: userIds }),
-  activate: () => api.post<{ ok: boolean }>('/admin/assets/activate'),
+  /** Crea la carpeta de la unidad; con `folderName` usa otra carpeta de la raíz del sitio (si existe, tal cual). */
+  activate: (folderName?: string) =>
+    api.post<{ ok: boolean; folder_name: string; existed: boolean }>('/admin/assets/activate', folderName ? { folder_name: folderName } : undefined),
+  /** Carpetas que ya existen en la raíz del sitio y pueden ser la unidad compartida. */
+  candidates: () => api.get<{ folders: string[] }>('/admin/assets/candidates'),
+  dismissSetup: () => api.post<{ ok: boolean }>('/admin/assets/dismiss-setup'),
   setFolderName: (folderName?: string, folderAlias?: string) =>
     api.put<{ folder_name: string; folder_alias: string; custom_alias: string }>('/admin/assets/folder-name', {
       folder_name: folderName,

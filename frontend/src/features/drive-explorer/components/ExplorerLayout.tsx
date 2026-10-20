@@ -26,6 +26,7 @@ import { useUploads } from '@features/uploads/UploadProvider'
 import { useUploadPicker } from '@features/uploads/hooks/useUploadPicker'
 import { usePreview } from '@features/preview'
 import { useAssetsAccess } from '@features/assets/hooks/useAssetsAccess'
+import { SharedUnitSetupDialog } from '@features/assets/components/SharedUnitSetupDialog'
 import { useHeaderSearch } from '@app/layouts/HeaderSearchContext'
 import { usePlatformSettings } from '@shared/hooks/usePlatformSettings'
 import { useMediaQuery } from '@shared/hooks/useMediaQuery'
@@ -109,6 +110,10 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
   const { pickFiles, pickFolder } = useUploadPicker(folderId, adapter.mode)
   const preview = usePreview()
   const { access: assetsAccess } = useAssetsAccess()
+  // Instalación nueva: la carpeta de la unidad compartida aún no existe. Al
+  // admin se le sugiere crearla hasta que la cree u omita el paso.
+  const suggestSharedUnit = !!assetsAccess?.is_admin && !assetsAccess.active && !assetsAccess.setup_dismissed
+  const [unitSetupOpen, setUnitSetupOpen] = useState(false)
   const sharedItems = useSharedItems()
   const settings = usePlatformSettings()
   const { user } = useAuth()
@@ -616,7 +621,7 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
 
           {atRoot && adapter.mode === 'drive' && (
             <div className="mb-6 flex flex-wrap gap-3">
-              {assetsAccess?.allowed && (
+              {assetsAccess?.allowed && assetsAccess.active && (
                 <button
                   onClick={() => navigate('/assets')}
                   className="glass-lite glass-hover group flex flex-1 min-w-[220px] max-w-xs items-center gap-3 rounded-xl px-3.5 py-3 text-left"
@@ -625,6 +630,18 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-content-primary">{assetsAccess?.folder_alias || 'Unidad compartida'}</p>
                     <p className="truncate text-xs text-content-tertiary">Carpeta de la organización</p>
+                  </div>
+                </button>
+              )}
+              {suggestSharedUnit && (
+                <button
+                  onClick={() => setUnitSetupOpen(true)}
+                  className="glass-lite glass-hover group flex flex-1 min-w-[220px] max-w-xs items-center gap-3 rounded-xl border-dashed border-primary/40 px-3.5 py-3 text-left dark:border-primary/40"
+                >
+                  <FolderPlus size={22} className="shrink-0 text-primary" />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-content-primary">{assetsAccess?.folder_alias || 'Unidad compartida'}</p>
+                    <p className="truncate text-xs text-content-tertiary">Sin crear · Configúrala ahora</p>
                   </div>
                 </button>
               )}
@@ -752,6 +769,9 @@ export function ExplorerLayout({ folderId, adapter, heroSearch = false }: Explor
         )}
       </AnimatePresence>
 
+      {adapter.mode === 'drive' && assetsAccess?.is_admin && (
+        <SharedUnitSetupDialog open={unitSetupOpen} onClose={() => setUnitSetupOpen(false)} />
+      )}
       <NamePromptDialog
         open={dialog?.kind === 'newFolder'}
         title="Nueva carpeta"

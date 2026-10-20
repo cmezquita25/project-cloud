@@ -57,7 +57,8 @@ export function WorkspaceSettings() {
   const handleActivate = async () => {
     setIsActivating(true)
     try {
-      await assetsApi.activate()
+      // Crea la carpeta que muestra el aviso (lo escrito en «Ruta física»).
+      await assetsApi.activate(folderName.trim() || undefined)
       toast.success('Unidad compartida creada exitosamente')
       queryClient.invalidateQueries({ queryKey: ['assets'] })
     } catch (e: any) {

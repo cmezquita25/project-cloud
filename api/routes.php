@@ -180,6 +180,8 @@ return static function (Router $router): void {
     $router->put('/v1/admin/assets/permissions',  [AssetsController::class, 'setPermissions'], $admin);
     $router->put('/v1/admin/assets/block-actions',[AssetsController::class, 'setBlockedActions'], $admin);
     $router->post('/v1/admin/assets/activate',    [AssetsController::class, 'activate'], $admin);
+    $router->get('/v1/admin/assets/candidates',   [AssetsController::class, 'candidates'], $admin);
+    $router->post('/v1/admin/assets/dismiss-setup', [AssetsController::class, 'dismissSetup'], $admin);
     $router->put('/v1/admin/assets/folder-name',  [AssetsController::class, 'setFolderName'], $admin);
     $router->get('/v1/admin/migrate-assets',      [AdminController::class, 'migrateAssets'], $admin);
     $router->get('/v1/admin/links',               [ShareLinkController::class, 'adminIndex'], $admin);

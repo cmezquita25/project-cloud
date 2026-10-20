@@ -23,6 +23,16 @@ final class AssetsService
 {
     private const ALLOWED_KEY = 'assets_allowed_users';
 
+    /** El admin eligió «Omitir» en la sugerencia de crear la unidad (instalación nueva). */
+    private const SETUP_DISMISSED_KEY = 'assets_setup_dismissed';
+
+    /**
+     * Carpetas de la raíz del sitio que nunca pueden ser la unidad compartida:
+     * las de la app (mezclaría sus archivos y el actualizador los reemplazaría)
+     * y las del propio hosting.
+     */
+    public const RESERVED_FOLDERS = ['api', 'app-assets', 'storage', 'avatars', 'thumbs', 'old-files', 'var', 'cgi-bin'];
+
     private readonly string $root;
     private readonly string $publicBase;
     private readonly FileSystemService $fs;
@@ -97,6 +107,53 @@ final class AssetsService
             if (!@mkdir($this->root, 0775, true) && !is_dir($this->root)) {
                 throw new HttpException(500, 'DIR_FAILED', 'No se pudo crear la unidad compartida.');
             }
+        }
+    }
+
+    /** Valida el nombre de la carpeta raíz de la unidad (vive en la raíz del sitio). */
+    public static function assertValidFolderName(string $name): void
+    {
+        if ($name === '' || preg_match('/[^a-zA-Z0-9_-]/', $name)) {
+            throw HttpException::badRequest('Nombre de carpeta inválido. Usa solo letras, números, guion y guion bajo.', 'INVALID_FOLDER_NAME');
+        }
+        if (in_array(strtolower($name), self::RESERVED_FOLDERS, true)) {
+            throw HttpException::badRequest('Ese nombre lo usa una carpeta del sistema. Elige otro.', 'RESERVED_FOLDER_NAME');
+        }
+    }
+
+    /**
+     * Carpetas que ya existen en la raíz del sitio y pueden usarse como unidad
+     * compartida (p. ej. una carpeta de imágenes que el hosting ya servía).
+     *
+     * @return list<string>
+     */
+    public function candidateFolders(): array
+    {
+        $siteRoot = dirname($this->root);
+        $names = [];
+        foreach (@scandir($siteRoot) ?: [] as $name) {
+            if (str_starts_with($name, '.') || in_array(strtolower($name), self::RESERVED_FOLDERS, true)) {
+                continue;
+            }
+            if (!preg_match('/[^a-zA-Z0-9_-]/', $name) && is_dir($siteRoot . DIRECTORY_SEPARATOR . $name)) {
+                $names[] = $name;
+            }
+        }
+        natcasesort($names);
+        return array_values($names);
+    }
+
+    public function isSetupDismissed(): bool
+    {
+        return $this->settings->get(self::SETUP_DISMISSED_KEY, '0') === '1';
+    }
+
+    public function setSetupDismissed(bool $dismissed): void
+    {
+        if ($dismissed) {
+            $this->settings->set(self::SETUP_DISMISSED_KEY, '1');
+        } else {
+            $this->settings->delete(self::SETUP_DISMISSED_KEY);
         }
     }
 

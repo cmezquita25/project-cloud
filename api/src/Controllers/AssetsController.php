@@ -33,6 +33,7 @@ final class AssetsController
             'is_admin'     => $role === 'admin',
             'can_write'    => $allowed, // acceso = ver + interactuar
             'active'       => $svc->isActive(),
+            'setup_dismissed' => $svc->isSetupDismissed(),
             'folder_name'  => $svc->getFolderName(),
             'folder_alias' => $svc->getFolderAlias(),
             'custom_alias' => (string) ($settingsRepo->get('assets_folder_alias', '')),
@@ -249,11 +250,38 @@ final class AssetsController
         return Response::success(['ok' => true]);
     }
 
-    /** POST /admin/assets/activate — crea la carpeta física de assets. */
+    /**
+     * POST /admin/assets/activate — crea la carpeta física de la unidad
+     * compartida. Con `folder_name` se elige antes otra carpeta de la raíz del
+     * sitio; si ya existe, se usa tal cual con lo que contenga.
+     */
     public function activate(Request $request): Response
     {
-        $this->service()->createRoot();
-        ActivityLogger::log($request, 'assets.activate', 'setting', null, []);
+        $name = trim((string) ($request->json()['folder_name'] ?? ''));
+        if ($name !== '') {
+            AssetsService::assertValidFolderName($name);
+            (new \ProjectCloud\Repositories\SettingsRepository())->set('assets_folder_name', $name);
+        }
+
+        $svc = $this->service();
+        $existed = $svc->isActive();
+        $svc->createRoot();
+        $svc->setSetupDismissed(false);
+        ActivityLogger::log($request, 'assets.activate', 'setting', null, ['folder_name' => $svc->getFolderName(), 'existed' => $existed]);
+        return Response::success(['ok' => true, 'folder_name' => $svc->getFolderName(), 'existed' => $existed]);
+    }
+
+    /** GET /admin/assets/candidates — carpetas existentes en la raíz del sitio que pueden ser la unidad. */
+    public function candidates(Request $request): Response
+    {
+        return Response::success(['folders' => $this->service()->candidateFolders()]);
+    }
+
+    /** POST /admin/assets/dismiss-setup — «Omitir»: deja de sugerir crear la unidad compartida. */
+    public function dismissSetup(Request $request): Response
+    {
+        $this->service()->setSetupDismissed(true);
+        ActivityLogger::log($request, 'assets.dismiss_setup', 'setting', null, []);
         return Response::success(['ok' => true]);
     }
 
@@ -266,18 +294,11 @@ final class AssetsController
         if (array_key_exists('folder_name', $body)) {
             $name = trim((string) $body['folder_name']);
             if ($name !== '') {
-                if (preg_match('/[^a-zA-Z0-9_-]/', $name)) {
-                    throw HttpException::badRequest('Nombre de carpeta inválido.');
-                }
-                // La unidad compartida vive junto a las carpetas del sistema en la
-                // raíz del sitio: compartir nombre mezclaría sus archivos con los
-                // de la app (y el actualizador los reemplazaría).
-                $systemFolders = ['api', 'app-assets', 'storage', 'avatars', 'thumbs', 'old-files', 'var'];
-                if (in_array(strtolower($name), $systemFolders, true)) {
-                    throw HttpException::badRequest('Ese nombre lo usa una carpeta del sistema. Elige otro.', 'RESERVED_FOLDER_NAME');
-                }
+                AssetsService::assertValidFolderName($name);
                 $settings->set('assets_folder_name', $name);
-                (new AssetsService())->createRoot();
+                $svc = new AssetsService();
+                $svc->createRoot();
+                $svc->setSetupDismissed(false);
             }
         }
 
