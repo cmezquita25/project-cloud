@@ -12,18 +12,19 @@
  *
  * Nunca se incluyen datos de los usuarios ni la configuración del servidor: al
  * subir dist/ sobre httpdocs, storage/, assets/, avatars/ y api/config/config.php
- * quedan intactos.
+ * quedan intactos. Es el mismo contenido que el ZIP del instalador
+ * (scripts/release/installer.mjs).
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
-import { ROOT, collectPackageEntries, releaseDescriptor } from './release/lib.mjs'
+import { PRIVATE_SITE_PATHS, ROOT, collectPackageEntries, siteEntries } from './release/lib.mjs'
 
 const dist = resolve(ROOT, 'frontend/dist')
 const versionInfo = JSON.parse(readFileSync(resolve(ROOT, 'version.json'), 'utf8'))
 
 let entries
 try {
-  entries = collectPackageEntries()
+  entries = siteEntries(collectPackageEntries(), versionInfo)
 } catch (err) {
   console.error(`✖ ${err.message}`)
   process.exit(1)
@@ -31,24 +32,16 @@ try {
 
 let apiCount = 0
 for (const { name, data } of entries) {
-  // public/* ya está en dist (salida de Vite), salvo el .htaccess raíz.
-  if (name.startsWith('public/') && name !== 'public/.htaccess') continue
-  const target = resolve(dist, name === 'public/.htaccess' ? '.htaccess' : name)
+  // La salida de Vite ya está en dist; solo falta lo que añade este paso.
+  if (!name.startsWith('api/') && name !== '.htaccess') continue
+  const target = resolve(dist, name)
   mkdirSync(dirname(target), { recursive: true })
   writeFileSync(target, data)
-  if (name.startsWith('api/')) apiCount++
+  if (name.startsWith('api/') && !name.startsWith('api/var/')) apiCount++
 }
 
-mkdirSync(resolve(dist, 'api/var'), { recursive: true })
-writeFileSync(resolve(dist, 'api/var/release.json'), JSON.stringify(releaseDescriptor(entries, versionInfo)))
-writeFileSync(
-  resolve(dist, 'api/var/.htaccess'),
-  '# Carpeta privada del sistema (backups, temporales, estado del actualizador).\n# Nunca se sirve por web.\nRequire all denied\n<IfModule !mod_authz_core.c>\n    Order deny,allow\n    Deny from all\n</IfModule>\n'
-)
-
 // Última barrera: jamás subir configuración o datos locales al servidor.
-const forbidden = ['api/config/config.php', 'api/config/install.lock', 'api/config/maintenance.json', 'api/var/backups', 'storage', 'assets']
-const leaked = forbidden.filter((p) => existsSync(resolve(dist, p)))
+const leaked = PRIVATE_SITE_PATHS.filter((p) => existsSync(resolve(dist, p)))
 if (leaked.length > 0) {
   console.error(`✖ dist/ contiene archivos que NO deben subirse: ${leaked.join(', ')}`)
   process.exit(1)

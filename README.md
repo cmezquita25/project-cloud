@@ -114,18 +114,19 @@ php -S localhost:8000 index.php
 
 Olvídate de editar archivos de configuración manuales por consola; el sistema lo hace todo por ti gracias a su asistente integrado.
 
-### 1. Compilación del Frontend
-Genera la versión optimizada para producción del Frontend ejecutando:
+### 1. Generación del Instalador
+Compila el frontend y empaqueta la plataforma completa (sin configuración ni datos) en un solo ZIP:
 ```bash
-cd frontend
-npm run build
+node scripts/release/installer.mjs
 ```
-Esto generará una carpeta `dist/` con los archivos estáticos listos.
+Esto generará `release/installer/project-cloud-<versión>-installer.zip`.
 
-### 2. Subida de Archivos al Servidor
-En tu servidor de alojamiento (ej: `public_html` en cPanel/Plesk):
-- Sube todo el contenido generado dentro de la carpeta `dist/` a la raíz de tu dominio.
-- Sube la carpeta completa `api/` (ubicada en la raíz del repositorio) junto a los archivos del frontend.
+### 2. Subida al Servidor
+En tu servidor de alojamiento (`httpdocs` en Plesk, `public_html` en cPanel), en la raíz de un dominio o subdominio:
+- Sube el ZIP y usa **Extraer archivos** en esa misma carpeta (quedan `index.html`, `.htaccess`, `app-assets/` y `api/`).
+- Borra el ZIP una vez extraído.
+
+Los pasos detallados están en [release/README.md](release/README.md).
 
 ### 3. Creación de la Base de Datos
 - Desde el panel de tu hosting, crea una **Base de Datos en blanco**.

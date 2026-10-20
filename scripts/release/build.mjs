@@ -10,9 +10,11 @@
  *      configuración, datos locales ni scripts de depuración).
  *   4. Escribe release.json con el sha256 de cada archivo y crea el ZIP.
  *   5. Firma el manifiesto con la llave privada Ed25519.
+ *   6. Genera el ZIP del instalador (installer.mjs) en release/installer/.
  *
  * La salida (por defecto release/out/) replica la carpeta del servidor de
- * versiones: se sube tal cual a techmaleon.com.mx/project-cloud/.
+ * versiones: se sube tal cual a techmaleon.com.mx/project-cloud/. El
+ * instalador queda aparte y no se publica ahí.
  */
 import { execSync } from 'node:child_process'
 import { createPrivateKey, createPublicKey, sign } from 'node:crypto'
@@ -143,3 +145,11 @@ console.log(`Sube primero el ZIP y al final manifest.json, para que nadie vea la
 
 const stats = statSync(resolve(outDir, 'releases', zipName))
 if (stats.size !== zip.length) fail('El ZIP escrito no coincide con el generado.')
+
+// ── 6. Instalador para instalaciones nuevas (aparte, en release/installer/) ─
+console.log('\n▶ Generando el instalador…')
+try {
+  execSync('node scripts/release/installer.mjs --skip-frontend', { cwd: ROOT, stdio: 'inherit' })
+} catch {
+  fail('El release está listo, pero no se pudo generar el instalador (node scripts/release/installer.mjs).')
+}

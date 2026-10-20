@@ -91,6 +91,34 @@ export function releaseDescriptor(entries, { version, schema, released_at: relea
   for (const { name, data } of entries) files[name] = { sha256: sha256(data), size: data.length }
   return { product: PRODUCT, version, schema, released_at: releasedAt, built_at: new Date().toISOString(), files }
 }
+
+/** api/var/.htaccess: la carpeta privada del sistema nunca se sirve por web. */
+export const VAR_HTACCESS =
+  '# Carpeta privada del sistema (backups, temporales, estado del actualizador).\n# Nunca se sirve por web.\nRequire all denied\n<IfModule !mod_authz_core.c>\n    Order deny,allow\n    Deny from all\n</IfModule>\n'
+
+/** Rutas del sitio que jamás pueden ir en lo que se sube a un servidor (configuración y datos). */
+export const PRIVATE_SITE_PATHS = ['api/config/config.php', 'api/config/install.lock', 'api/config/maintenance.json', 'api/var/backups', 'storage', 'assets']
+
+/**
+ * Archivos tal como quedan en la raíz del sitio (httpdocs) en una instalación
+ * manual: public/… va a la raíz, api/… se queda igual y se añaden
+ * api/var/release.json (registro de los archivos instalados; el actualizador lo
+ * usa para saber qué retirar en la siguiente versión) y api/var/.htaccess.
+ * Es el contenido de frontend/dist y del ZIP del instalador.
+ *
+ * @param {{ name: string, data: Buffer }[]} entries  salida de collectPackageEntries()
+ * @returns {{ name: string, data: Buffer }[]}
+ */
+export function siteEntries(entries, versionInfo) {
+  const site = entries.map(({ name, data }) => ({ name: name.replace(/^public\//, ''), data }))
+  site.push({ name: 'api/var/release.json', data: Buffer.from(JSON.stringify(releaseDescriptor(entries, versionInfo))) })
+  site.push({ name: 'api/var/.htaccess', data: Buffer.from(VAR_HTACCESS) })
+
+  const leaked = site.filter(({ name }) => PRIVATE_SITE_PATHS.some((p) => name === p || name.startsWith(`${p}/`)))
+  if (leaked.length > 0) throw new Error(`El paquete contiene archivos que NO deben subirse: ${leaked.map((e) => e.name).join(', ')}`)
+
+  return site.sort((a, b) => a.name.localeCompare(b.name))
+}
 export const DEFAULT_KEY_PATH = resolve(homedir(), '.project-cloud', 'release-signing.key')
 const RELEASE_KEY_PHP = resolve(ROOT, 'api/src/Updater/ReleaseKey.php')
 

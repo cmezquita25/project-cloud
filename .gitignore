@@ -42,6 +42,7 @@ thumbs/
 # Releases generados (se publican en el servidor de versiones, no se versionan)
 release/out/
 release/build/
+release/installer/
 
 # Llaves de firma: NUNCA en el repositorio
 *.key
